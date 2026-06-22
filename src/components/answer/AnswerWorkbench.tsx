@@ -457,7 +457,7 @@ export function AnswerWorkbench({
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
               Answer Chat
             </p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight">
+            <h2 className="mt-1 text-xl font-semibold tracking-tight">
               回答チャット
             </h2>
           </div>
@@ -468,7 +468,7 @@ export function AnswerWorkbench({
 
         <div className="mt-5 grid max-h-[760px] gap-4 overflow-y-auto pr-1">
           {turns.length === 0 ? (
-            <div className="rounded-[24px] bg-[#f5f5f7] p-5 text-sm font-medium leading-7 text-[#6e6e73]">
+            <div className="rounded-[24px] bg-[#f5f5f7] p-5 text-[13px] font-medium leading-6 text-[#6e6e73]">
               質問を検知すると、自動でここに回答案が追加されます。手動入力から追加することもできます。
             </div>
           ) : null}
@@ -516,7 +516,7 @@ export function AnswerWorkbench({
                     ) : null}
 
                     {turn.error ? (
-                      <div className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+                      <div className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-900">
                         <AlertTriangle
                           className="mt-0.5 h-4 w-4 shrink-0"
                           aria-hidden
@@ -527,9 +527,9 @@ export function AnswerWorkbench({
 
                     <div className="mt-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold">回答案</h3>
+                        <h3 className="text-[13px] font-semibold">回答案</h3>
                       </div>
-                      <p className="mt-2 min-h-20 whitespace-pre-wrap text-base font-semibold leading-8 text-[#1d1d1f]">
+                      <p className="mt-2 min-h-20 whitespace-pre-wrap text-[13px] font-semibold leading-6 text-[#1d1d1f]">
                         {answer ||
                           (turn.loading
                             ? "回答案を作成中です。"
@@ -544,7 +544,7 @@ export function AnswerWorkbench({
                           classifyAndGenerate(turn.question, turn.source)
                         }
                         disabled={turn.loading}
-                        className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold transition hover:bg-[#e8e8ed] disabled:cursor-not-allowed disabled:text-[#86868b]"
+                        className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-xs font-semibold transition hover:bg-[#e8e8ed] disabled:cursor-not-allowed disabled:text-[#86868b]"
                       >
                         <RotateCw className="h-4 w-4" aria-hidden />
                         再生成
@@ -553,7 +553,7 @@ export function AnswerWorkbench({
                         type="button"
                         onClick={() => saveHistory(turn)}
                         disabled={!turn.finalDraft || turn.saved}
-                        className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold transition hover:bg-[#e8e8ed] disabled:cursor-not-allowed disabled:text-[#86868b]"
+                        className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-xs font-semibold transition hover:bg-[#e8e8ed] disabled:cursor-not-allowed disabled:text-[#86868b]"
                       >
                         <Save className="h-4 w-4" aria-hidden />
                         {turn.saved ? "保存済み" : "履歴に保存"}
@@ -562,7 +562,7 @@ export function AnswerWorkbench({
                         <button
                           type="button"
                           onClick={() => stopTurn(turn.id)}
-                          className="inline-flex h-10 items-center gap-2 rounded-full border border-red-300 bg-white px-4 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+                          className="inline-flex h-10 items-center gap-2 rounded-full border border-red-300 bg-white px-4 text-xs font-semibold text-red-700 transition hover:bg-red-50"
                         >
                           <Square className="h-4 w-4" aria-hidden />
                           停止
@@ -578,7 +578,7 @@ export function AnswerWorkbench({
                       <span>{sourceLabel(turn.source)}</span>
                       <span>{formatTime(turn.createdAt)}</span>
                     </div>
-                    <p className="whitespace-pre-wrap text-[13px] font-semibold leading-6">
+                    <p className="whitespace-pre-wrap text-[12px] font-semibold leading-5">
                       {turn.question}
                     </p>
                   </div>
