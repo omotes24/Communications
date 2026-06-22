@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -38,6 +39,7 @@ type AnswerWorkbenchProps = {
   autoSource?: "manual" | "remote-audio" | "practice";
   autoGenerate?: boolean;
   autoRunId?: string;
+  transcriptPanel?: ReactNode;
 };
 
 type AnswerSource = NonNullable<AnswerWorkbenchProps["autoSource"]>;
@@ -154,6 +156,7 @@ export function AnswerWorkbench({
   autoSource = "manual",
   autoGenerate = false,
   autoRunId,
+  transcriptPanel,
 }: AnswerWorkbenchProps) {
   const { ready, storage, actions } = useAppStorage();
   const [question, setQuestion] = useState(initialQuestion);
@@ -445,6 +448,8 @@ export function AnswerWorkbench({
           ) : null}
         </div>
       </div>
+
+      {transcriptPanel}
 
       <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
         <div className="flex flex-wrap items-center justify-between gap-3">

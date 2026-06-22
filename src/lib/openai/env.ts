@@ -4,7 +4,7 @@ const serverEnvSchema = z.object({
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-realtime-whisper"),
   OPENAI_CLASSIFIER_MODEL: z.string().default("gpt-5.4-nano"),
-  OPENAI_ANSWER_MODEL: z.string().default("gpt-5.5"),
+  OPENAI_ANSWER_MODEL: z.string().default("gpt-5.5-mini"),
   OPENAI_RESEARCH_MODEL: z.string().default("gpt-5.5"),
   OPENAI_MOCK_MODE: z
     .enum(["true", "false", "1", "0"])

@@ -38,7 +38,7 @@ export default function SetupPage() {
 OPENAI_MOCK_MODE=false
 OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
 OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
-OPENAI_ANSWER_MODEL=gpt-5.5
+OPENAI_ANSWER_MODEL=gpt-5.5-mini
 OPENAI_RESEARCH_MODEL=gpt-5.5`}
             </pre>
           </details>

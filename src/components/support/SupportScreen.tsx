@@ -1,13 +1,96 @@
 "use client";
 
 import { useState } from "react";
-import { Pause, Play } from "lucide-react";
+import { Wand2 } from "lucide-react";
 
 import { AnswerWorkbench } from "@/components/answer/AnswerWorkbench";
 import { PreInterviewLearningPanel } from "@/components/answer/PreInterviewLearningPanel";
 import { AudioCapturePanel } from "@/components/audio/AudioCapturePanel";
+import type { TranscriptItem } from "@/components/audio/use-realtime-transcription";
 import { PageHeader } from "@/components/layout/PageHeader";
+import {
+  extractLikelyInterviewQuestion,
+  isSubmittableTranscript,
+  normalizeTranscriptForSubmit,
+} from "@/components/audio/transcript-auto-submit";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
+
+type RealtimeTranscriptPanelProps = {
+  items: TranscriptItem[];
+  onConfirm: (text: string) => void;
+};
+
+function RealtimeTranscriptPanel({
+  items,
+  onConfirm,
+}: RealtimeTranscriptPanelProps) {
+  const visibleItems = items.slice(0, 4);
+
+  function confirmItem(item: TranscriptItem) {
+    const normalizedText = normalizeTranscriptForSubmit(item.text);
+    const questionCandidate =
+      extractLikelyInterviewQuestion(normalizedText) || normalizedText;
+    if (isSubmittableTranscript(questionCandidate)) {
+      onConfirm(questionCandidate);
+    }
+  }
+
+  return (
+    <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
+            Live Transcript
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight">
+            リアルタイム文字起こし
+          </h2>
+        </div>
+        <span className="rounded-full bg-[#f5f5f7] px-3 py-1.5 text-xs font-semibold text-[#6e6e73]">
+          最大4行
+        </span>
+      </div>
+
+      <div className="mt-4 max-h-56 overflow-y-auto rounded-2xl border border-neutral-950/10 bg-[#f5f5f7]">
+        {visibleItems.length === 0 ? (
+          <p className="p-4 text-sm font-medium text-[#86868b]">
+            まだ文字起こしはありません。
+          </p>
+        ) : (
+          visibleItems.map((item) => {
+            const canConfirm =
+              item.source === "remote" && isSubmittableTranscript(item.text);
+
+            return (
+              <div
+                key={`${item.id}-${item.createdAt}`}
+                className="border-b border-neutral-950/10 p-3 last:border-b-0"
+              >
+                <div className="mb-1 flex items-center justify-between gap-2 text-[11px] font-semibold text-[#6e6e73]">
+                  <span>{item.source === "remote" ? "相手側" : "自分側"}</span>
+                  <span>{item.final ? "確定" : "入力中"}</span>
+                </div>
+                <p className="max-h-24 overflow-y-auto whitespace-pre-wrap text-[13px] font-medium leading-6 text-[#1d1d1f]">
+                  {item.text}
+                </p>
+                {canConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => confirmItem(item)}
+                    className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-full border border-neutral-950/15 bg-white px-3 text-xs font-semibold transition hover:border-neutral-950"
+                  >
+                    <Wand2 className="h-3.5 w-3.5" aria-hidden />
+                    質問を確定
+                  </button>
+                ) : null}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </section>
+  );
+}
 
 export function SupportScreen() {
   const { storage } = useAppStorage();
@@ -18,34 +101,15 @@ export function SupportScreen() {
     text: string;
     createdAt: string;
   } | null>(null);
-  const [autoSendStopped, setAutoSendStopped] = useState(false);
-  const [questionCycle, setQuestionCycle] = useState(0);
+  const [transcriptItems, setTranscriptItems] = useState<TranscriptItem[]>([]);
 
   function confirmQuestion(text: string) {
-    if (autoSendStopped) {
-      return;
-    }
     setLatestTranscript({
       id: crypto.randomUUID(),
       text,
       createdAt: new Date().toISOString(),
     });
   }
-
-  function toggleQuestionGate() {
-    if (autoSendStopped) {
-      setAutoSendStopped(false);
-      setQuestionCycle((current) => current + 1);
-      return;
-    }
-    setAutoSendStopped(true);
-  }
-
-  const gateTitle = autoSendStopped ? "自動送信を停止中" : "質問を自動送信中";
-  const gateDescription = autoSendStopped
-    ? "録音は続けたまま、質問検知から回答生成への自動送信だけを止めています。"
-    : "質問を検知すると、人の操作なしで回答チャットへ送信し、回答案を作成します。";
-  const GateIcon = autoSendStopped ? Play : Pause;
 
   return (
     <section>
@@ -66,55 +130,23 @@ export function SupportScreen() {
       <div className="grid gap-4">
         <PreInterviewLearningPanel />
         <AudioCapturePanel
-          autoSubmitRemoteFinal={!autoSendStopped}
-          questionLocked={autoSendStopped}
-          questionCycle={questionCycle}
+          autoSubmitRemoteFinal
           onRemoteTranscript={confirmQuestion}
+          onTranscriptItemsChange={setTranscriptItems}
+          showTranscript={false}
         />
-        <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
-                Question Gate
-              </p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-tight">
-                {gateTitle}
-              </h2>
-              <p className="mt-2 text-sm font-medium leading-6 text-neutral-600">
-                {gateDescription}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={toggleQuestionGate}
-              className={[
-                "inline-flex min-h-14 min-w-44 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-sm transition",
-                autoSendStopped
-                  ? "bg-[#0071e3] hover:bg-[#147ce5]"
-                  : "bg-[#1d1d1f] hover:bg-neutral-700",
-              ].join(" ")}
-            >
-              <GateIcon className="h-4 w-4" aria-hidden />
-              {autoSendStopped ? "GO 自動送信再開" : "STOP 自動送信停止"}
-            </button>
-          </div>
-          {latestTranscript ? (
-            <div className="mt-4 rounded-2xl bg-[#f5f5f7] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6e6e73]">
-                直近で自動送信した質問
-              </p>
-              <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-[#1d1d1f]">
-                {latestTranscript.text}
-              </p>
-            </div>
-          ) : null}
-        </section>
         <AnswerWorkbench
           mode="support"
           initialQuestion={latestTranscript?.text ?? ""}
           autoSource={latestTranscript ? "remote-audio" : "manual"}
           autoGenerate={Boolean(latestTranscript)}
           autoRunId={latestTranscript?.id}
+          transcriptPanel={
+            <RealtimeTranscriptPanel
+              items={transcriptItems}
+              onConfirm={confirmQuestion}
+            />
+          }
         />
       </div>
     </section>

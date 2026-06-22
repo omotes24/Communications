@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MonitorUp, Square, Wand2 } from "lucide-react";
 
-import { useRealtimeTranscription } from "@/components/audio/use-realtime-transcription";
+import {
+  useRealtimeTranscription,
+  type TranscriptItem,
+} from "@/components/audio/use-realtime-transcription";
 import {
   createTranscriptSubmitKey,
   extractLikelyInterviewQuestion,
@@ -25,6 +28,8 @@ type AudioCapturePanelProps = {
   autoSubmitRemoteFinal?: boolean;
   questionLocked?: boolean;
   questionCycle?: number;
+  onTranscriptItemsChange?: (items: TranscriptItem[]) => void;
+  showTranscript?: boolean;
 };
 
 export function AudioCapturePanel({
@@ -32,6 +37,8 @@ export function AudioCapturePanel({
   autoSubmitRemoteFinal = false,
   questionLocked = false,
   questionCycle = 0,
+  onTranscriptItemsChange,
+  showTranscript = true,
 }: AudioCapturePanelProps) {
   const transcription = useRealtimeTranscription();
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -81,6 +88,10 @@ export function AudioCapturePanel({
       ? normalizeTranscriptForSubmit(latestRemoteItem.text)
       : "";
   }, [transcription.items]);
+
+  useEffect(() => {
+    onTranscriptItemsChange?.(transcription.items);
+  }, [onTranscriptItemsChange, transcription.items]);
 
   const getTextAfterResumeBaseline = useCallback((text: string): string => {
     const normalizedText = normalizeTranscriptForSubmit(text);
@@ -360,57 +371,61 @@ export function AudioCapturePanel({
         </p>
       ) : null}
 
-      <div className="mt-4 grid gap-2">
-        <h3 className="text-sm font-semibold">リアルタイム文字起こし</h3>
-        {transcription.items.length === 0 ? (
-          <p className="rounded-2xl bg-neutral-50 p-4 text-sm font-medium text-neutral-500">
-            まだ文字起こしはありません。
-          </p>
-        ) : (
-          transcription.items.slice(0, 6).map((item) => {
-            const canConfirmQuestion =
-              item.source === "remote" &&
-              isSubmittableTranscript(item.text) &&
-              Boolean(onRemoteTranscript);
+      {showTranscript ? (
+        <div className="mt-4 grid gap-2">
+          <h3 className="text-sm font-semibold">リアルタイム文字起こし</h3>
+          {transcription.items.length === 0 ? (
+            <p className="rounded-2xl bg-neutral-50 p-4 text-sm font-medium text-neutral-500">
+              まだ文字起こしはありません。
+            </p>
+          ) : (
+            transcription.items.slice(0, 6).map((item) => {
+              const canConfirmQuestion =
+                item.source === "remote" &&
+                isSubmittableTranscript(item.text) &&
+                Boolean(onRemoteTranscript);
 
-            return (
-              <div
-                key={`${item.id}-${item.createdAt}`}
-                className="rounded-2xl border border-neutral-950/10 p-4"
-              >
-                <div className="mb-1 flex items-center justify-between gap-2 text-xs font-semibold text-neutral-500">
-                  <span>{item.source === "remote" ? "相手側" : "自分側"}</span>
-                  <span>{item.final ? "確定" : "入力中"}</span>
+              return (
+                <div
+                  key={`${item.id}-${item.createdAt}`}
+                  className="rounded-2xl border border-neutral-950/10 p-4"
+                >
+                  <div className="mb-1 flex items-center justify-between gap-2 text-xs font-semibold text-neutral-500">
+                    <span>
+                      {item.source === "remote" ? "相手側" : "自分側"}
+                    </span>
+                    <span>{item.final ? "確定" : "入力中"}</span>
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-800">
+                    {item.text}
+                  </p>
+                  {canConfirmQuestion ? (
+                    <button
+                      type="button"
+                      disabled={questionLocked}
+                      onClick={() => {
+                        const normalizedCandidate = getTextAfterResumeBaseline(
+                          item.text,
+                        );
+                        const questionCandidate =
+                          extractLikelyInterviewQuestion(normalizedCandidate) ||
+                          normalizedCandidate;
+                        if (isSubmittableTranscript(questionCandidate)) {
+                          onRemoteTranscript?.(questionCandidate);
+                        }
+                      }}
+                      className="mt-3 inline-flex h-9 items-center gap-2 rounded-full border border-neutral-950/15 px-3 text-xs font-semibold transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:text-neutral-400"
+                    >
+                      <Wand2 className="h-3.5 w-3.5" aria-hidden />
+                      {questionLocked ? "質問確定済み" : "質問を確定"}
+                    </button>
+                  ) : null}
                 </div>
-                <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-800">
-                  {item.text}
-                </p>
-                {canConfirmQuestion ? (
-                  <button
-                    type="button"
-                    disabled={questionLocked}
-                    onClick={() => {
-                      const normalizedCandidate = getTextAfterResumeBaseline(
-                        item.text,
-                      );
-                      const questionCandidate =
-                        extractLikelyInterviewQuestion(normalizedCandidate) ||
-                        normalizedCandidate;
-                      if (isSubmittableTranscript(questionCandidate)) {
-                        onRemoteTranscript?.(questionCandidate);
-                      }
-                    }}
-                    className="mt-3 inline-flex h-9 items-center gap-2 rounded-full border border-neutral-950/15 px-3 text-xs font-semibold transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:text-neutral-400"
-                  >
-                    <Wand2 className="h-3.5 w-3.5" aria-hidden />
-                    {questionLocked ? "質問確定済み" : "質問を確定"}
-                  </button>
-                ) : null}
-              </div>
-            );
-          })
-        )}
-      </div>
+              );
+            })
+          )}
+        </div>
+      ) : null}
     </section>
   );
 }
