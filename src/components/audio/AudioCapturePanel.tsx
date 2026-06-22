@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MonitorUp, Square, Wand2 } from "lucide-react";
 
 import { useRealtimeTranscription } from "@/components/audio/use-realtime-transcription";
+import {
+  createTranscriptSubmitKey,
+  isSubmittableTranscript,
+  looksLikeInterviewQuestion,
+  normalizeTranscriptForSubmit,
+  remoteTranscriptAutoSubmitDelayMs,
+  remoteTranscriptMinimumAutoSubmitGapMs,
+  remoteTranscriptQuestionCueDelayMs,
+} from "@/components/audio/transcript-auto-submit";
 import {
   requestDisplayAudio,
   requestMicrophone,
@@ -28,6 +37,12 @@ export function AudioCapturePanel({
   );
   const [error, setError] = useState<string | null>(null);
   const submittedIdsRef = useRef<Set<string>>(new Set());
+  const pendingPauseSubmitTimerRef = useRef<number | null>(null);
+  const pendingQuestionCueSubmitTimerRef = useRef<number | null>(null);
+  const lastAutoSubmittedAtRef = useRef(0);
+  const latestRemoteCandidateRef = useRef<{ id: string; text: string } | null>(
+    null,
+  );
 
   const isConnecting = transcription.status === "connecting";
   const isRecording = transcription.status === "live";
@@ -46,22 +61,108 @@ export function AudioCapturePanel({
         ? "マイク"
         : "未選択";
 
+  const clearPendingRemoteSubmitTimers = useCallback(() => {
+    if (pendingPauseSubmitTimerRef.current) {
+      window.clearTimeout(pendingPauseSubmitTimerRef.current);
+      pendingPauseSubmitTimerRef.current = null;
+    }
+    if (pendingQuestionCueSubmitTimerRef.current) {
+      window.clearTimeout(pendingQuestionCueSubmitTimerRef.current);
+      pendingQuestionCueSubmitTimerRef.current = null;
+    }
+  }, []);
+
+  const submitRemoteTranscript = useCallback(
+    (id: string, text: string, enforceAutoSubmitGap: boolean) => {
+      if (!onRemoteTranscript) {
+        return;
+      }
+      const normalizedText = normalizeTranscriptForSubmit(text);
+      if (!isSubmittableTranscript(normalizedText)) {
+        return;
+      }
+      const submitKey = createTranscriptSubmitKey(id, normalizedText);
+      if (submittedIdsRef.current.has(submitKey)) {
+        return;
+      }
+      if (
+        enforceAutoSubmitGap &&
+        Date.now() - lastAutoSubmittedAtRef.current <
+          remoteTranscriptMinimumAutoSubmitGapMs
+      ) {
+        return;
+      }
+      submittedIdsRef.current.add(submitKey);
+      lastAutoSubmittedAtRef.current = Date.now();
+      onRemoteTranscript(normalizedText);
+    },
+    [onRemoteTranscript],
+  );
+
   useEffect(() => {
     if (!autoSubmitRemoteFinal || !onRemoteTranscript) {
       return;
     }
-    for (const item of transcription.items) {
-      if (
-        item.source === "remote" &&
-        item.final &&
-        item.text.trim() &&
-        !submittedIdsRef.current.has(item.id)
-      ) {
-        submittedIdsRef.current.add(item.id);
-        onRemoteTranscript(item.text);
-      }
+
+    const latestRemoteItem = transcription.items.find(
+      (item) => item.source === "remote" && isSubmittableTranscript(item.text),
+    );
+    if (!latestRemoteItem) {
+      return;
     }
-  }, [autoSubmitRemoteFinal, onRemoteTranscript, transcription.items]);
+
+    const normalizedText = normalizeTranscriptForSubmit(latestRemoteItem.text);
+    latestRemoteCandidateRef.current = {
+      id: latestRemoteItem.id,
+      text: normalizedText,
+    };
+
+    if (pendingPauseSubmitTimerRef.current) {
+      window.clearTimeout(pendingPauseSubmitTimerRef.current);
+      pendingPauseSubmitTimerRef.current = null;
+    }
+
+    if (latestRemoteItem.final) {
+      clearPendingRemoteSubmitTimers();
+      submitRemoteTranscript(latestRemoteItem.id, normalizedText, false);
+      return;
+    }
+
+    if (
+      looksLikeInterviewQuestion(normalizedText) &&
+      !pendingQuestionCueSubmitTimerRef.current &&
+      Date.now() - lastAutoSubmittedAtRef.current >=
+        remoteTranscriptMinimumAutoSubmitGapMs
+    ) {
+      pendingQuestionCueSubmitTimerRef.current = window.setTimeout(() => {
+        pendingQuestionCueSubmitTimerRef.current = null;
+        const candidate = latestRemoteCandidateRef.current;
+        if (candidate) {
+          submitRemoteTranscript(candidate.id, candidate.text, true);
+        }
+      }, remoteTranscriptQuestionCueDelayMs);
+    }
+
+    pendingPauseSubmitTimerRef.current = window.setTimeout(() => {
+      pendingPauseSubmitTimerRef.current = null;
+      const candidate = latestRemoteCandidateRef.current;
+      if (candidate) {
+        submitRemoteTranscript(candidate.id, candidate.text, true);
+      }
+    }, remoteTranscriptAutoSubmitDelayMs);
+  }, [
+    autoSubmitRemoteFinal,
+    clearPendingRemoteSubmitTimers,
+    onRemoteTranscript,
+    submitRemoteTranscript,
+    transcription.items,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      clearPendingRemoteSubmitTimers();
+    };
+  }, [clearPendingRemoteSubmitTimers]);
 
   async function startMic() {
     try {
@@ -78,6 +179,7 @@ export function AudioCapturePanel({
   async function startRemoteAudio() {
     try {
       setError(null);
+      clearPendingRemoteSubmitTimers();
       const stream = await requestDisplayAudio();
       setRemoteStream(stream);
       setActiveSource("remote");
@@ -88,6 +190,7 @@ export function AudioCapturePanel({
   }
 
   function stopAll() {
+    clearPendingRemoteSubmitTimers();
     transcription.stop();
     stopMediaStream(localStream);
     stopMediaStream(remoteStream);
@@ -243,10 +346,14 @@ export function AudioCapturePanel({
               <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-800">
                 {item.text}
               </p>
-              {item.source === "remote" && item.final && onRemoteTranscript ? (
+              {item.source === "remote" &&
+              isSubmittableTranscript(item.text) &&
+              onRemoteTranscript ? (
                 <button
                   type="button"
-                  onClick={() => onRemoteTranscript(item.text)}
+                  onClick={() =>
+                    onRemoteTranscript(normalizeTranscriptForSubmit(item.text))
+                  }
                   className="mt-3 inline-flex h-9 items-center gap-2 rounded-full border border-neutral-950/15 px-3 text-xs font-semibold transition hover:border-neutral-950"
                 >
                   <Wand2 className="h-3.5 w-3.5" aria-hidden />
