@@ -1,6 +1,7 @@
 # QuestionTurbo
 
-ようこそ「QuestionTurbo」へ。
+## ようこそ「QuestionTurbo」へ。
+
 日本語の面接で使う回答案・話すポイント提示ツールです。回答の自動代行、自動音声回答、Zoom/Google Meet への自動入力、隠し表示、ステルス表示は実装しません。
 
 ## セットアップ
