@@ -6,6 +6,7 @@ import type {
 
 const profileLabels: Array<[keyof UserProfile, string]> = [
   ["nameOrAlias", "氏名または呼称"],
+  ["affiliation", "大学・学年・学部・研究室など"],
   ["currentRole", "現在の職種"],
   ["careerSummary", "経歴概要"],
   ["workHistory", "職歴"],

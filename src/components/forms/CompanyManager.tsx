@@ -43,6 +43,8 @@ function profileToSelfInfo(profile: UserProfile | null): string {
     return "";
   }
   return [
+    profile.nameOrAlias ? `名前: ${profile.nameOrAlias}` : "",
+    profile.affiliation ? `所属: ${profile.affiliation}` : "",
     profile.careerSummary,
     profile.strengths ? `強み: ${profile.strengths}` : "",
     profile.achievements ? `実績: ${profile.achievements}` : "",

@@ -5,6 +5,10 @@ test("manual question flow with mock OpenAI", async ({ page }) => {
   await page.evaluate(() => localStorage.clear());
 
   await page.goto("/profile");
+  await page.getByLabel("名前").fill("表 太郎");
+  await page
+    .getByLabel("在籍している大学・学年・学部・研究室など")
+    .fill("慶應義塾大学 理工学部 4年 中澤・大越研究室");
   await page
     .getByLabel("自分のこと")
     .fill(

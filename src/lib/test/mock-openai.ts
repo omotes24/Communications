@@ -64,7 +64,7 @@ export function mockGenerateAnswer(
 ): AnswerDraft {
   const profile = request.profile;
   const company = request.company;
-  const role = profile?.currentRole || "現在の職種";
+  const role = profile?.currentRole || profile?.affiliation || "所属・役割";
   const strength = profile?.strengths || profile?.skills || "登録済みの強み";
   const achievement =
     profile?.achievements || profile?.successStories || "登録済みの実績";
@@ -85,6 +85,7 @@ export function mockGenerateAnswer(
     answer: `${conversationLead}私は${role}として培ってきた経験を、${companyName}で再現性のある成果につなげたいと考えています。特に${strength}を活かし、これまで${achievement}に取り組んできました。御社については${attraction}に魅力を感じており、入社後はまず現場理解を深めながら、求められる役割に対して具体的な改善提案と実行で貢献したいです。`,
     evidenceUsed: [
       profile?.currentRole ? `現在の職種: ${profile.currentRole}` : "",
+      profile?.affiliation ? `所属: ${profile.affiliation}` : "",
       profile?.strengths ? `強み: ${profile.strengths}` : "",
       profile?.achievements ? `実績: ${profile.achievements}` : "",
       company?.companyName ? `会社名: ${company.companyName}` : "",
