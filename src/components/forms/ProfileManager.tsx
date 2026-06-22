@@ -75,6 +75,8 @@ export function ProfileManager() {
     const next: UserProfile = {
       ...draft,
       label: draft.label.trim() || "メインプロフィール",
+      nameOrAlias: draft.nameOrAlias.trim(),
+      affiliation: draft.affiliation.trim(),
       careerSummary: selfText,
       strengths: "",
       weaknesses: "",
@@ -149,6 +151,36 @@ export function ProfileManager() {
                 placeholder="メインプロフィール"
               />
             </FormField>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <FormField label="名前">
+                <input
+                  className={inputClassName}
+                  value={draft.nameOrAlias}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      nameOrAlias: event.target.value,
+                    }))
+                  }
+                  placeholder="例: 山田 太郎"
+                />
+              </FormField>
+
+              <FormField label="在籍している大学・学年・学部・研究室など">
+                <textarea
+                  className={`${textareaClassName} min-h-28`}
+                  value={draft.affiliation}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      affiliation: event.target.value,
+                    }))
+                  }
+                  placeholder="例: 慶應義塾大学 理工学部 4年 中澤・大越研究室"
+                />
+              </FormField>
+            </div>
 
             <FormField label="自分のこと">
               <textarea
@@ -251,6 +283,13 @@ export function ProfileManager() {
                     <span className="mt-1 block text-sm font-semibold">
                       {profile.label}
                     </span>
+                    {profile.nameOrAlias || profile.affiliation ? (
+                      <span className="mt-1 block truncate text-xs font-semibold text-[#6e6e73]">
+                        {[profile.nameOrAlias, profile.affiliation]
+                          .filter(Boolean)
+                          .join(" / ")}
+                      </span>
+                    ) : null}
                     <span
                       className={cn(
                         "mt-2 line-clamp-3 block text-xs leading-5",

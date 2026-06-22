@@ -206,6 +206,7 @@ export function buildQuickAnswerDraft({
   const selfCore = compactText(
     firstAvailable(
       profile?.careerSummary,
+      profile?.affiliation,
       profile?.achievements,
       profile?.successStories,
       profile?.skills,
