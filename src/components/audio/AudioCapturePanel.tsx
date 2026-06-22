@@ -6,6 +6,7 @@ import { Mic, MonitorUp, Square, Wand2 } from "lucide-react";
 import { useRealtimeTranscription } from "@/components/audio/use-realtime-transcription";
 import {
   createTranscriptSubmitKey,
+  extractLikelyInterviewQuestion,
   isSubmittableTranscript,
   looksLikeInterviewQuestion,
   normalizeTranscriptForSubmit,
@@ -141,8 +142,13 @@ export function AudioCapturePanel({
       return;
     }
 
-    const normalizedText = getTextAfterResumeBaseline(latestRemoteItem.text);
-    if (!isSubmittableTranscript(normalizedText)) {
+    const normalizedText = extractLikelyInterviewQuestion(
+      getTextAfterResumeBaseline(latestRemoteItem.text),
+    );
+    if (
+      !isSubmittableTranscript(normalizedText) ||
+      !looksLikeInterviewQuestion(normalizedText)
+    ) {
       return;
     }
     latestRemoteCandidateRef.current = {
@@ -158,17 +164,22 @@ export function AudioCapturePanel({
 
     if (
       looksLikeInterviewQuestion(normalizedText) &&
-      !pendingQuestionCueSubmitTimerRef.current &&
-      Date.now() - lastAutoSubmittedAtRef.current >=
-        remoteTranscriptMinimumAutoSubmitGapMs
+      !pendingQuestionCueSubmitTimerRef.current
     ) {
+      const remainingGapMs =
+        remoteTranscriptMinimumAutoSubmitGapMs -
+        (Date.now() - lastAutoSubmittedAtRef.current);
+      const submitDelayMs = Math.max(
+        remoteTranscriptQuestionCueDelayMs,
+        remainingGapMs,
+      );
       pendingQuestionCueSubmitTimerRef.current = window.setTimeout(() => {
         pendingQuestionCueSubmitTimerRef.current = null;
         const candidate = latestRemoteCandidateRef.current;
         if (candidate) {
           submitRemoteTranscript(candidate.id, candidate.text, true);
         }
-      }, remoteTranscriptQuestionCueDelayMs);
+      }, submitDelayMs);
     }
   }, [
     autoSubmitRemoteFinal,
@@ -379,9 +390,12 @@ export function AudioCapturePanel({
                     type="button"
                     disabled={questionLocked}
                     onClick={() => {
-                      const questionCandidate = getTextAfterResumeBaseline(
+                      const normalizedCandidate = getTextAfterResumeBaseline(
                         item.text,
                       );
+                      const questionCandidate =
+                        extractLikelyInterviewQuestion(normalizedCandidate) ||
+                        normalizedCandidate;
                       if (isSubmittableTranscript(questionCandidate)) {
                         onRemoteTranscript?.(questionCandidate);
                       }

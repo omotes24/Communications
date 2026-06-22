@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   createTranscriptSubmitKey,
+  extractLikelyInterviewQuestion,
   isSubmittableTranscript,
   looksLikeInterviewQuestion,
   normalizeTranscriptForSubmit,
   remoteTranscriptAutoSubmitDelayMs,
+  remoteTranscriptMinimumAutoSubmitGapMs,
   remoteTranscriptQuestionCueDelayMs,
 } from "@/components/audio/transcript-auto-submit";
 
@@ -33,5 +35,41 @@ describe("transcript auto submit helpers", () => {
       false,
     );
     expect(remoteTranscriptQuestionCueDelayMs).toBeLessThanOrEqual(500);
+  });
+
+  it("detects common Japanese interview question variations", () => {
+    expect(
+      looksLikeInterviewQuestion(
+        "他社の企業と比べてなぜ弊社を選ばれたのですか?",
+      ),
+    ).toBe(true);
+    expect(
+      looksLikeInterviewQuestion("学生時代に力を入れたことを教えてください"),
+    ).toBe(true);
+    expect(
+      looksLikeInterviewQuestion("研究で工夫した点について聞かせてください"),
+    ).toBe(true);
+    expect(looksLikeInterviewQuestion("本日はよろしくお願いいたします。")).toBe(
+      false,
+    );
+    expect(remoteTranscriptMinimumAutoSubmitGapMs).toBeLessThanOrEqual(1000);
+  });
+
+  it("extracts the latest question segment from noisy interviewer text", () => {
+    expect(
+      extractLikelyInterviewQuestion(
+        "ありがとうございます。続いて、他社の企業と比べてなぜ弊社を選ばれたのですか?",
+      ),
+    ).toBe("他社の企業と比べてなぜ弊社を選ばれたのですか?");
+    expect(
+      extractLikelyInterviewQuestion(
+        "では面接を始めます。まず簡単な自己紹介からお願いします。",
+      ),
+    ).toBe("簡単な自己紹介からお願いします。");
+    expect(
+      extractLikelyInterviewQuestion(
+        "はい、ありがとうございます。承知しました。",
+      ),
+    ).toBe("");
   });
 });
