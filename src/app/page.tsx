@@ -43,7 +43,7 @@ export default function Home() {
           </p>
           <TypingHeadline />
           <p className="mx-auto mt-6 max-w-2xl text-lg font-medium leading-8 text-[#6e6e73]">
-            自分の情報、会社名、企業Webサイト、志望コースを起点に、面接前の理解メモと回答案を作ります。
+            自分の情報、会社名、企業Webサイト、志望コースを起点に、瞬時に回答する文章を生成します。
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
