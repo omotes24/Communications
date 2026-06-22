@@ -1,7 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Loader2, RotateCw, Save, Send } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  RotateCw,
+  Save,
+  Send,
+  Square,
+} from "lucide-react";
 
 import { FormField, textareaClassName } from "@/components/forms/FormField";
 import {
@@ -29,6 +37,23 @@ type AnswerWorkbenchProps = {
   autoSource?: "manual" | "remote-audio" | "practice";
   autoGenerate?: boolean;
   autoRunId?: string;
+};
+
+type AnswerSource = NonNullable<AnswerWorkbenchProps["autoSource"]>;
+
+type AnswerTurn = {
+  id: string;
+  source: AnswerSource;
+  question: string;
+  classification: QuestionClassification | null;
+  category: QuestionCategory;
+  draft: Partial<AnswerDraft>;
+  finalDraft: AnswerDraft | null;
+  loading: boolean;
+  error: string | null;
+  warning: string | null;
+  saved: boolean;
+  createdAt: string;
 };
 
 function mergeDraft(
@@ -81,6 +106,23 @@ async function readSse(
   }
 }
 
+function sourceLabel(source: AnswerSource): string {
+  if (source === "remote-audio") {
+    return "音声検知";
+  }
+  if (source === "practice") {
+    return "練習";
+  }
+  return "手動";
+}
+
+function formatTime(value: string): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 export function AnswerWorkbench({
   mode,
   initialQuestion = "",
@@ -90,20 +132,12 @@ export function AnswerWorkbench({
 }: AnswerWorkbenchProps) {
   const { ready, storage, actions } = useAppStorage();
   const [question, setQuestion] = useState(initialQuestion);
-  const [classification, setClassification] =
-    useState<QuestionClassification | null>(null);
-  const [draft, setDraft] = useState<Partial<AnswerDraft>>({});
-  const [finalDraft, setFinalDraft] = useState<AnswerDraft | null>(null);
-  const [category, setCategory] = useState<QuestionCategory>("other");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [warning, setWarning] = useState<string | null>(null);
-  const [abortController, setAbortController] =
-    useState<AbortController | null>(null);
+  const [turns, setTurns] = useState<AnswerTurn[]>([]);
+  const [manualNotice, setManualNotice] = useState<string | null>(null);
   const lastAutoRunRef = useRef<string | null>(null);
-  const quickDraftTimerRef = useRef<number | null>(null);
-  const hasGeneratedContentRef = useRef(false);
-  const generationRunRef = useRef(0);
+  const quickDraftTimersRef = useRef<Map<string, number>>(new Map());
+  const controllersRef = useRef<Map<string, AbortController>>(new Map());
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const activeProfile = storage.profiles[0] ?? null;
   const activeCompany = storage.companies[0] ?? null;
@@ -111,76 +145,119 @@ export function AnswerWorkbench({
     storage.learning?.companyId === (activeCompany?.id ?? null)
       ? storage.learning.brief
       : "";
-  const length = useMemo(
-    () => validateAnswerLength(finalDraft?.answer ?? draft.answer ?? ""),
-    [draft.answer, finalDraft?.answer],
+
+  const updateTurn = useCallback(
+    (
+      turnId: string,
+      updater: Partial<AnswerTurn> | ((turn: AnswerTurn) => AnswerTurn),
+    ) => {
+      setTurns((current) =>
+        current.map((turn) => {
+          if (turn.id !== turnId) {
+            return turn;
+          }
+          return typeof updater === "function"
+            ? updater(turn)
+            : { ...turn, ...updater };
+        }),
+      );
+    },
+    [],
   );
 
-  const clearQuickDraftTimer = useCallback(() => {
-    if (quickDraftTimerRef.current) {
-      window.clearTimeout(quickDraftTimerRef.current);
-      quickDraftTimerRef.current = null;
+  const clearQuickDraftTimer = useCallback((turnId: string) => {
+    const timer = quickDraftTimersRef.current.get(turnId);
+    if (timer) {
+      window.clearTimeout(timer);
+      quickDraftTimersRef.current.delete(turnId);
     }
   }, []);
 
   useEffect(() => {
-    return () => clearQuickDraftTimer();
-  }, [clearQuickDraftTimer]);
+    const quickDraftTimers = quickDraftTimersRef.current;
+    const controllers = controllersRef.current;
+    return () => {
+      quickDraftTimers.forEach((timer) => window.clearTimeout(timer));
+      quickDraftTimers.clear();
+      controllers.forEach((controller) => controller.abort());
+      controllers.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ block: "end" });
+  }, [turns.length]);
 
   const classifyAndGenerate = useCallback(
-    async (nextQuestion = question) => {
+    async (
+      nextQuestion = question,
+      source: AnswerSource = autoSource,
+      requestedTurnId?: string,
+    ) => {
+      const normalizedQuestion = nextQuestion.trim();
+      setManualNotice(null);
+
       if (!ready) {
-        setWarning("保存済みのプロフィールと会社情報を読み込み中です。");
+        setManualNotice("保存済みのプロフィールと会社情報を読み込み中です。");
         return;
       }
-      if (!nextQuestion.trim()) {
-        setError("質問を入力してください");
+      if (!normalizedQuestion) {
+        setManualNotice("質問を入力してください。");
         return;
       }
 
-      abortController?.abort();
-      clearQuickDraftTimer();
-      const runId = generationRunRef.current + 1;
-      generationRunRef.current = runId;
-      hasGeneratedContentRef.current = false;
+      const turnId = requestedTurnId ?? crypto.randomUUID();
       const controller = new AbortController();
-      setAbortController(controller);
-      setLoading(true);
-      setError(null);
-      setWarning(null);
-      setDraft({});
-      setFinalDraft(null);
-      quickDraftTimerRef.current = window.setTimeout(() => {
-        quickDraftTimerRef.current = null;
-        if (
-          controller.signal.aborted ||
-          generationRunRef.current !== runId ||
-          hasGeneratedContentRef.current
-        ) {
+      controllersRef.current.set(turnId, controller);
+      let hasGeneratedContent = false;
+      let turnCategory: QuestionCategory = "other";
+
+      setTurns((current) => [
+        ...current,
+        {
+          id: turnId,
+          source,
+          question: normalizedQuestion,
+          classification: null,
+          category: turnCategory,
+          draft: {},
+          finalDraft: null,
+          loading: true,
+          error: null,
+          warning: null,
+          saved: false,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+
+      const quickDraftTimer = window.setTimeout(() => {
+        quickDraftTimersRef.current.delete(turnId);
+        if (controller.signal.aborted || hasGeneratedContent) {
           return;
         }
-        setDraft(
-          buildQuickAnswerDraft({
-            question: nextQuestion,
-            category,
+        updateTurn(turnId, (turn) => ({
+          ...turn,
+          draft: buildQuickAnswerDraft({
+            question: normalizedQuestion,
+            category: turnCategory,
             profile: activeProfile,
             company: activeCompany,
             learningBrief: activeLearningBrief,
           }),
-        );
-        setWarning(
-          "3秒ルール: 暫定回答です。LLM生成が完了すると自動で更新されます。",
-        );
+          warning:
+            "3秒ルール: 暫定回答です。LLM生成が完了すると自動で更新されます。",
+        }));
       }, quickDraftDelayMs);
+      quickDraftTimersRef.current.set(turnId, quickDraftTimer);
 
       try {
         const classifyResponse = await fetch("/api/classify-question", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            transcript: nextQuestion,
-            speaker: autoSource === "remote-audio" ? "remote" : "manual",
-            source: autoSource,
+            transcript: normalizedQuestion,
+            speaker: source === "remote-audio" ? "remote" : "manual",
+            source,
           }),
           signal: controller.signal,
         });
@@ -190,22 +267,30 @@ export function AnswerWorkbench({
         const classificationResult = questionClassificationSchema.parse(
           await classifyResponse.json(),
         );
-        setClassification(classificationResult);
-        setCategory(classificationResult.category);
+        turnCategory = classificationResult.category;
+        updateTurn(turnId, {
+          classification: classificationResult,
+          category: classificationResult.category,
+        });
 
         if (!classificationResult.isQuestion) {
-          clearQuickDraftTimer();
-          setDraft({});
-          setFinalDraft(null);
-          setWarning("質問または回答要求ではないため、回答案は生成しません。");
+          clearQuickDraftTimer(turnId);
+          updateTurn(turnId, {
+            draft: {},
+            finalDraft: null,
+            loading: false,
+            warning: "質問または回答要求ではないため、回答案は生成しません。",
+          });
           return;
         }
 
+        const answerQuestion =
+          classificationResult.question || normalizedQuestion;
         const answerResponse = await fetch("/api/generate-answer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            question: classificationResult.question || nextQuestion,
+            question: answerQuestion,
             category: classificationResult.category,
             profile: activeProfile,
             company: activeCompany,
@@ -219,7 +304,9 @@ export function AnswerWorkbench({
 
         await readSse(answerResponse, (event, data) => {
           if (event === "error" && "error" in data) {
-            setError(data.error ?? "回答生成に失敗しました");
+            updateTurn(turnId, {
+              error: data.error ?? "回答生成に失敗しました",
+            });
           }
           if (event === "partial") {
             const partial = data as Partial<AnswerDraft>;
@@ -227,48 +314,51 @@ export function AnswerWorkbench({
               partial.answer ||
               (partial.talkingPoints && partial.talkingPoints.length > 0)
             ) {
-              hasGeneratedContentRef.current = true;
-              clearQuickDraftTimer();
+              hasGeneratedContent = true;
+              clearQuickDraftTimer(turnId);
             }
-            setDraft((current) => mergeDraft(current, partial));
+            updateTurn(turnId, (turn) => ({
+              ...turn,
+              draft: mergeDraft(turn.draft, partial),
+            }));
           }
           if (event === "done" && "draft" in data && data.draft) {
-            hasGeneratedContentRef.current = true;
-            clearQuickDraftTimer();
+            hasGeneratedContent = true;
+            clearQuickDraftTimer(turnId);
             const parsed = answerDraftSchema.parse(data.draft);
-            setFinalDraft(parsed);
-            setDraft(parsed);
-            if (!validateAnswerLength(parsed.answer).inRange) {
-              setWarning(
-                "回答案が250〜350文字の範囲外です。必要に応じて再生成してください。",
-              );
-            } else {
-              setWarning(null);
-            }
+            updateTurn(turnId, {
+              finalDraft: parsed,
+              draft: parsed,
+              warning: validateAnswerLength(parsed.answer).inRange
+                ? null
+                : "回答案が250〜350文字の範囲外です。必要に応じて再生成してください。",
+            });
           }
         });
       } catch (caught) {
-        clearQuickDraftTimer();
+        clearQuickDraftTimer(turnId);
         if (caught instanceof DOMException && caught.name === "AbortError") {
           return;
         }
-        setError(
-          caught instanceof Error ? caught.message : "処理に失敗しました",
-        );
+        updateTurn(turnId, {
+          error:
+            caught instanceof Error ? caught.message : "処理に失敗しました",
+        });
       } finally {
-        setLoading(false);
+        clearQuickDraftTimer(turnId);
+        controllersRef.current.delete(turnId);
+        updateTurn(turnId, { loading: false });
       }
     },
     [
-      abortController,
       activeCompany,
       activeLearningBrief,
       activeProfile,
       autoSource,
-      category,
       clearQuickDraftTimer,
       question,
       ready,
+      updateTurn,
     ],
   );
 
@@ -280,23 +370,39 @@ export function AnswerWorkbench({
       return;
     }
     lastAutoRunRef.current = autoRunId;
-    setQuestion(initialQuestion);
-    void classifyAndGenerate(initialQuestion);
-  }, [autoGenerate, autoRunId, classifyAndGenerate, initialQuestion, ready]);
+    void classifyAndGenerate(initialQuestion, autoSource, autoRunId);
+  }, [
+    autoGenerate,
+    autoRunId,
+    autoSource,
+    classifyAndGenerate,
+    initialQuestion,
+    ready,
+  ]);
 
-  function saveHistory() {
-    if (!finalDraft) {
+  function stopTurn(turnId: string) {
+    controllersRef.current.get(turnId)?.abort();
+    clearQuickDraftTimer(turnId);
+    updateTurn(turnId, {
+      loading: false,
+      warning: "生成を停止しました。",
+    });
+  }
+
+  function saveHistory(turn: AnswerTurn) {
+    if (!turn.finalDraft) {
       return;
     }
     actions.saveSession({
       id: crypto.randomUUID(),
       mode,
-      question: finalDraft.question,
-      answer: finalDraft.answer,
-      talkingPoints: finalDraft.talkingPoints,
-      evidenceUsed: finalDraft.evidenceUsed,
+      question: turn.finalDraft.question,
+      answer: turn.finalDraft.answer,
+      talkingPoints: turn.finalDraft.talkingPoints,
+      evidenceUsed: turn.finalDraft.evidenceUsed,
       createdAt: new Date().toISOString(),
     });
+    updateTurn(turn.id, { saved: true });
   }
 
   return (
@@ -313,143 +419,219 @@ export function AnswerWorkbench({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => classifyAndGenerate()}
-            disabled={loading}
+            onClick={() => classifyAndGenerate(question, "manual")}
+            disabled={!question.trim()}
             className="inline-flex h-11 items-center gap-2 rounded-full bg-[#0071e3] px-5 text-sm font-semibold text-white transition hover:bg-[#147ce5] disabled:cursor-not-allowed disabled:bg-[#86868b]"
           >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            ) : (
-              <Send className="h-4 w-4" aria-hidden />
-            )}
+            <Send className="h-4 w-4" aria-hidden />
             回答案を作成
           </button>
-          <button
-            type="button"
-            onClick={() =>
-              classifyAndGenerate(finalDraft?.question ?? question)
-            }
-            disabled={loading || !question.trim()}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold transition hover:bg-[#e8e8ed] disabled:cursor-not-allowed disabled:text-[#86868b]"
-          >
-            <RotateCw className="h-4 w-4" aria-hidden />
-            再生成
-          </button>
-          <button
-            type="button"
-            onClick={saveHistory}
-            disabled={!finalDraft}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold transition hover:bg-[#e8e8ed] disabled:cursor-not-allowed disabled:text-[#86868b]"
-          >
-            <Save className="h-4 w-4" aria-hidden />
-            履歴に保存
-          </button>
-          {loading ? (
-            <button
-              type="button"
-              onClick={() => abortController?.abort()}
-              className="h-11 rounded-full border border-red-300 bg-white px-5 text-sm font-semibold text-red-700 transition hover:bg-red-50"
-            >
-              停止
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      {classification ? (
-        <div className="grid gap-3 rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06] md:grid-cols-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-              Question
-            </p>
-            <p className="mt-2 text-sm font-medium">
-              {classification.question || "なし"}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-              Confidence
-            </p>
-            <p className="mt-2 text-sm font-medium">
-              {Math.round(classification.confidence * 100)}%
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-              Category
-            </p>
-            <p className="mt-2 text-sm font-medium">{category}</p>
-          </div>
-        </div>
-      ) : null}
-
-      {error || warning ? (
-        <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-900">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          <span>{error ?? warning}</span>
-        </div>
-      ) : null}
-
-      <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
-        <section className="rounded-[30px] bg-[#1d1d1f] p-5 text-white shadow-sm">
-          <h2 className="text-sm font-semibold">話すポイント3点</h2>
-          <ol className="mt-3 grid gap-2">
-            {(draft.talkingPoints ?? []).map((point, index) => (
-              <li
-                key={`${point}-${index}`}
-                className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm leading-6"
-              >
-                {index + 1}. {point}
-              </li>
-            ))}
-          </ol>
-          {(draft.talkingPoints ?? []).length === 0 ? (
-            <p className="mt-3 text-sm text-neutral-400">未生成です。</p>
-          ) : null}
-        </section>
-        <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">250〜350文字の回答案</h2>
-            <span className="rounded-full border border-neutral-950/10 bg-neutral-50 px-3 py-1.5 text-xs font-semibold text-neutral-600">
-              {length.count}文字
+          {manualNotice ? (
+            <span className="text-sm font-medium text-amber-700">
+              {manualNotice}
             </span>
-          </div>
-          <p className="mt-4 min-h-36 whitespace-pre-wrap text-base font-medium leading-8 text-neutral-800">
-            {draft.answer ?? "未生成です。"}
-          </p>
-        </section>
+          ) : null}
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
-          <h2 className="text-sm font-semibold">使用した根拠情報</h2>
-          <ul className="mt-3 grid gap-2 text-sm">
-            {(draft.evidenceUsed ?? []).map((item) => (
-              <li key={item} className="rounded-2xl bg-neutral-50 p-3">
-                {item}
-              </li>
-            ))}
-          </ul>
-          {(draft.evidenceUsed ?? []).length === 0 ? (
-            <p className="mt-3 text-sm text-neutral-500">まだありません。</p>
-          ) : null}
-        </section>
-        <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
-          <h2 className="text-sm font-semibold">不足情報</h2>
-          <ul className="mt-3 grid gap-2 text-sm">
-            {(draft.missingInformation ?? []).map((item) => (
-              <li key={item} className="rounded-2xl bg-neutral-50 p-3">
-                {item}
-              </li>
-            ))}
-          </ul>
-          {(draft.missingInformation ?? []).length === 0 ? (
-            <p className="mt-3 text-sm text-neutral-500">
-              不足情報はありません。
+      <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
+              Answer Chat
             </p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight">
+              回答チャット
+            </h2>
+          </div>
+          <span className="rounded-full bg-[#f5f5f7] px-4 py-2 text-xs font-semibold text-[#6e6e73]">
+            {turns.length}件
+          </span>
+        </div>
+
+        <div className="mt-5 grid max-h-[760px] gap-5 overflow-y-auto pr-1">
+          {turns.length === 0 ? (
+            <div className="rounded-[24px] bg-[#f5f5f7] p-5 text-sm font-medium leading-7 text-[#6e6e73]">
+              質問を検知すると、自動でここに回答案が追加されます。手動入力から追加することもできます。
+            </div>
           ) : null}
-        </section>
-      </div>
+
+          {turns.map((turn) => {
+            const answer = turn.finalDraft?.answer ?? turn.draft.answer ?? "";
+            const talkingPoints = turn.draft.talkingPoints ?? [];
+            const evidenceUsed = turn.draft.evidenceUsed ?? [];
+            const missingInformation = turn.draft.missingInformation ?? [];
+            const length = validateAnswerLength(answer);
+
+            return (
+              <article key={turn.id} className="grid gap-3">
+                <div className="flex justify-end">
+                  <div className="max-w-[88%] rounded-[26px] bg-[#0071e3] px-5 py-4 text-white shadow-sm">
+                    <div className="mb-2 flex flex-wrap items-center justify-end gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/75">
+                      <span>{sourceLabel(turn.source)}</span>
+                      <span>{formatTime(turn.createdAt)}</span>
+                    </div>
+                    <p className="whitespace-pre-wrap text-sm font-semibold leading-7">
+                      {turn.question}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-start">
+                  <div className="max-w-[92%] rounded-[26px] bg-[#f5f5f7] px-5 py-4 text-[#1d1d1f]">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        {turn.loading ? (
+                          <Loader2
+                            className="h-4 w-4 animate-spin text-[#0071e3]"
+                            aria-hidden
+                          />
+                        ) : turn.finalDraft ? (
+                          <CheckCircle2
+                            className="h-4 w-4 text-emerald-600"
+                            aria-hidden
+                          />
+                        ) : null}
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6e6e73]">
+                          QuestionTurbo
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#6e6e73]">
+                        {length.count}文字
+                      </span>
+                    </div>
+
+                    {turn.classification ? (
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#6e6e73]">
+                        <span className="rounded-full bg-white px-3 py-1">
+                          {turn.category}
+                        </span>
+                        <span className="rounded-full bg-white px-3 py-1">
+                          信頼度{" "}
+                          {Math.round(turn.classification.confidence * 100)}%
+                        </span>
+                      </div>
+                    ) : null}
+
+                    {turn.error || turn.warning ? (
+                      <div className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+                        <AlertTriangle
+                          className="mt-0.5 h-4 w-4 shrink-0"
+                          aria-hidden
+                        />
+                        <span>{turn.error ?? turn.warning}</span>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-4">
+                      <h3 className="text-sm font-semibold">話すポイント3点</h3>
+                      {talkingPoints.length > 0 ? (
+                        <ol className="mt-2 grid gap-2">
+                          {talkingPoints.map((point, index) => (
+                            <li
+                              key={`${turn.id}-point-${index}`}
+                              className="text-sm font-medium leading-6 text-[#424245]"
+                            >
+                              {index + 1}. {point}
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <p className="mt-2 text-sm font-medium text-[#86868b]">
+                          {turn.loading ? "抽出中です。" : "未生成です。"}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold">
+                          250〜350文字の回答案
+                        </h3>
+                      </div>
+                      <p className="mt-2 min-h-20 whitespace-pre-wrap text-base font-medium leading-8 text-[#1d1d1f]">
+                        {answer ||
+                          (turn.loading
+                            ? "回答案を作成中です。"
+                            : "未生成です。")}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <div>
+                        <h3 className="text-sm font-semibold">
+                          使用した根拠情報
+                        </h3>
+                        {evidenceUsed.length > 0 ? (
+                          <ul className="mt-2 grid gap-1 text-sm font-medium leading-6 text-[#424245]">
+                            {evidenceUsed.map((item) => (
+                              <li key={`${turn.id}-evidence-${item}`}>
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-2 text-sm font-medium text-[#86868b]">
+                            まだありません。
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold">不足情報</h3>
+                        {missingInformation.length > 0 ? (
+                          <ul className="mt-2 grid gap-1 text-sm font-medium leading-6 text-[#424245]">
+                            {missingInformation.map((item) => (
+                              <li key={`${turn.id}-missing-${item}`}>{item}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-2 text-sm font-medium text-[#86868b]">
+                            不足情報はありません。
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          classifyAndGenerate(turn.question, turn.source)
+                        }
+                        disabled={turn.loading}
+                        className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold transition hover:bg-[#e8e8ed] disabled:cursor-not-allowed disabled:text-[#86868b]"
+                      >
+                        <RotateCw className="h-4 w-4" aria-hidden />
+                        再生成
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveHistory(turn)}
+                        disabled={!turn.finalDraft || turn.saved}
+                        className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold transition hover:bg-[#e8e8ed] disabled:cursor-not-allowed disabled:text-[#86868b]"
+                      >
+                        <Save className="h-4 w-4" aria-hidden />
+                        {turn.saved ? "保存済み" : "履歴に保存"}
+                      </button>
+                      {turn.loading ? (
+                        <button
+                          type="button"
+                          onClick={() => stopTurn(turn.id)}
+                          className="inline-flex h-10 items-center gap-2 rounded-full border border-red-300 bg-white px-4 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+                        >
+                          <Square className="h-4 w-4" aria-hidden />
+                          停止
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+          <div ref={chatEndRef} />
+        </div>
+      </section>
     </section>
   );
 }

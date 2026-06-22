@@ -13,45 +13,39 @@ export function SupportScreen() {
   const { storage } = useAppStorage();
   const activeCompany = storage.companies[0] ?? null;
   const activeCompanyName = activeCompany?.companyName || activeCompany?.label;
-  const [selectedTranscript, setSelectedTranscript] = useState<{
+  const [latestTranscript, setLatestTranscript] = useState<{
     id: string;
     text: string;
+    createdAt: string;
   } | null>(null);
-  const [questionLocked, setQuestionLocked] = useState(false);
+  const [autoSendStopped, setAutoSendStopped] = useState(false);
   const [questionCycle, setQuestionCycle] = useState(0);
 
   function confirmQuestion(text: string) {
-    if (questionLocked) {
+    if (autoSendStopped) {
       return;
     }
-    setSelectedTranscript({ id: crypto.randomUUID(), text });
-    setQuestionLocked(true);
-  }
-
-  function prepareNextQuestion() {
-    setQuestionLocked(false);
-    setQuestionCycle((current) => current + 1);
+    setLatestTranscript({
+      id: crypto.randomUUID(),
+      text,
+      createdAt: new Date().toISOString(),
+    });
   }
 
   function toggleQuestionGate() {
-    if (questionLocked) {
-      prepareNextQuestion();
+    if (autoSendStopped) {
+      setAutoSendStopped(false);
+      setQuestionCycle((current) => current + 1);
       return;
     }
-    setQuestionLocked(true);
+    setAutoSendStopped(true);
   }
 
-  const gateTitle = questionLocked
-    ? selectedTranscript
-      ? "質問を確定済み"
-      : "質問受付を停止中"
-    : "質問を受付中";
-  const gateDescription = questionLocked
-    ? selectedTranscript
-      ? "回答中は新しい文字起こしを自動送信しません。GOで次の質問受付を再開します。"
-      : "録音は続けたまま、質問の自動確定だけを止めています。GOで受付を再開します。"
-    : "相手の質問が見えたら自動または手動で確定し、回答案を作成します。";
-  const GateIcon = questionLocked ? Play : Pause;
+  const gateTitle = autoSendStopped ? "自動送信を停止中" : "質問を自動送信中";
+  const gateDescription = autoSendStopped
+    ? "録音は続けたまま、質問検知から回答生成への自動送信だけを止めています。"
+    : "質問を検知すると、人の操作なしで回答チャットへ送信し、回答案を作成します。";
+  const GateIcon = autoSendStopped ? Play : Pause;
 
   return (
     <section>
@@ -72,8 +66,8 @@ export function SupportScreen() {
       <div className="grid gap-4">
         <PreInterviewLearningPanel />
         <AudioCapturePanel
-          autoSubmitRemoteFinal={!questionLocked}
-          questionLocked={questionLocked}
+          autoSubmitRemoteFinal={!autoSendStopped}
+          questionLocked={autoSendStopped}
           questionCycle={questionCycle}
           onRemoteTranscript={confirmQuestion}
         />
@@ -95,37 +89,32 @@ export function SupportScreen() {
               onClick={toggleQuestionGate}
               className={[
                 "inline-flex min-h-14 min-w-44 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-sm transition",
-                questionLocked
+                autoSendStopped
                   ? "bg-[#0071e3] hover:bg-[#147ce5]"
                   : "bg-[#1d1d1f] hover:bg-neutral-700",
               ].join(" ")}
             >
               <GateIcon className="h-4 w-4" aria-hidden />
-              {questionLocked
-                ? selectedTranscript
-                  ? "GO 次の質問へ"
-                  : "GO 受付再開"
-                : "STOP 受付停止"}
+              {autoSendStopped ? "GO 自動送信再開" : "STOP 自動送信停止"}
             </button>
           </div>
-          {selectedTranscript ? (
+          {latestTranscript ? (
             <div className="mt-4 rounded-2xl bg-[#f5f5f7] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6e6e73]">
-                確定した質問
+                直近で自動送信した質問
               </p>
               <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-[#1d1d1f]">
-                {selectedTranscript.text}
+                {latestTranscript.text}
               </p>
             </div>
           ) : null}
         </section>
         <AnswerWorkbench
-          key={selectedTranscript?.id ?? "manual"}
           mode="support"
-          initialQuestion={selectedTranscript?.text ?? ""}
-          autoSource={selectedTranscript ? "remote-audio" : "manual"}
-          autoGenerate={Boolean(selectedTranscript)}
-          autoRunId={selectedTranscript?.id}
+          initialQuestion={latestTranscript?.text ?? ""}
+          autoSource={latestTranscript ? "remote-audio" : "manual"}
+          autoGenerate={Boolean(latestTranscript)}
+          autoRunId={latestTranscript?.id}
         />
       </div>
     </section>

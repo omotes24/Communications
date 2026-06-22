@@ -8,7 +8,6 @@ import {
   isSubmittableTranscript,
   looksLikeInterviewQuestion,
   normalizeTranscriptForSubmit,
-  remoteTranscriptAutoSubmitDelayMs,
   remoteTranscriptMinimumAutoSubmitGapMs,
   remoteTranscriptQuestionCueDelayMs,
 } from "@/components/audio/transcript-auto-submit";
@@ -40,7 +39,6 @@ export function AudioCapturePanel({
   );
   const [error, setError] = useState<string | null>(null);
   const submittedIdsRef = useRef<Set<string>>(new Set());
-  const pendingPauseSubmitTimerRef = useRef<number | null>(null);
   const pendingQuestionCueSubmitTimerRef = useRef<number | null>(null);
   const lastAutoSubmittedAtRef = useRef(0);
   const latestRemoteCandidateRef = useRef<{ id: string; text: string } | null>(
@@ -66,10 +64,6 @@ export function AudioCapturePanel({
         : "未選択";
 
   const clearPendingRemoteSubmitTimers = useCallback(() => {
-    if (pendingPauseSubmitTimerRef.current) {
-      window.clearTimeout(pendingPauseSubmitTimerRef.current);
-      pendingPauseSubmitTimerRef.current = null;
-    }
     if (pendingQuestionCueSubmitTimerRef.current) {
       window.clearTimeout(pendingQuestionCueSubmitTimerRef.current);
       pendingQuestionCueSubmitTimerRef.current = null;
@@ -157,11 +151,6 @@ export function AudioCapturePanel({
       text: normalizedText,
     };
 
-    if (pendingPauseSubmitTimerRef.current) {
-      window.clearTimeout(pendingPauseSubmitTimerRef.current);
-      pendingPauseSubmitTimerRef.current = null;
-    }
-
     if (latestRemoteItem.final) {
       clearPendingRemoteSubmitTimers();
       submitRemoteTranscript(latestRemoteItem.id, normalizedText, false);
@@ -182,14 +171,6 @@ export function AudioCapturePanel({
         }
       }, remoteTranscriptQuestionCueDelayMs);
     }
-
-    pendingPauseSubmitTimerRef.current = window.setTimeout(() => {
-      pendingPauseSubmitTimerRef.current = null;
-      const candidate = latestRemoteCandidateRef.current;
-      if (candidate) {
-        submitRemoteTranscript(candidate.id, candidate.text, true);
-      }
-    }, remoteTranscriptAutoSubmitDelayMs);
   }, [
     autoSubmitRemoteFinal,
     clearPendingRemoteSubmitTimers,
