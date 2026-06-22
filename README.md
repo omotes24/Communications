@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 日本語面接アシスタント
 
-## Getting Started
+日本語の面接練習と、参加者全員が AI 支援を認識して同意済みの会話で使う回答案・話すポイント提示ツールです。回答の自動代行、自動音声回答、Zoom/Google Meet への自動入力、隠し表示、ステルス表示は実装しません。
 
-First, run the development server:
+## セットアップ
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ブラウザで `http://localhost:3000` を開きます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 環境変数
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`.env.local` に設定します。API キーはサーバー側 Route Handler でだけ参照し、クライアント JavaScript、localStorage、ログへ出しません。
 
-## Learn More
+```bash
+OPENAI_API_KEY=sk-...
+OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
+OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
+OPENAI_ANSWER_MODEL=gpt-5.4-mini
+OPENAI_MOCK_MODE=false
+```
 
-To learn more about Next.js, take a look at the following resources:
+OpenAI を呼ばずに E2E を実行する場合は `OPENAI_MOCK_MODE=true` を使います。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 画面
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- 初期設定
+- ユーザー情報登録
+- 企業・求人情報登録
+- 面接練習
+- 同意済み会話支援
+- セッション履歴
+- データ削除・プライバシー設定
 
-## Deploy on Vercel
+## 音声と個人情報の扱い
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- 生音声は標準保存しません。
+- セッション終了時に取得済み MediaStreamTrack を停止します。
+- 文字起こし履歴は標準では保存しません。
+- 回答画面で明示的に保存した場合だけセッション履歴へ保存します。
+- 「すべてのデータを削除」で localStorage のアプリデータを削除します。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## OpenAI API へ送信される情報
+
+- Realtime transcription: ブラウザで共有したマイクまたはタブ/画面音声
+- 質問判定: 確定した文字起こし、発話者種別、入力元
+- 回答生成: 認識した質問、質問カテゴリー、登録済みユーザー情報、登録済み企業・求人情報
+
+## Google Meet タブ音声
+
+同意済み会話支援画面で「タブ・画面音声を共有」を押し、ブラウザの共有ダイアログで Meet のタブとタブ音声を選択します。相手側音声の取得を主前提にしています。
+
+## Zoom デスクトップ音声
+
+Phase 1 では Zoom デスクトップアプリのシステム音声取得は保証しません。ブラウザタブ音声、または手動質問入力を使ってください。
+
+## テスト
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run e2e
+```
+
+E2E は `OPENAI_MOCK_MODE=true` の開発サーバーを自動起動し、OpenAI API を直接呼びません。
+
+## 既知の制約
+
+- PDF、Word、Web ページ読み込みは Phase 2 の拡張対象です。
+- 音声共有の可否はブラウザと OS の権限・実装に依存します。
+- Realtime transcription のライブ検証には有効な OpenAI API キーが必要です。
+- 回答案の事実性は登録情報とプロンプト制約で抑制しますが、本人確認なしでの利用は想定していません。
+
+## 今後の拡張候補
+
+- PDF/Word/求人 URL 取り込み
+- 回答品質の評価ログ
+- セッション別メトリクスの集計
+- 履歴の暗号化保存
