@@ -474,18 +474,6 @@ export function AnswerWorkbench({
 
             return (
               <article key={turn.id} className="grid gap-3">
-                <div className="flex justify-end">
-                  <div className="max-w-[88%] rounded-[26px] bg-[#0071e3] px-5 py-4 text-white shadow-sm">
-                    <div className="mb-2 flex flex-wrap items-center justify-end gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/75">
-                      <span>{sourceLabel(turn.source)}</span>
-                      <span>{formatTime(turn.createdAt)}</span>
-                    </div>
-                    <p className="whitespace-pre-wrap text-[13px] font-semibold leading-6">
-                      {turn.question}
-                    </p>
-                  </div>
-                </div>
-
                 <div className="flex justify-start">
                   <div className="max-w-[92%] rounded-[26px] bg-[#f5f5f7] px-5 py-4 text-[#1d1d1f]">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -576,6 +564,18 @@ export function AnswerWorkbench({
                         </button>
                       ) : null}
                     </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <div className="max-w-[88%] rounded-[26px] bg-[#0071e3] px-5 py-4 text-white shadow-sm">
+                    <div className="mb-2 flex flex-wrap items-center justify-end gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/75">
+                      <span>{sourceLabel(turn.source)}</span>
+                      <span>{formatTime(turn.createdAt)}</span>
+                    </div>
+                    <p className="whitespace-pre-wrap text-[13px] font-semibold leading-6">
+                      {turn.question}
+                    </p>
                   </div>
                 </div>
               </article>
