@@ -162,7 +162,6 @@ export function AnswerWorkbench({
   const lastAutoRunRef = useRef<string | null>(null);
   const quickDraftTimersRef = useRef<Map<string, number>>(new Map());
   const controllersRef = useRef<Map<string, AbortController>>(new Map());
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const activeProfile = storage.profiles[0] ?? null;
   const activeCompany = storage.companies[0] ?? null;
@@ -208,10 +207,6 @@ export function AnswerWorkbench({
       controllers.clear();
     };
   }, []);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ block: "end" });
-  }, [turns.length]);
 
   const classifyAndGenerate = useCallback(
     async (
@@ -420,6 +415,8 @@ export function AnswerWorkbench({
     updateTurn(turn.id, { saved: true });
   }
 
+  const visibleTurns = [...turns].reverse();
+
   return (
     <section className="grid gap-4">
       <div className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
@@ -464,14 +461,14 @@ export function AnswerWorkbench({
           </span>
         </div>
 
-        <div className="mt-5 grid max-h-[760px] gap-5 overflow-y-auto pr-1">
+        <div className="mt-5 grid max-h-[760px] gap-4 overflow-y-auto pr-1">
           {turns.length === 0 ? (
             <div className="rounded-[24px] bg-[#f5f5f7] p-5 text-sm font-medium leading-7 text-[#6e6e73]">
               質問を検知すると、自動でここに回答案が追加されます。手動入力から追加することもできます。
             </div>
           ) : null}
 
-          {turns.map((turn) => {
+          {visibleTurns.map((turn) => {
             const answer = turn.finalDraft?.answer ?? turn.draft.answer ?? "";
             const length = validateAnswerLength(answer);
 
@@ -483,7 +480,7 @@ export function AnswerWorkbench({
                       <span>{sourceLabel(turn.source)}</span>
                       <span>{formatTime(turn.createdAt)}</span>
                     </div>
-                    <p className="whitespace-pre-wrap text-sm font-semibold leading-7">
+                    <p className="whitespace-pre-wrap text-[13px] font-semibold leading-6">
                       {turn.question}
                     </p>
                   </div>
@@ -539,7 +536,7 @@ export function AnswerWorkbench({
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <h3 className="text-sm font-semibold">回答案</h3>
                       </div>
-                      <p className="mt-2 min-h-24 whitespace-pre-wrap text-lg font-semibold leading-9 text-[#1d1d1f]">
+                      <p className="mt-2 min-h-20 whitespace-pre-wrap text-base font-semibold leading-8 text-[#1d1d1f]">
                         {answer ||
                           (turn.loading
                             ? "回答案を作成中です。"
@@ -584,7 +581,6 @@ export function AnswerWorkbench({
               </article>
             );
           })}
-          <div ref={chatEndRef} />
         </div>
       </section>
     </section>
