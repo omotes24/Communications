@@ -5,6 +5,10 @@ import { AlertTriangle, Loader2, RotateCw, Save, Send } from "lucide-react";
 
 import { FormField, textareaClassName } from "@/components/forms/FormField";
 import {
+  buildQuickAnswerDraft,
+  quickDraftDelayMs,
+} from "@/lib/answer/quick-draft";
+import {
   answerDraftSchema,
   questionClassificationSchema,
   validateAnswerLength,
@@ -97,6 +101,9 @@ export function AnswerWorkbench({
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
   const lastAutoRunRef = useRef<string | null>(null);
+  const quickDraftTimerRef = useRef<number | null>(null);
+  const hasGeneratedContentRef = useRef(false);
+  const generationRunRef = useRef(0);
 
   const activeProfile = storage.profiles[0] ?? null;
   const activeCompany = storage.companies[0] ?? null;
@@ -108,6 +115,17 @@ export function AnswerWorkbench({
     () => validateAnswerLength(finalDraft?.answer ?? draft.answer ?? ""),
     [draft.answer, finalDraft?.answer],
   );
+
+  const clearQuickDraftTimer = useCallback(() => {
+    if (quickDraftTimerRef.current) {
+      window.clearTimeout(quickDraftTimerRef.current);
+      quickDraftTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => clearQuickDraftTimer();
+  }, [clearQuickDraftTimer]);
 
   const classifyAndGenerate = useCallback(
     async (nextQuestion = question) => {
@@ -121,6 +139,10 @@ export function AnswerWorkbench({
       }
 
       abortController?.abort();
+      clearQuickDraftTimer();
+      const runId = generationRunRef.current + 1;
+      generationRunRef.current = runId;
+      hasGeneratedContentRef.current = false;
       const controller = new AbortController();
       setAbortController(controller);
       setLoading(true);
@@ -128,6 +150,28 @@ export function AnswerWorkbench({
       setWarning(null);
       setDraft({});
       setFinalDraft(null);
+      quickDraftTimerRef.current = window.setTimeout(() => {
+        quickDraftTimerRef.current = null;
+        if (
+          controller.signal.aborted ||
+          generationRunRef.current !== runId ||
+          hasGeneratedContentRef.current
+        ) {
+          return;
+        }
+        setDraft(
+          buildQuickAnswerDraft({
+            question: nextQuestion,
+            category,
+            profile: activeProfile,
+            company: activeCompany,
+            learningBrief: activeLearningBrief,
+          }),
+        );
+        setWarning(
+          "3秒ルール: 暫定回答です。LLM生成が完了すると自動で更新されます。",
+        );
+      }, quickDraftDelayMs);
 
       try {
         const classifyResponse = await fetch("/api/classify-question", {
@@ -150,6 +194,9 @@ export function AnswerWorkbench({
         setCategory(classificationResult.category);
 
         if (!classificationResult.isQuestion) {
+          clearQuickDraftTimer();
+          setDraft({});
+          setFinalDraft(null);
           setWarning("質問または回答要求ではないため、回答案は生成しません。");
           return;
         }
@@ -175,11 +222,19 @@ export function AnswerWorkbench({
             setError(data.error ?? "回答生成に失敗しました");
           }
           if (event === "partial") {
-            setDraft((current) =>
-              mergeDraft(current, data as Partial<AnswerDraft>),
-            );
+            const partial = data as Partial<AnswerDraft>;
+            if (
+              partial.answer ||
+              (partial.talkingPoints && partial.talkingPoints.length > 0)
+            ) {
+              hasGeneratedContentRef.current = true;
+              clearQuickDraftTimer();
+            }
+            setDraft((current) => mergeDraft(current, partial));
           }
           if (event === "done" && "draft" in data && data.draft) {
+            hasGeneratedContentRef.current = true;
+            clearQuickDraftTimer();
             const parsed = answerDraftSchema.parse(data.draft);
             setFinalDraft(parsed);
             setDraft(parsed);
@@ -187,10 +242,13 @@ export function AnswerWorkbench({
               setWarning(
                 "回答案が250〜350文字の範囲外です。必要に応じて再生成してください。",
               );
+            } else {
+              setWarning(null);
             }
           }
         });
       } catch (caught) {
+        clearQuickDraftTimer();
         if (caught instanceof DOMException && caught.name === "AbortError") {
           return;
         }
@@ -207,6 +265,8 @@ export function AnswerWorkbench({
       activeLearningBrief,
       activeProfile,
       autoSource,
+      category,
+      clearQuickDraftTimer,
       question,
       ready,
     ],
