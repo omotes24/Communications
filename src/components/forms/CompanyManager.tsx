@@ -19,7 +19,9 @@ import { COMPANY_FORM_DRAFT_KEY } from "@/lib/storage/browser-store";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 import { cn } from "@/lib/utils";
 
-const estimatedResearchMs = 90_000;
+const estimatedResearchMs = 210_000;
+const maxInProgressResearchPercent = 96;
+const progressRangePercent = 92;
 
 type CompanyFormDraft = {
   selfInfo: string;
@@ -86,8 +88,11 @@ function writeCompanyFormDraft(draft: CompanyFormDraft): void {
 function createProgress(startedAt: number): ResearchProgress {
   const elapsedMs = Date.now() - startedAt;
   const percent = Math.min(
-    94,
-    Math.max(4, Math.round((elapsedMs / estimatedResearchMs) * 90)),
+    maxInProgressResearchPercent,
+    Math.max(
+      4,
+      Math.round((elapsedMs / estimatedResearchMs) * progressRangePercent),
+    ),
   );
   return {
     startedAt,
@@ -544,7 +549,7 @@ export function CompanyManager() {
                   />
                 </div>
                 <p className="mt-3 text-xs font-medium leading-5 text-neutral-600">
-                  Webサイトと採用情報を確認し、自己情報に合わせた会社スロットへ整理しています。表示はAPI内部の実測ではなく、経過時間からの推定です。
+                  Webサイトと採用情報を確認し、自己情報に合わせた会社スロットへ整理しています。予測は約3.5分を基準にした経過時間からの推定です。
                 </p>
               </div>
             ) : null}

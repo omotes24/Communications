@@ -36,7 +36,7 @@ export async function POST(request: Request): Promise<Response> {
     const client = createOpenAIClient();
     const response = await client.responses.parse(
       {
-        model: env.OPENAI_ANSWER_MODEL,
+        model: env.OPENAI_RESEARCH_MODEL,
         instructions: INTERVIEW_LEARNING_INSTRUCTIONS,
         input: buildInterviewLearningInput(body),
         text: {
