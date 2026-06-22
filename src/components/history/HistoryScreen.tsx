@@ -16,24 +16,24 @@ export function HistoryScreen() {
       />
       <div className="grid gap-3">
         {storage.history.length === 0 ? (
-          <div className="rounded-[28px] border border-neutral-950/10 bg-white p-6 text-sm font-medium text-neutral-600 shadow-sm">
+          <div className="rounded-[30px] bg-white p-6 text-sm font-medium text-[#6e6e73] shadow-sm ring-1 ring-black/[0.06]">
             保存済み履歴はありません。
           </div>
         ) : (
           storage.history.map((record) => (
             <article
               key={record.id}
-              className="rounded-[28px] border border-neutral-950/10 bg-white p-5 shadow-sm"
+              className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <span className="rounded-full border border-neutral-950/10 bg-neutral-50 px-3 py-1.5 text-xs font-semibold text-neutral-600">
+                  <span className="rounded-full bg-[#f5f5f7] px-3 py-1.5 text-xs font-semibold text-[#6e6e73]">
                     面接
                   </span>
                   <h2 className="mt-4 text-base font-semibold">
                     {record.question}
                   </h2>
-                  <p className="mt-3 whitespace-pre-wrap text-sm font-medium leading-7 text-neutral-700">
+                  <p className="mt-3 whitespace-pre-wrap text-sm font-medium leading-7 text-[#424245]">
                     {record.answer}
                   </p>
                 </div>

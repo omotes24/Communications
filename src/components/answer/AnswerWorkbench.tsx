@@ -236,7 +236,7 @@ export function AnswerWorkbench({
 
   return (
     <section className="grid gap-4">
-      <div className="rounded-[28px] border border-neutral-950/10 bg-white p-5 shadow-sm">
+      <div className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
         <FormField label="手動質問入力">
           <textarea
             className={textareaClassName}
@@ -250,7 +250,7 @@ export function AnswerWorkbench({
             type="button"
             onClick={() => classifyAndGenerate()}
             disabled={loading}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-neutral-400"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-[#0071e3] px-5 text-sm font-semibold text-white transition hover:bg-[#147ce5] disabled:cursor-not-allowed disabled:bg-[#86868b]"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -265,7 +265,7 @@ export function AnswerWorkbench({
               classifyAndGenerate(finalDraft?.question ?? question)
             }
             disabled={loading || !question.trim()}
-            className="inline-flex h-11 items-center gap-2 rounded-full border border-neutral-950/15 bg-white px-5 text-sm font-semibold transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:text-neutral-400"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold transition hover:bg-[#e8e8ed] disabled:cursor-not-allowed disabled:text-[#86868b]"
           >
             <RotateCw className="h-4 w-4" aria-hidden />
             再生成
@@ -274,7 +274,7 @@ export function AnswerWorkbench({
             type="button"
             onClick={saveHistory}
             disabled={!finalDraft}
-            className="inline-flex h-11 items-center gap-2 rounded-full border border-neutral-950/15 bg-white px-5 text-sm font-semibold transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:text-neutral-400"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold transition hover:bg-[#e8e8ed] disabled:cursor-not-allowed disabled:text-[#86868b]"
           >
             <Save className="h-4 w-4" aria-hidden />
             履歴に保存
@@ -292,7 +292,7 @@ export function AnswerWorkbench({
       </div>
 
       {classification ? (
-        <div className="grid gap-3 rounded-[28px] border border-neutral-950/10 bg-white p-5 shadow-sm md:grid-cols-3">
+        <div className="grid gap-3 rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06] md:grid-cols-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
               Question
@@ -326,7 +326,7 @@ export function AnswerWorkbench({
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
-        <section className="rounded-[28px] border border-neutral-950 bg-neutral-950 p-5 text-white shadow-sm">
+        <section className="rounded-[30px] bg-[#1d1d1f] p-5 text-white shadow-sm">
           <h2 className="text-sm font-semibold">話すポイント3点</h2>
           <ol className="mt-3 grid gap-2">
             {(draft.talkingPoints ?? []).map((point, index) => (
@@ -342,7 +342,7 @@ export function AnswerWorkbench({
             <p className="mt-3 text-sm text-neutral-400">未生成です。</p>
           ) : null}
         </section>
-        <section className="rounded-[28px] border border-neutral-950/10 bg-white p-5 shadow-sm">
+        <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold">250〜350文字の回答案</h2>
             <span className="rounded-full border border-neutral-950/10 bg-neutral-50 px-3 py-1.5 text-xs font-semibold text-neutral-600">
@@ -356,7 +356,7 @@ export function AnswerWorkbench({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <section className="rounded-[28px] border border-neutral-950/10 bg-white p-5 shadow-sm">
+        <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
           <h2 className="text-sm font-semibold">使用した根拠情報</h2>
           <ul className="mt-3 grid gap-2 text-sm">
             {(draft.evidenceUsed ?? []).map((item) => (
@@ -369,7 +369,7 @@ export function AnswerWorkbench({
             <p className="mt-3 text-sm text-neutral-500">まだありません。</p>
           ) : null}
         </section>
-        <section className="rounded-[28px] border border-neutral-950/10 bg-white p-5 shadow-sm">
+        <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
           <h2 className="text-sm font-semibold">不足情報</h2>
           <ul className="mt-3 grid gap-2 text-sm">
             {(draft.missingInformation ?? []).map((item) => (

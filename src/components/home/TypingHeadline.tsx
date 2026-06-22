@@ -62,7 +62,7 @@ export function TypingHeadline() {
   return (
     <h1
       aria-label={headlineLines.join(" ")}
-      className="relative max-w-5xl text-5xl font-semibold tracking-normal text-neutral-950 sm:text-7xl lg:text-8xl"
+      className="relative mx-auto max-w-5xl text-center text-5xl font-semibold tracking-normal text-[#1d1d1f] sm:text-7xl lg:text-8xl"
     >
       <span aria-hidden="true" className="invisible block">
         {headlineLines[0]}

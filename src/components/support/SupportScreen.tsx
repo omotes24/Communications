@@ -23,11 +23,11 @@ export function SupportScreen() {
         title="面接"
         description="面接前に学習し、質問を入力または録音して回答案を作ります。"
       />
-      <div className="mb-4 rounded-[28px] border border-neutral-950/10 bg-white p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-600">
+      <div className="mb-4 rounded-[30px] bg-white p-6 shadow-sm ring-1 ring-black/[0.06]">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
           Current Company
         </p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight text-neutral-950">
+        <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#1d1d1f]">
           {activeCompanyName
             ? `${activeCompanyName}の面接を始めましょう！`
             : "会社スロットを作成して面接を始めましょう。"}

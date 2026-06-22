@@ -14,7 +14,7 @@ export function PrivacyScreen() {
         title="データ削除・プライバシー設定"
         description="ローカルブラウザに保存したプロフィール、企業情報、明示保存した履歴を管理します。"
       />
-      <div className="grid gap-4 rounded-[28px] border border-neutral-950/10 bg-white p-6 shadow-sm">
+      <div className="grid gap-4 rounded-[30px] bg-white p-6 shadow-sm ring-1 ring-black/[0.06]">
         <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium leading-6 text-amber-950">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <p>
@@ -33,7 +33,7 @@ export function PrivacyScreen() {
           />
           <span>履歴保存を標準で有効にする</span>
         </label>
-        <div className="grid gap-2 rounded-2xl bg-neutral-50 p-4 text-sm font-medium text-neutral-600">
+        <div className="grid gap-2 rounded-2xl bg-[#f5f5f7] p-4 text-sm font-medium text-[#6e6e73]">
           <p>プロフィール: {storage.profiles.length}件</p>
           <p>企業・求人情報: {storage.companies.length}件</p>
           <p>履歴: {storage.history.length}件</p>

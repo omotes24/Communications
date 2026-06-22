@@ -56,10 +56,10 @@ export function PreInterviewLearningPanel() {
   }
 
   return (
-    <section className="rounded-[28px] border border-neutral-950/10 bg-white p-5 shadow-sm">
+    <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-600">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
             Pre Interview
           </p>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight">
@@ -107,7 +107,7 @@ export function PreInterviewLearningPanel() {
           type="button"
           onClick={learn}
           disabled={loading}
-          className="inline-flex min-h-16 items-center justify-center gap-3 rounded-3xl bg-neutral-950 px-6 text-base font-semibold text-white shadow-sm transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-neutral-400"
+          className="inline-flex min-h-16 items-center justify-center gap-3 rounded-3xl bg-[#0071e3] px-6 text-base font-semibold text-white shadow-sm transition hover:bg-[#147ce5] disabled:cursor-not-allowed disabled:bg-[#86868b]"
         >
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
@@ -120,7 +120,7 @@ export function PreInterviewLearningPanel() {
           <button
             type="button"
             onClick={actions.clearLearning}
-            className="inline-flex min-h-16 items-center justify-center gap-2 rounded-3xl border border-neutral-950/15 bg-white px-5 text-sm font-semibold text-neutral-900 transition hover:border-neutral-950"
+            className="inline-flex min-h-16 items-center justify-center gap-2 rounded-3xl bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
           >
             <X className="h-4 w-4" aria-hidden />
             解除
@@ -128,12 +128,12 @@ export function PreInterviewLearningPanel() {
         ) : null}
       </div>
       {status ? (
-        <p className="mt-4 rounded-2xl border border-neutral-950/10 bg-neutral-50 px-4 py-3 text-sm font-medium text-neutral-700">
+        <p className="mt-4 rounded-2xl bg-[#f5f5f7] px-4 py-3 text-sm font-medium text-[#6e6e73]">
           {status}
         </p>
       ) : null}
       {learningMatchesCompany && storage.learning ? (
-        <div className="mt-4 rounded-2xl bg-neutral-50 p-4 text-sm font-medium leading-7 text-neutral-700">
+        <div className="mt-4 rounded-2xl bg-[#f5f5f7] p-4 text-sm font-medium leading-7 text-[#424245]">
           <p>{storage.learning.brief}</p>
         </div>
       ) : null}

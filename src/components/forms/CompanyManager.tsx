@@ -320,20 +320,20 @@ export function CompanyManager() {
       />
 
       <div className="grid gap-5">
-        <section className="rounded-[28px] border border-neutral-950 bg-neutral-950 p-4 text-white shadow-sm">
+        <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
           <div className="flex flex-wrap items-center justify-between gap-3 px-1">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
                 Company Select
               </p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-tight">
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-[#1d1d1f]">
                 Choose Your Slot
               </h2>
             </div>
             <button
               type="button"
               onClick={reset}
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white hover:text-neutral-950"
+              className="inline-flex h-10 items-center gap-2 rounded-full bg-[#f5f5f7] px-4 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
             >
               <Plus className="h-4 w-4" aria-hidden />
               新規
@@ -342,7 +342,7 @@ export function CompanyManager() {
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {storage.companies.length === 0 ? (
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-neutral-300 sm:col-span-2 xl:col-span-4">
+              <div className="rounded-3xl bg-[#f5f5f7] p-5 text-sm font-medium text-[#6e6e73] sm:col-span-2 xl:col-span-4">
                 まだスロットがありません。下の5項目を入れて作成します。
               </div>
             ) : (
@@ -350,10 +350,10 @@ export function CompanyManager() {
                 <div
                   key={company.id}
                   className={cn(
-                    "group rounded-3xl border p-4 transition",
+                    "group rounded-3xl p-4 ring-1 ring-black/[0.06] transition",
                     draft.id === company.id
-                      ? "border-white bg-white text-neutral-950"
-                      : "border-white/10 bg-white/5 text-white hover:border-white/50",
+                      ? "bg-[#f5f5f7] text-[#1d1d1f]"
+                      : "bg-white text-[#1d1d1f] hover:bg-[#fbfbfd]",
                   )}
                 >
                   <button
@@ -361,7 +361,7 @@ export function CompanyManager() {
                     onClick={() => selectCompany(company, true)}
                     className="block w-full text-left"
                   >
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0071e3]">
                       SLOT {index + 1}
                     </span>
                     <span className="mt-2 block truncate text-lg font-semibold tracking-tight">
@@ -371,8 +371,8 @@ export function CompanyManager() {
                       className={cn(
                         "mt-3 line-clamp-3 block text-xs leading-5",
                         draft.id === company.id
-                          ? "text-neutral-600"
-                          : "text-neutral-400",
+                          ? "text-[#6e6e73]"
+                          : "text-[#86868b]",
                       )}
                     >
                       {company.targetRole || company.researchSummary}
@@ -385,7 +385,7 @@ export function CompanyManager() {
                           "inline-flex items-center gap-1 text-[11px] font-semibold",
                           draft.id === company.id
                             ? "text-emerald-700"
-                            : "text-neutral-400",
+                            : "text-[#86868b]",
                         )}
                       >
                         {draft.id === company.id ? (
@@ -399,8 +399,8 @@ export function CompanyManager() {
                           storage.learning?.companyId === company.id
                             ? "text-emerald-700"
                             : draft.id === company.id
-                              ? "text-neutral-500"
-                              : "text-neutral-400",
+                              ? "text-[#6e6e73]"
+                              : "text-[#86868b]",
                         )}
                       >
                         {storage.learning?.companyId === company.id
@@ -416,7 +416,7 @@ export function CompanyManager() {
                         "rounded-full p-1.5 transition",
                         draft.id === company.id
                           ? "text-red-600 hover:bg-red-50"
-                          : "text-neutral-500 hover:bg-white/10 hover:text-white",
+                          : "text-[#86868b] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
                       )}
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />
@@ -429,9 +429,9 @@ export function CompanyManager() {
         </section>
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <form className="rounded-[28px] border border-neutral-950/10 bg-white p-5 shadow-sm sm:p-6">
+          <form className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06] sm:p-6">
             <div className="grid gap-5 md:grid-cols-2">
-              <p className="rounded-2xl border border-neutral-950/10 bg-neutral-50 px-4 py-3 text-sm font-medium text-neutral-600 md:col-span-2">
+              <p className="rounded-2xl bg-[#f5f5f7] px-4 py-3 text-sm font-medium text-[#6e6e73] md:col-span-2">
                 入力途中の内容はこのブラウザに自動保存されます。別タブへ移動しても、戻ると続きから編集できます。
               </p>
               <div className="md:col-span-2">
@@ -482,7 +482,7 @@ export function CompanyManager() {
               <button
                 type="button"
                 onClick={() => setSelfInfo(suggestedSelfInfo)}
-                className="h-11 rounded-full border border-neutral-950/15 bg-white px-5 text-sm font-semibold text-neutral-900 transition hover:border-neutral-950"
+                className="h-11 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
               >
                 自分のことを反映
               </button>
@@ -490,7 +490,7 @@ export function CompanyManager() {
                 type="button"
                 onClick={researchAndSave}
                 disabled={loading}
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-neutral-400"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-[#0071e3] px-5 text-sm font-semibold text-white transition hover:bg-[#147ce5] disabled:cursor-not-allowed disabled:bg-[#86868b]"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -503,7 +503,7 @@ export function CompanyManager() {
 
             {researchProgress ? (
               <div
-                className="mt-4 rounded-2xl border border-red-500/15 bg-red-50 p-4"
+                className="mt-4 rounded-2xl bg-[#e8f2ff] p-4"
                 role="status"
                 aria-live="polite"
               >
@@ -519,7 +519,7 @@ export function CompanyManager() {
                 </div>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
                   <div
-                    className="h-full rounded-full bg-red-600 transition-[width] duration-500"
+                    className="h-full rounded-full bg-[#0071e3] transition-[width] duration-500"
                     style={{ width: `${researchProgress.percent}%` }}
                   />
                 </div>
@@ -536,8 +536,8 @@ export function CompanyManager() {
             ) : null}
           </form>
 
-          <aside className="rounded-[28px] border border-neutral-950/10 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-600">
+          <aside className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
               Selected
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight">

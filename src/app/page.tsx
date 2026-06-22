@@ -36,64 +36,57 @@ const steps = [
 export default function Home() {
   return (
     <AppShell>
-      <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
-        <div className="border-b border-neutral-950 pb-8">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-red-600">
+      <section className="grid gap-8">
+        <div className="py-10 text-center sm:py-16 lg:py-20">
+          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.28em] text-[#0071e3]">
             QuestionTurbo
           </p>
           <TypingHeadline />
-          <p className="mt-6 max-w-2xl text-base font-medium leading-8 text-neutral-600">
+          <p className="mx-auto mt-6 max-w-2xl text-lg font-medium leading-8 text-[#6e6e73]">
             自分の情報、会社名、企業Webサイト、志望コースを起点に、面接前の理解メモと回答案を作ります。
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href="/profile"
-              className="inline-flex h-12 items-center gap-2 rounded-full bg-neutral-950 px-6 text-sm font-semibold text-white transition hover:bg-red-600"
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-[#0071e3] px-6 text-sm font-semibold text-white transition hover:bg-[#147ce5]"
             >
               はじめる
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
             <Link
               href="/support"
-              className="inline-flex h-12 items-center rounded-full border border-neutral-950/15 bg-white px-6 text-sm font-semibold text-neutral-950 transition hover:border-neutral-950"
+              className="inline-flex h-12 items-center rounded-full bg-white px-6 text-sm font-semibold text-[#1d1d1f] shadow-sm ring-1 ring-black/[0.08] transition hover:bg-[#fdfdfd]"
             >
               面接へ
             </Link>
           </div>
         </div>
 
-        <aside className="rounded-[32px] border border-neutral-950 bg-neutral-950 p-5 text-white shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-400">
-            Current Flow
-          </p>
-          <div className="mt-5 grid gap-3">
-            {steps.map((step) => {
-              const Icon = step.icon;
-              return (
-                <Link
-                  key={step.href}
-                  href={step.href}
-                  className="group rounded-3xl border border-white/10 bg-white/5 p-4 transition hover:border-white hover:bg-white hover:text-neutral-950"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-xs font-semibold text-red-400">
-                      {step.label}
-                    </span>
-                    <Icon
-                      className="h-5 w-5 text-neutral-500 group-hover:text-neutral-950"
-                      aria-hidden
-                    />
-                  </div>
-                  <h2 className="mt-5 text-xl font-semibold tracking-tight">
-                    {step.title}
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-neutral-400 group-hover:text-neutral-600">
-                    {step.body}
-                  </p>
-                </Link>
-              );
-            })}
-          </div>
+        <aside className="grid gap-4 md:grid-cols-3">
+          <h2 className="sr-only">Current Flow</h2>
+          {steps.map((step) => {
+            const Icon = step.icon;
+            return (
+              <Link
+                key={step.href}
+                href={step.href}
+                className="group min-h-64 rounded-[30px] bg-white p-6 shadow-sm ring-1 ring-black/[0.06] transition hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f5f5f7] text-sm font-semibold text-[#1d1d1f]">
+                    {step.label}
+                  </span>
+                  <Icon className="h-5 w-5 text-[#0071e3]" aria-hidden />
+                </div>
+                <h3 className="mt-14 text-2xl font-semibold tracking-tight text-[#1d1d1f]">
+                  {step.title}
+                </h3>
+                <p className="mt-3 text-sm font-medium leading-6 text-[#6e6e73]">
+                  {step.body}
+                </p>
+              </Link>
+            );
+          })}
         </aside>
       </section>
     </AppShell>

@@ -99,15 +99,13 @@ export function AudioCapturePanel({
   return (
     <section
       className={cn(
-        "rounded-[28px] border bg-white p-5 shadow-sm transition",
-        isRecording
-          ? "border-red-500 shadow-red-500/10"
-          : "border-neutral-950/10",
+        "rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06] transition",
+        isRecording ? "shadow-red-500/10 ring-red-400/60" : "ring-black/[0.06]",
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-600">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
             Audio
           </p>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight">
@@ -141,10 +139,8 @@ export function AudioCapturePanel({
 
       <div
         className={cn(
-          "mt-5 rounded-[24px] border p-4 transition",
-          isRecording
-            ? "border-red-200 bg-red-50"
-            : "border-neutral-950/10 bg-neutral-50",
+          "mt-5 rounded-[24px] p-4 transition",
+          isRecording ? "bg-red-50 ring-1 ring-red-200" : "bg-[#f5f5f7]",
         )}
       >
         <div className="mb-4 rounded-2xl border border-neutral-950/10 bg-white p-4 text-sm font-medium leading-6 text-neutral-700">
@@ -192,7 +188,7 @@ export function AudioCapturePanel({
               "inline-flex min-h-16 items-center justify-center gap-3 rounded-3xl px-5 text-base font-semibold shadow-sm transition disabled:cursor-not-allowed",
               isRecording && activeSource === "remote"
                 ? "bg-red-600 text-white"
-                : "bg-neutral-950 text-white hover:bg-red-600 disabled:bg-neutral-400",
+                : "bg-[#0071e3] text-white hover:bg-[#147ce5] disabled:bg-[#86868b]",
             )}
           >
             <MonitorUp className="h-5 w-5" aria-hidden />

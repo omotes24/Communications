@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f4f1;
-  --foreground: #0a0a0a;
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
+  --accent: #0071e3;
 }
 
 @theme inline {
@@ -23,6 +24,7 @@ body {
     "palt" 1,
     "kern" 1;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
@@ -33,7 +35,7 @@ select {
 }
 
 ::selection {
-  background: #ef4444;
+  background: var(--accent);
   color: #fff;
 }
 
@@ -42,7 +44,7 @@ select {
   width: 0.08em;
   height: 0.78em;
   margin-left: 0.08em;
-  background: #ef4444;
+  background: var(--accent);
   transform: translateY(0.08em);
   animation: typing-cursor-blink 0.86s steps(1, end) infinite;
 }

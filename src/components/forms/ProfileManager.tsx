@@ -134,7 +134,7 @@ export function ProfileManager() {
       />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <form className="rounded-[28px] border border-neutral-950/10 bg-white p-5 shadow-sm sm:p-6">
+        <form className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06] sm:p-6">
           <div className="grid gap-5">
             <FormField label="プロフィール名">
               <input
@@ -159,8 +159,8 @@ export function ProfileManager() {
               />
             </FormField>
 
-            <details className="rounded-2xl border border-neutral-950/10 bg-neutral-50 p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-neutral-900">
+            <details className="rounded-2xl bg-[#f5f5f7] p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-[#1d1d1f]">
                 使わない情報だけ指定する
               </summary>
               <div className="mt-4">
@@ -181,7 +181,7 @@ export function ProfileManager() {
               <button
                 type="button"
                 onClick={save}
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-red-600"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-[#0071e3] px-5 text-sm font-semibold text-white transition hover:bg-[#147ce5]"
               >
                 <Save className="h-4 w-4" aria-hidden />
                 保存
@@ -189,7 +189,7 @@ export function ProfileManager() {
               <button
                 type="button"
                 onClick={importLocalSeed}
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-neutral-950/15 bg-white px-5 text-sm font-semibold text-neutral-900 transition hover:border-neutral-950"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
               >
                 <Download className="h-4 w-4" aria-hidden />
                 下書き取込
@@ -197,36 +197,36 @@ export function ProfileManager() {
               <button
                 type="button"
                 onClick={createNew}
-                className="h-11 rounded-full border border-neutral-950/15 bg-white px-5 text-sm font-semibold text-neutral-900 transition hover:border-neutral-950"
+                className="h-11 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
               >
                 新規
               </button>
             </div>
 
             {importStatus ? (
-              <p className="rounded-2xl border border-neutral-950/10 bg-neutral-50 px-4 py-3 text-sm font-medium text-neutral-700">
+              <p className="rounded-2xl bg-[#f5f5f7] px-4 py-3 text-sm font-medium text-[#6e6e73]">
                 {importStatus}
               </p>
             ) : null}
           </div>
         </form>
 
-        <aside className="rounded-[28px] border border-neutral-950/10 bg-neutral-950 p-4 text-white shadow-sm">
+        <aside className="rounded-[30px] bg-white p-4 shadow-sm ring-1 ring-black/[0.06]">
           <div className="flex items-center justify-between gap-3 px-1">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-400">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
                 Profile
               </p>
-              <h2 className="mt-1 text-xl font-semibold tracking-tight">
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-[#1d1d1f]">
                 Saved Slot
               </h2>
             </div>
-            <UserRound className="h-5 w-5 text-neutral-400" aria-hidden />
+            <UserRound className="h-5 w-5 text-[#86868b]" aria-hidden />
           </div>
 
           <div className="mt-4 grid gap-2">
             {storage.profiles.length === 0 ? (
-              <p className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-neutral-300">
+              <p className="rounded-2xl bg-[#f5f5f7] p-4 text-sm font-medium text-[#6e6e73]">
                 まだ保存されていません。
               </p>
             ) : (
@@ -234,10 +234,10 @@ export function ProfileManager() {
                 <div
                   key={profile.id}
                   className={cn(
-                    "rounded-2xl border p-3 transition",
+                    "rounded-2xl p-3 ring-1 ring-black/[0.06] transition",
                     activeProfile?.id === profile.id
-                      ? "border-white bg-white text-neutral-950"
-                      : "border-white/10 bg-white/5 text-white hover:border-white/40",
+                      ? "bg-[#f5f5f7] text-[#1d1d1f]"
+                      : "bg-white text-[#1d1d1f] hover:bg-[#fbfbfd]",
                   )}
                 >
                   <button
@@ -245,7 +245,7 @@ export function ProfileManager() {
                     onClick={() => selectProfile(profile)}
                     className="block w-full text-left"
                   >
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0071e3]">
                       PROFILE {index + 1}
                     </span>
                     <span className="mt-1 block text-sm font-semibold">
@@ -255,8 +255,8 @@ export function ProfileManager() {
                       className={cn(
                         "mt-2 line-clamp-3 block text-xs leading-5",
                         activeProfile?.id === profile.id
-                          ? "text-neutral-600"
-                          : "text-neutral-400",
+                          ? "text-[#6e6e73]"
+                          : "text-[#86868b]",
                       )}
                     >
                       {profile.careerSummary || "内容未入力"}
@@ -281,7 +281,7 @@ export function ProfileManager() {
                         "rounded-full p-1.5 transition",
                         activeProfile?.id === profile.id
                           ? "text-red-600 hover:bg-red-50"
-                          : "text-neutral-400 hover:bg-white/10 hover:text-white",
+                          : "text-[#86868b] hover:bg-red-50 hover:text-red-600",
                       )}
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />
