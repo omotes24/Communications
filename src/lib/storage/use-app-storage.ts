@@ -7,9 +7,11 @@ import {
   APP_STORAGE_EVENT,
   clearAppStorage,
   defaultStorage,
+  getActiveCompany,
   loadAppStorage,
   saveAppStorage,
   saveLearning,
+  setActiveCompany,
   upsertCompany,
   upsertProfile,
 } from "@/lib/storage/browser-store";
@@ -72,10 +74,19 @@ export function useAppStorage() {
       saveCompany(company: CompanyProfile) {
         commit((current) => upsertCompany(current, company));
       },
+      setActiveCompany(id: string | null) {
+        commit((current) => setActiveCompany(current, id));
+      },
       deleteCompany(id: string) {
         commit((current) => ({
           ...current,
           companies: current.companies.filter((item) => item.id !== id),
+          activeCompanyId:
+            current.activeCompanyId === id
+              ? (current.companies.find((item) => item.id !== id)?.id ?? null)
+              : current.activeCompanyId,
+          learning:
+            current.learning?.companyId === id ? null : current.learning,
         }));
       },
       saveSession(record: SessionRecord) {
@@ -107,5 +118,5 @@ export function useAppStorage() {
     [commit],
   );
 
-  return { ready, storage, actions };
+  return { ready, storage, activeCompany: getActiveCompany(storage), actions };
 }

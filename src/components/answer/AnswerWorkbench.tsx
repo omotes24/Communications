@@ -158,7 +158,7 @@ export function AnswerWorkbench({
   autoRunId,
   transcriptPanel,
 }: AnswerWorkbenchProps) {
-  const { ready, storage, actions } = useAppStorage();
+  const { ready, storage, activeCompany, actions } = useAppStorage();
   const [question, setQuestion] = useState(initialQuestion);
   const [turns, setTurns] = useState<AnswerTurn[]>([]);
   const [manualNotice, setManualNotice] = useState<string | null>(null);
@@ -167,7 +167,6 @@ export function AnswerWorkbench({
   const controllersRef = useRef<Map<string, AbortController>>(new Map());
 
   const activeProfile = storage.profiles[0] ?? null;
-  const activeCompany = storage.companies[0] ?? null;
   const activeLearningBrief =
     storage.learning?.companyId === (activeCompany?.id ?? null)
       ? storage.learning.brief

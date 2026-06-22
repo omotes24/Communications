@@ -6,10 +6,9 @@ import { Brain, Building2, CheckCircle2, Loader2, X } from "lucide-react";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 
 export function PreInterviewLearningPanel() {
-  const { storage, actions } = useAppStorage();
+  const { storage, activeCompany: company, actions } = useAppStorage();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const company = storage.companies[0] ?? null;
   const companyName = company?.companyName || company?.label || "";
   const learningMatchesCompany =
     Boolean(storage.learning) &&

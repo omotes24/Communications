@@ -114,8 +114,7 @@ function RealtimeTranscriptPanel({
 }
 
 export function SupportScreen() {
-  const { storage } = useAppStorage();
-  const activeCompany = storage.companies[0] ?? null;
+  const { activeCompany } = useAppStorage();
   const activeCompanyName = activeCompany?.companyName || activeCompany?.label;
   const [latestTranscript, setLatestTranscript] = useState<{
     id: string;

@@ -211,6 +211,7 @@ export type SessionRecord = z.infer<typeof sessionRecordSchema>;
 export const appStorageSchema = z.object({
   profiles: z.array(userProfileSchema),
   companies: z.array(companyProfileSchema),
+  activeCompanyId: z.string().nullable().default(null),
   history: z.array(sessionRecordSchema),
   learning: preInterviewLearningSchema.nullable().default(null),
   privacy: z.object({

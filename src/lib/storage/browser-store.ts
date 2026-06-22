@@ -15,6 +15,7 @@ export const APP_STORAGE_EVENT = "jp-interview-assistant:storage-updated";
 export const defaultStorage: AppStorage = {
   profiles: [],
   companies: [],
+  activeCompanyId: null,
   history: [],
   learning: null,
   privacy: {
@@ -65,11 +66,30 @@ export function upsertCompany(
   storage: AppStorage,
   company: CompanyProfile,
 ): AppStorage {
-  const companies = [
-    company,
-    ...storage.companies.filter((item) => item.id !== company.id),
-  ];
-  return { ...storage, companies };
+  const exists = storage.companies.some((item) => item.id === company.id);
+  const companies = exists
+    ? storage.companies.map((item) => (item.id === company.id ? company : item))
+    : [...storage.companies, company];
+  return { ...storage, companies, activeCompanyId: company.id };
+}
+
+export function setActiveCompany(
+  storage: AppStorage,
+  id: string | null,
+): AppStorage {
+  const activeCompanyId =
+    id && storage.companies.some((company) => company.id === id) ? id : null;
+  return { ...storage, activeCompanyId };
+}
+
+export function getActiveCompany(storage: AppStorage): CompanyProfile | null {
+  return (
+    storage.companies.find(
+      (company) => company.id === storage.activeCompanyId,
+    ) ??
+    storage.companies[0] ??
+    null
+  );
 }
 
 export function addSessionRecord(

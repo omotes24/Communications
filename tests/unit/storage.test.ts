@@ -14,7 +14,7 @@ describe("browser storage helpers", () => {
     window.localStorage.clear();
   });
 
-  it("keeps the active company at the front", () => {
+  it("keeps slot order when updating the active company", () => {
     const first = {
       ...createEmptyCompanyProfile(),
       id: "company-a",
@@ -39,10 +39,11 @@ describe("browser storage helpers", () => {
     });
 
     expect(next.companies.map((company) => company.id)).toEqual([
-      "company-b",
       "company-a",
+      "company-b",
     ]);
-    expect(next.companies[0].targetRole).toBe("更新済みコース");
+    expect(next.companies[1].targetRole).toBe("更新済みコース");
+    expect(next.activeCompanyId).toBe("company-b");
   });
 
   it("notifies same-tab subscribers when storage changes", () => {

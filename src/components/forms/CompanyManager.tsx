@@ -110,7 +110,7 @@ function formatSeconds(seconds: number): string {
 }
 
 export function CompanyManager() {
-  const { storage, actions } = useAppStorage();
+  const { storage, activeCompany, actions } = useAppStorage();
   const activeProfile = storage.profiles[0] ?? null;
   const suggestedSelfInfo = useMemo(
     () => profileToSelfInfo(activeProfile),
@@ -144,7 +144,7 @@ export function CompanyManager() {
       setAdditionalNotes(company.interviewFocus);
       setStatus(null);
       if (makeActive) {
-        actions.saveCompany(company);
+        actions.setActiveCompany(company.id);
       }
     },
     [actions],
@@ -196,20 +196,21 @@ export function CompanyManager() {
   ]);
 
   useEffect(() => {
-    const firstCompany = storage.companies[0];
+    const companyToSelect = activeCompany;
     if (
       !draft.companyName &&
-      firstCompany &&
-      autoSelectedCompanyId !== firstCompany.id
+      companyToSelect &&
+      autoSelectedCompanyId !== companyToSelect.id
     ) {
       const timer = window.setTimeout(() => {
-        selectCompany(firstCompany);
-        setAutoSelectedCompanyId(firstCompany.id);
+        selectCompany(companyToSelect);
+        setAutoSelectedCompanyId(companyToSelect.id);
       }, 0);
       return () => window.clearTimeout(timer);
     }
     return undefined;
   }, [
+    activeCompany,
     storage.companies,
     draft.companyName,
     autoSelectedCompanyId,
@@ -289,8 +290,19 @@ export function CompanyManager() {
         throw new Error(data.error ?? "企業調査に失敗しました");
       }
       const researched = companyProfileSchema.parse(await response.json());
-      setDraft(researched);
-      actions.saveCompany(researched);
+      const existingCompany = storage.companies.find(
+        (company) => company.id === draft.id,
+      );
+      const companyToSave = existingCompany
+        ? {
+            ...researched,
+            id: existingCompany.id,
+            createdAt: existingCompany.createdAt,
+          }
+        : researched;
+      setDraft(companyToSave);
+      actions.saveCompany(companyToSave);
+      setAutoSelectedCompanyId(companyToSave.id);
       setStatus("会社スロットに保存しました。");
       finishProgress();
     } catch (error) {
@@ -310,6 +322,14 @@ export function CompanyManager() {
     setAdditionalNotes("");
     setDraft(createEmptyCompanyProfile());
     setStatus(null);
+  }
+
+  function deleteCompany(id: string) {
+    actions.deleteCompany(id);
+    if (draft.id === id) {
+      reset();
+      setAutoSelectedCompanyId(null);
+    }
   }
 
   return (
@@ -411,7 +431,7 @@ export function CompanyManager() {
                     <button
                       type="button"
                       aria-label={`${company.companyName || company.label}を削除`}
-                      onClick={() => actions.deleteCompany(company.id)}
+                      onClick={() => deleteCompany(company.id)}
                       className={cn(
                         "rounded-full p-1.5 transition",
                         draft.id === company.id
