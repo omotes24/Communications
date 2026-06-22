@@ -5,6 +5,7 @@ import { Mic, MonitorUp, Square, Wand2 } from "lucide-react";
 
 import { useRealtimeTranscription } from "@/components/audio/use-realtime-transcription";
 import {
+  createTranscriptSubmitKey,
   isSubmittableTranscript,
   looksLikeInterviewQuestion,
   normalizeTranscriptForSubmit,
@@ -44,6 +45,7 @@ export function AudioCapturePanel({
   const latestRemoteCandidateRef = useRef<{ id: string; text: string } | null>(
     null,
   );
+  const latestRemoteTranscriptTextRef = useRef("");
   const resumeBaselineTextRef = useRef("");
 
   const isConnecting = transcription.status === "connecting";
@@ -70,11 +72,11 @@ export function AudioCapturePanel({
     }
   }, []);
 
-  const getLatestRemoteTranscriptText = useCallback((): string => {
+  useEffect(() => {
     const latestRemoteItem = transcription.items.find(
       (item) => item.source === "remote" && item.text.trim(),
     );
-    return latestRemoteItem
+    latestRemoteTranscriptTextRef.current = latestRemoteItem
       ? normalizeTranscriptForSubmit(latestRemoteItem.text)
       : "";
   }, [transcription.items]);
@@ -95,13 +97,8 @@ export function AudioCapturePanel({
     submittedIdsRef.current.clear();
     latestRemoteCandidateRef.current = null;
     lastAutoSubmittedAtRef.current = questionCycle > 0 ? Date.now() : 0;
-    const nextBaselineText = getLatestRemoteTranscriptText();
-    resumeBaselineTextRef.current = nextBaselineText;
-  }, [
-    clearPendingRemoteSubmitTimers,
-    getLatestRemoteTranscriptText,
-    questionCycle,
-  ]);
+    resumeBaselineTextRef.current = latestRemoteTranscriptTextRef.current;
+  }, [clearPendingRemoteSubmitTimers, questionCycle]);
 
   const submitRemoteTranscript = useCallback(
     (id: string, text: string, enforceAutoSubmitGap: boolean) => {
@@ -112,7 +109,7 @@ export function AudioCapturePanel({
       if (!isSubmittableTranscript(normalizedText)) {
         return;
       }
-      const submitKey = `auto:${id}`;
+      const submitKey = createTranscriptSubmitKey(id, normalizedText);
       if (submittedIdsRef.current.has(submitKey)) {
         return;
       }
@@ -125,6 +122,8 @@ export function AudioCapturePanel({
       }
       submittedIdsRef.current.add(submitKey);
       lastAutoSubmittedAtRef.current = Date.now();
+      resumeBaselineTextRef.current =
+        latestRemoteTranscriptTextRef.current || normalizedText;
       onRemoteTranscript(normalizedText);
     },
     [onRemoteTranscript, questionLocked],
