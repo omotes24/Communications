@@ -5,7 +5,6 @@ import { Mic, MonitorUp, Square, Wand2 } from "lucide-react";
 
 import { useRealtimeTranscription } from "@/components/audio/use-realtime-transcription";
 import {
-  createTranscriptSubmitKey,
   isSubmittableTranscript,
   looksLikeInterviewQuestion,
   normalizeTranscriptForSubmit,
@@ -81,7 +80,7 @@ export function AudioCapturePanel({
       if (!isSubmittableTranscript(normalizedText)) {
         return;
       }
-      const submitKey = createTranscriptSubmitKey(id, normalizedText);
+      const submitKey = `auto:${id}`;
       if (submittedIdsRef.current.has(submitKey)) {
         return;
       }

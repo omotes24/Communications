@@ -47,9 +47,12 @@ function formatSection<T extends object>(
   title: string,
   data: T | null,
   labels: Array<[keyof T, string]>,
+  options: { suppressMissingLabel?: boolean } = {},
 ): string {
   if (!data) {
-    return `${title}: 未登録`;
+    return options.suppressMissingLabel
+      ? `${title}: 面接前理解メモを優先して参照`
+      : `${title}: 未登録`;
   }
   const lines = labels
     .map(([key, label]) => {
@@ -92,6 +95,7 @@ export function buildAnswerInstructions(): string {
 }
 
 export function buildAnswerInput(request: GenerateAnswerRequest): string {
+  const hasLearningBrief = Boolean(request.learningBrief.trim());
   return [
     `質問: ${request.question}`,
     `分類: ${request.category}`,
@@ -99,6 +103,15 @@ export function buildAnswerInput(request: GenerateAnswerRequest): string {
       ? `面接前理解メモ: ${request.learningBrief}`
       : "面接前理解メモ: 未作成",
     "",
-    buildEvidenceBlock(request.profile, request.company),
+    hasLearningBrief
+      ? [
+          formatSection("ユーザー登録情報", request.profile, profileLabels, {
+            suppressMissingLabel: true,
+          }),
+          formatSection("応募企業・求人情報", request.company, companyLabels, {
+            suppressMissingLabel: true,
+          }),
+        ].join("\n\n")
+      : buildEvidenceBlock(request.profile, request.company),
   ].join("\n");
 }

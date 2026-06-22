@@ -84,7 +84,7 @@ export function AnswerWorkbench({
   autoGenerate = false,
   autoRunId,
 }: AnswerWorkbenchProps) {
-  const { storage, actions } = useAppStorage();
+  const { ready, storage, actions } = useAppStorage();
   const [question, setQuestion] = useState(initialQuestion);
   const [classification, setClassification] =
     useState<QuestionClassification | null>(null);
@@ -111,6 +111,10 @@ export function AnswerWorkbench({
 
   const classifyAndGenerate = useCallback(
     async (nextQuestion = question) => {
+      if (!ready) {
+        setWarning("保存済みのプロフィールと会社情報を読み込み中です。");
+        return;
+      }
       if (!nextQuestion.trim()) {
         setError("質問を入力してください");
         return;
@@ -204,11 +208,12 @@ export function AnswerWorkbench({
       activeProfile,
       autoSource,
       question,
+      ready,
     ],
   );
 
   useEffect(() => {
-    if (!autoGenerate || !autoRunId || !initialQuestion.trim()) {
+    if (!ready || !autoGenerate || !autoRunId || !initialQuestion.trim()) {
       return;
     }
     if (lastAutoRunRef.current === autoRunId) {
@@ -217,7 +222,7 @@ export function AnswerWorkbench({
     lastAutoRunRef.current = autoRunId;
     setQuestion(initialQuestion);
     void classifyAndGenerate(initialQuestion);
-  }, [autoGenerate, autoRunId, classifyAndGenerate, initialQuestion]);
+  }, [autoGenerate, autoRunId, classifyAndGenerate, initialQuestion, ready]);
 
   function saveHistory() {
     if (!finalDraft) {

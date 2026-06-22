@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildAnswerInstructions } from "@/lib/prompts/answer";
+import {
+  buildAnswerInput,
+  buildAnswerInstructions,
+} from "@/lib/prompts/answer";
 import { buildQuestionClassifierInput } from "@/lib/prompts/classifier";
 
 describe("prompts", () => {
@@ -18,5 +21,18 @@ describe("prompts", () => {
       source: "local-mic",
     });
     expect(input).toContain("speaker: local");
+  });
+
+  it("does not mark profile and company as unregistered when a learning brief exists", () => {
+    const input = buildAnswerInput({
+      question: "志望動機を教えてください。",
+      category: "motivation",
+      profile: null,
+      company: null,
+      learningBrief: "SatoFCの社会実装経験と応募企業の事業接点を整理済み。",
+    });
+
+    expect(input).toContain("面接前理解メモ");
+    expect(input).not.toContain("未登録");
   });
 });

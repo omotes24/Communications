@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   addSessionRecord,
+  APP_STORAGE_EVENT,
   clearAppStorage,
   defaultStorage,
   loadAppStorage,
@@ -25,65 +26,85 @@ export function useAppStorage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    const loadLatestStorage = () => {
       setStorage(loadAppStorage());
       setReady(true);
+    };
+    const timer = window.setTimeout(() => {
+      loadLatestStorage();
     }, 0);
-    return () => window.clearTimeout(timer);
+
+    const handleBrowserStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === "jp-interview-assistant:v1") {
+        loadLatestStorage();
+      }
+    };
+
+    window.addEventListener(APP_STORAGE_EVENT, loadLatestStorage);
+    window.addEventListener("storage", handleBrowserStorage);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(APP_STORAGE_EVENT, loadLatestStorage);
+      window.removeEventListener("storage", handleBrowserStorage);
+    };
   }, []);
 
-  const commit = useCallback((next: AppStorage) => {
-    setStorage(next);
-    saveAppStorage(next);
-  }, []);
+  const commit = useCallback(
+    (buildNext: (current: AppStorage) => AppStorage) => {
+      const next = buildNext(loadAppStorage());
+      setStorage(next);
+      saveAppStorage(next);
+    },
+    [],
+  );
 
   const actions = useMemo(
     () => ({
       saveProfile(profile: UserProfile) {
-        commit(upsertProfile(storage, profile));
+        commit((current) => upsertProfile(current, profile));
       },
       deleteProfile(id: string) {
-        commit({
-          ...storage,
-          profiles: storage.profiles.filter((item) => item.id !== id),
-        });
+        commit((current) => ({
+          ...current,
+          profiles: current.profiles.filter((item) => item.id !== id),
+        }));
       },
       saveCompany(company: CompanyProfile) {
-        commit(upsertCompany(storage, company));
+        commit((current) => upsertCompany(current, company));
       },
       deleteCompany(id: string) {
-        commit({
-          ...storage,
-          companies: storage.companies.filter((item) => item.id !== id),
-        });
+        commit((current) => ({
+          ...current,
+          companies: current.companies.filter((item) => item.id !== id),
+        }));
       },
       saveSession(record: SessionRecord) {
-        commit(addSessionRecord(storage, record));
+        commit((current) => addSessionRecord(current, record));
       },
       saveLearning(learning: PreInterviewLearning) {
-        commit(saveLearning(storage, learning));
+        commit((current) => saveLearning(current, learning));
       },
       clearLearning() {
-        commit({ ...storage, learning: null });
+        commit((current) => ({ ...current, learning: null }));
       },
       deleteSession(id: string) {
-        commit({
-          ...storage,
-          history: storage.history.filter((item) => item.id !== id),
-        });
+        commit((current) => ({
+          ...current,
+          history: current.history.filter((item) => item.id !== id),
+        }));
       },
       setSaveHistoryByDefault(saveHistoryByDefault: boolean) {
-        commit({
-          ...storage,
-          privacy: { ...storage.privacy, saveHistoryByDefault },
-        });
+        commit((current) => ({
+          ...current,
+          privacy: { ...current.privacy, saveHistoryByDefault },
+        }));
       },
       clearAll() {
         clearAppStorage();
         setStorage(defaultStorage);
       },
     }),
-    [commit, storage],
+    [commit],
   );
 
   return { ready, storage, actions };

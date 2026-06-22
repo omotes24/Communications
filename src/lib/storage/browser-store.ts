@@ -10,6 +10,7 @@ import {
 export const STORAGE_KEY = "jp-interview-assistant:v1";
 export const COMPANY_FORM_DRAFT_KEY =
   "jp-interview-assistant:company-form-draft:v1";
+export const APP_STORAGE_EVENT = "jp-interview-assistant:storage-updated";
 
 export const defaultStorage: AppStorage = {
   profiles: [],
@@ -38,6 +39,7 @@ export function saveAppStorage(next: AppStorage): void {
     return;
   }
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  window.dispatchEvent(new Event(APP_STORAGE_EVENT));
 }
 
 export function clearAppStorage(): void {
@@ -46,6 +48,7 @@ export function clearAppStorage(): void {
   }
   window.localStorage.removeItem(STORAGE_KEY);
   window.localStorage.removeItem(COMPANY_FORM_DRAFT_KEY);
+  window.dispatchEvent(new Event(APP_STORAGE_EVENT));
 }
 
 export function upsertProfile(
