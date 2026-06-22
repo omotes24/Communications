@@ -21,6 +21,7 @@ import {
   questionClassificationSchema,
   validateAnswerLength,
   type AnswerDraft,
+  type AnswerConversationTurn,
   type QuestionCategory,
   type QuestionClassification,
 } from "@/lib/schemas/interview";
@@ -123,6 +124,30 @@ function formatTime(value: string): string {
   }).format(new Date(value));
 }
 
+function compactForContext(text: string, maxLength: number): string {
+  return Array.from(text.replace(/\s+/g, " ").trim())
+    .slice(0, maxLength)
+    .join("");
+}
+
+function buildConversationContext(
+  turns: AnswerTurn[],
+): AnswerConversationTurn[] {
+  return turns
+    .map((turn) => ({
+      question: compactForContext(
+        turn.finalDraft?.question ?? turn.question,
+        220,
+      ),
+      answer: compactForContext(
+        turn.finalDraft?.answer ?? turn.draft.answer ?? "",
+        360,
+      ),
+    }))
+    .filter((turn) => turn.question && turn.answer)
+    .slice(-6);
+}
+
 export function AnswerWorkbench({
   mode,
   initialQuestion = "",
@@ -211,6 +236,7 @@ export function AnswerWorkbench({
       controllersRef.current.set(turnId, controller);
       let hasGeneratedContent = false;
       let turnCategory: QuestionCategory = "other";
+      const conversationContext = buildConversationContext(turns);
 
       setTurns((current) => [
         ...current,
@@ -243,6 +269,7 @@ export function AnswerWorkbench({
             profile: activeProfile,
             company: activeCompany,
             learningBrief: activeLearningBrief,
+            conversationContext,
           }),
           warning: null,
         }));
@@ -283,6 +310,7 @@ export function AnswerWorkbench({
             profile: activeProfile,
             company: activeCompany,
             learningBrief: activeLearningBrief,
+            conversationContext,
           }),
           signal: controller.signal,
         });
@@ -344,6 +372,7 @@ export function AnswerWorkbench({
       clearQuickDraftTimer,
       question,
       ready,
+      turns,
       updateTurn,
     ],
   );

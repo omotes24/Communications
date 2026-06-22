@@ -92,6 +92,25 @@ export function buildAnswerInstructions(): string {
     "11. 回答本文には、根拠不足、未登録、不足情報、推測であることを説明しない",
     "12. evidenceUsed と missingInformation は内部管理用として最小限にし、回答本文には出さない",
     "13. 捻った質問でも、登録情報から一番近い経験に接続して答える",
+    "14. 長文質問では、前置きや確認文を捨て、最後に聞かれている主質問へ直接答える",
+    "15. 深掘り質問では、直近会話の回答内容を踏まえ、同じ話を繰り返さず一段具体化する",
+  ].join("\n");
+}
+
+function formatConversationContext(
+  conversationContext: GenerateAnswerRequest["conversationContext"],
+): string {
+  if (!conversationContext || conversationContext.length === 0) {
+    return "直近会話: なし";
+  }
+  return [
+    "直近会話:",
+    ...conversationContext.map((turn, index) =>
+      [
+        `${index + 1}. 面接官: ${turn.question}`,
+        `   応募者: ${turn.answer}`,
+      ].join("\n"),
+    ),
   ].join("\n");
 }
 
@@ -100,6 +119,8 @@ export function buildAnswerInput(request: GenerateAnswerRequest): string {
   return [
     `質問: ${request.question}`,
     `分類: ${request.category}`,
+    formatConversationContext(request.conversationContext),
+    "",
     request.learningBrief
       ? `面接前理解メモ: ${request.learningBrief}`
       : "面接前理解メモ: 未作成",

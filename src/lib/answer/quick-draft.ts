@@ -1,5 +1,6 @@
 import type {
   AnswerDraft,
+  AnswerConversationTurn,
   CompanyProfile,
   QuestionCategory,
   UserProfile,
@@ -15,6 +16,7 @@ type QuickIntent =
   | "failure"
   | "research"
   | "experience"
+  | "followUp"
   | "generic";
 
 function compactText(
@@ -37,10 +39,53 @@ function includesAny(text: string, patterns: RegExp[]): boolean {
   return patterns.some((pattern) => pattern.test(text));
 }
 
+function normalizeText(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function extractQuestionFocus(question: string): string {
+  const normalized = normalizeText(question);
+  const parts = normalized
+    .replace(/([。！？?？])/g, "$1\n")
+    .split(/\n+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const lastQuestionPart =
+    [...parts]
+      .reverse()
+      .find((part) =>
+        /[?？]|(?:ですか|ますか|でしょうか|理由|なぜ|どうして)/.test(part),
+      ) ??
+    parts.at(-1) ??
+    normalized;
+  return compactText(
+    lastQuestionPart.replace(
+      /^(では|それでは|続いて|ちなみに|ありがとうございます)[、,\s。]*/,
+      "",
+    ),
+    normalized,
+    86,
+  );
+}
+
+function latestConversationTurn(
+  conversationContext: AnswerConversationTurn[],
+): AnswerConversationTurn | null {
+  return conversationContext.at(-1) ?? null;
+}
+
 function resolveIntent(
   question: string,
   category: QuestionCategory,
 ): QuickIntent {
+  if (
+    category === "followUp" ||
+    includesAny(question, [
+      /その中で|先ほど|先程|今の|具体的|詳しく|深掘り|もう少し|なぜそう|どういう意味/,
+    ])
+  ) {
+    return "followUp";
+  }
   if (
     category === "motivation" ||
     includesAny(question, [/志望|応募|選ん|選ば|なぜ|どうして|他社|比べ|比較/])
@@ -87,6 +132,9 @@ function buildAnswer({
   companyName,
   companyCore,
   targetRole,
+  questionFocus,
+  previousQuestion,
+  previousAnswer,
 }: {
   intent: QuickIntent;
   selfCore: string;
@@ -96,7 +144,16 @@ function buildAnswer({
   companyName: string;
   companyCore: string;
   targetRole: string;
+  questionFocus: string;
+  previousQuestion: string;
+  previousAnswer: string;
 }): string {
+  if (intent === "followUp") {
+    const followUpTarget = previousQuestion
+      ? `「${previousQuestion}」への回答`
+      : "先ほどの回答";
+    return `${followUpTarget}に補足すると、${previousAnswer || selfCore}という点で、単に経験を積んだだけでなく、相手の状況に合わせて行動を変えたことが大きかったです。${questionFocus}については、課題を自分だけで抱えず、早い段階で関係者と認識を合わせた点が重要でした。その姿勢を${companyName}でも活かし、再現性を持って成果につなげたいです。`;
+  }
   if (intent === "motivation") {
     return `${companyName}を志望する理由は、${companyCore}に対して、私の${selfCore}で培った力を最も活かせると感じているからです。他社と比べても、${targetRole}として現場の課題を捉え、関係者と形にする経験を直接つなげられる点に魅力があります。入社後は${strength}を活かし、課題発見から実行まで責任を持って貢献したいです。`;
   }
@@ -127,12 +184,14 @@ export function buildQuickAnswerDraft({
   profile,
   company,
   learningBrief,
+  conversationContext = [],
 }: {
   question: string;
   category: QuestionCategory;
   profile: UserProfile | null;
   company: CompanyProfile | null;
   learningBrief: string;
+  conversationContext?: AnswerConversationTurn[];
 }): AnswerDraft {
   const companyName = compactText(
     firstAvailable(company?.companyName, company?.label),
@@ -181,6 +240,10 @@ export function buildQuickAnswerDraft({
     "物事を前に進める難しさに向き合った",
     72,
   );
+  const questionFocus = extractQuestionFocus(question);
+  const previousTurn = latestConversationTurn(conversationContext);
+  const previousQuestion = compactText(previousTurn?.question, "", 70);
+  const previousAnswer = compactText(previousTurn?.answer, "", 92);
   const intent = resolveIntent(question, category);
   const answer = buildAnswer({
     intent,
@@ -191,13 +254,18 @@ export function buildQuickAnswerDraft({
     companyName,
     companyCore,
     targetRole,
+    questionFocus,
+    previousQuestion,
+    previousAnswer,
   });
 
   return {
     question,
     talkingPoints: [
       "質問に対する結論を先に述べる",
-      "自分の経験を一つに絞って話す",
+      previousQuestion
+        ? "直前の会話から一段具体化して話す"
+        : "自分の経験を一つに絞って話す",
       "入社後の貢献まで接続する",
     ],
     answer,

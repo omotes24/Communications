@@ -166,6 +166,15 @@ export const answerDraftSchema = z.object({
 
 export type AnswerDraft = z.infer<typeof answerDraftSchema>;
 
+export const answerConversationTurnSchema = z.object({
+  question: z.string(),
+  answer: z.string(),
+});
+
+export type AnswerConversationTurn = z.infer<
+  typeof answerConversationTurnSchema
+>;
+
 export const classifyQuestionRequestSchema = z.object({
   transcript: z.string().trim().min(1, "文字起こしが空です"),
   speaker: speakerSchema,
@@ -182,6 +191,7 @@ export const generateAnswerRequestSchema = z.object({
   profile: userProfileSchema.nullable(),
   company: companyProfileSchema.nullable(),
   learningBrief: z.string().default(""),
+  conversationContext: z.array(answerConversationTurnSchema).max(8).default([]),
 });
 
 export type GenerateAnswerRequest = z.infer<typeof generateAnswerRequestSchema>;

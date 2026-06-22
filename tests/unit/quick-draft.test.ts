@@ -59,4 +59,34 @@ describe("quick answer draft", () => {
     expect(draft.answer).not.toContain("不足");
     expect(draft.answer.length).toBeGreaterThan(120);
   });
+
+  it("uses prior conversation for follow-up questions", () => {
+    const draft = buildQuickAnswerDraft({
+      question:
+        "先ほどの野生動物追跡システムの話について、自治体との調整で一番難しかった意思決定を具体的に教えてください。",
+      category: "followUp",
+      profile: {
+        ...createEmptyUserProfile(),
+        careerSummary: "SatoFCで野生動物追跡システムを社会実装した",
+        strengths: "相手の不安を整理し、関係者を巻き込む力",
+      },
+      company: {
+        ...createEmptyCompanyProfile(),
+        companyName: "サンプル株式会社",
+        targetRole: "総合職",
+      },
+      learningBrief: "",
+      conversationContext: [
+        {
+          question: "学生時代に力を入れたことを教えてください。",
+          answer: "山形県鶴岡市で野生動物追跡システムを現地実装した経験です。",
+        },
+      ],
+    });
+
+    expect(draft.answer).toContain("先ほど");
+    expect(draft.answer).toContain("補足");
+    expect(draft.answer).toContain("関係者");
+    expect(draft.answer.length).toBeGreaterThan(120);
+  });
 });

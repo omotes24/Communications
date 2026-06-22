@@ -70,6 +70,10 @@ export function mockGenerateAnswer(
     profile?.achievements || profile?.successStories || "登録済みの実績";
   const companyName = company?.companyName || "応募先企業";
   const attraction = company?.attraction || company?.business || "事業内容";
+  const previousTurn = request.conversationContext.at(-1);
+  const conversationLead = previousTurn
+    ? `先ほどの回答を踏まえると、`
+    : "結論から言うと、";
 
   return {
     question: request.question,
@@ -78,7 +82,7 @@ export function mockGenerateAnswer(
       `${strength}を応募先の期待に接続する`,
       `${achievement}を根拠として簡潔に話す`,
     ],
-    answer: `結論から言うと、私は${role}として培ってきた経験を、${companyName}で再現性のある成果につなげたいと考えています。特に${strength}を活かし、これまで${achievement}に取り組んできました。御社については${attraction}に魅力を感じており、入社後はまず現場理解を深めながら、求められる役割に対して具体的な改善提案と実行で貢献したいです。`,
+    answer: `${conversationLead}私は${role}として培ってきた経験を、${companyName}で再現性のある成果につなげたいと考えています。特に${strength}を活かし、これまで${achievement}に取り組んできました。御社については${attraction}に魅力を感じており、入社後はまず現場理解を深めながら、求められる役割に対して具体的な改善提案と実行で貢献したいです。`,
     evidenceUsed: [
       profile?.currentRole ? `現在の職種: ${profile.currentRole}` : "",
       profile?.strengths ? `強み: ${profile.strengths}` : "",
