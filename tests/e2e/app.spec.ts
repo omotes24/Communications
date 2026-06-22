@@ -44,6 +44,15 @@ test("manual question flow with mock OpenAI", async ({ page }) => {
       name: "サンプル株式会社の面接を始めましょう！",
     }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "STOP 受付停止" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "STOP 受付停止" }).click();
+  await expect(page.getByRole("button", { name: "GO 受付再開" })).toBeVisible();
+  await page.getByRole("button", { name: "GO 受付再開" }).click();
+  await expect(
+    page.getByRole("button", { name: "STOP 受付停止" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "学習開始" }).click();
   await expect(page.getByText("学習済み", { exact: true })).toBeVisible();
   await expect(page.getByText("LLM学習済み")).toBeVisible();

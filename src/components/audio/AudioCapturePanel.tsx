@@ -22,11 +22,15 @@ import { cn } from "@/lib/utils";
 type AudioCapturePanelProps = {
   onRemoteTranscript?: (text: string) => void;
   autoSubmitRemoteFinal?: boolean;
+  questionLocked?: boolean;
+  questionCycle?: number;
 };
 
 export function AudioCapturePanel({
   onRemoteTranscript,
   autoSubmitRemoteFinal = false,
+  questionLocked = false,
+  questionCycle = 0,
 }: AudioCapturePanelProps) {
   const transcription = useRealtimeTranscription();
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -42,6 +46,7 @@ export function AudioCapturePanel({
   const latestRemoteCandidateRef = useRef<{ id: string; text: string } | null>(
     null,
   );
+  const resumeBaselineTextRef = useRef("");
 
   const isConnecting = transcription.status === "connecting";
   const isRecording = transcription.status === "live";
@@ -71,9 +76,42 @@ export function AudioCapturePanel({
     }
   }, []);
 
+  const getLatestRemoteTranscriptText = useCallback((): string => {
+    const latestRemoteItem = transcription.items.find(
+      (item) => item.source === "remote" && item.text.trim(),
+    );
+    return latestRemoteItem
+      ? normalizeTranscriptForSubmit(latestRemoteItem.text)
+      : "";
+  }, [transcription.items]);
+
+  const getTextAfterResumeBaseline = useCallback((text: string): string => {
+    const normalizedText = normalizeTranscriptForSubmit(text);
+    const baseline = resumeBaselineTextRef.current;
+    if (baseline && normalizedText.startsWith(baseline)) {
+      return normalizeTranscriptForSubmit(
+        normalizedText.slice(baseline.length),
+      );
+    }
+    return normalizedText;
+  }, []);
+
+  useEffect(() => {
+    clearPendingRemoteSubmitTimers();
+    submittedIdsRef.current.clear();
+    latestRemoteCandidateRef.current = null;
+    lastAutoSubmittedAtRef.current = questionCycle > 0 ? Date.now() : 0;
+    const nextBaselineText = getLatestRemoteTranscriptText();
+    resumeBaselineTextRef.current = nextBaselineText;
+  }, [
+    clearPendingRemoteSubmitTimers,
+    getLatestRemoteTranscriptText,
+    questionCycle,
+  ]);
+
   const submitRemoteTranscript = useCallback(
     (id: string, text: string, enforceAutoSubmitGap: boolean) => {
-      if (!onRemoteTranscript) {
+      if (!onRemoteTranscript || questionLocked) {
         return;
       }
       const normalizedText = normalizeTranscriptForSubmit(text);
@@ -95,11 +133,11 @@ export function AudioCapturePanel({
       lastAutoSubmittedAtRef.current = Date.now();
       onRemoteTranscript(normalizedText);
     },
-    [onRemoteTranscript],
+    [onRemoteTranscript, questionLocked],
   );
 
   useEffect(() => {
-    if (!autoSubmitRemoteFinal || !onRemoteTranscript) {
+    if (!autoSubmitRemoteFinal || !onRemoteTranscript || questionLocked) {
       return;
     }
 
@@ -110,7 +148,10 @@ export function AudioCapturePanel({
       return;
     }
 
-    const normalizedText = normalizeTranscriptForSubmit(latestRemoteItem.text);
+    const normalizedText = getTextAfterResumeBaseline(latestRemoteItem.text);
+    if (!isSubmittableTranscript(normalizedText)) {
+      return;
+    }
     latestRemoteCandidateRef.current = {
       id: latestRemoteItem.id,
       text: normalizedText,
@@ -152,7 +193,9 @@ export function AudioCapturePanel({
   }, [
     autoSubmitRemoteFinal,
     clearPendingRemoteSubmitTimers,
+    getTextAfterResumeBaseline,
     onRemoteTranscript,
+    questionLocked,
     submitRemoteTranscript,
     transcription.items,
   ]);
@@ -333,34 +376,45 @@ export function AudioCapturePanel({
             まだ文字起こしはありません。
           </p>
         ) : (
-          transcription.items.slice(0, 6).map((item) => (
-            <div
-              key={`${item.id}-${item.createdAt}`}
-              className="rounded-2xl border border-neutral-950/10 p-4"
-            >
-              <div className="mb-1 flex items-center justify-between gap-2 text-xs font-semibold text-neutral-500">
-                <span>{item.source === "remote" ? "相手側" : "自分側"}</span>
-                <span>{item.final ? "確定" : "入力中"}</span>
-              </div>
-              <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-800">
-                {item.text}
-              </p>
-              {item.source === "remote" &&
+          transcription.items.slice(0, 6).map((item) => {
+            const canConfirmQuestion =
+              item.source === "remote" &&
               isSubmittableTranscript(item.text) &&
-              onRemoteTranscript ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    onRemoteTranscript(normalizeTranscriptForSubmit(item.text))
-                  }
-                  className="mt-3 inline-flex h-9 items-center gap-2 rounded-full border border-neutral-950/15 px-3 text-xs font-semibold transition hover:border-neutral-950"
-                >
-                  <Wand2 className="h-3.5 w-3.5" aria-hidden />
-                  この発話から回答案を作成
-                </button>
-              ) : null}
-            </div>
-          ))
+              Boolean(onRemoteTranscript);
+
+            return (
+              <div
+                key={`${item.id}-${item.createdAt}`}
+                className="rounded-2xl border border-neutral-950/10 p-4"
+              >
+                <div className="mb-1 flex items-center justify-between gap-2 text-xs font-semibold text-neutral-500">
+                  <span>{item.source === "remote" ? "相手側" : "自分側"}</span>
+                  <span>{item.final ? "確定" : "入力中"}</span>
+                </div>
+                <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-800">
+                  {item.text}
+                </p>
+                {canConfirmQuestion ? (
+                  <button
+                    type="button"
+                    disabled={questionLocked}
+                    onClick={() => {
+                      const questionCandidate = getTextAfterResumeBaseline(
+                        item.text,
+                      );
+                      if (isSubmittableTranscript(questionCandidate)) {
+                        onRemoteTranscript?.(questionCandidate);
+                      }
+                    }}
+                    className="mt-3 inline-flex h-9 items-center gap-2 rounded-full border border-neutral-950/15 px-3 text-xs font-semibold transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:text-neutral-400"
+                  >
+                    <Wand2 className="h-3.5 w-3.5" aria-hidden />
+                    {questionLocked ? "質問確定済み" : "質問を確定"}
+                  </button>
+                ) : null}
+              </div>
+            );
+          })
         )}
       </div>
     </section>
