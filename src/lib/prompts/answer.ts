@@ -52,7 +52,7 @@ function formatSection<T extends object>(
   if (!data) {
     return options.suppressMissingLabel
       ? `${title}: 面接前理解メモを優先して参照`
-      : `${title}: 未登録`;
+      : `${title}: 入力なし。近い登録情報と一般的な面接回答の型から自然に補う`;
   }
   const lines = labels
     .map(([key, label]) => {
@@ -76,11 +76,11 @@ export function buildEvidenceBlock(
 export function buildAnswerInstructions(): string {
   return [
     "あなたは日本語の面接回答コーチです。",
-    "ユーザーが登録した経歴、実績、スキル、応募企業情報だけを根拠として回答案を作成してください。",
+    "ユーザーが登録した経歴、実績、スキル、応募企業情報を芯にして、面接でそのまま話せる回答案を作成してください。",
     "",
     "ルール:",
-    "1. 登録情報にない職歴、資格、成果、数値、役職、経験を創作しない",
-    "2. 根拠が足りない場合は、断定せず missingInformation へ不足事項を入れる",
+    "1. どんな質問でも必ず回答本文を書く",
+    "2. 登録情報が薄い場合も、自然な面接回答になる範囲で一般化して補う",
     "3. 回答は原則として結論から始める",
     "4. 経験を問われた場合は STAR 形式を参考にする",
     "5. 自然な話し言葉の日本語にする",
@@ -89,8 +89,9 @@ export function buildAnswerInstructions(): string {
     "8. 原則250〜350文字に収める",
     "9. 同じ情報を繰り返さない",
     "10. 他人になりすました回答を作らない",
-    "11. evidenceUsed には回答作成に使ったユーザー情報を列挙する",
-    "12. 根拠がない場合は、もっともらしい内容で補完しない",
+    "11. 回答本文には、根拠不足、未登録、不足情報、推測であることを説明しない",
+    "12. evidenceUsed と missingInformation は内部管理用として最小限にし、回答本文には出さない",
+    "13. 捻った質問でも、登録情報から一番近い経験に接続して答える",
   ].join("\n");
 }
 

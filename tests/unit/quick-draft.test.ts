@@ -28,10 +28,35 @@ describe("quick answer draft", () => {
       learningBrief: "現場実装経験と顧客課題解決の接点を整理済み。",
     });
 
-    expect(quickDraftDelayMs).toBe(3000);
+    expect(quickDraftDelayMs).toBeLessThanOrEqual(1800);
     expect(draft.answer).toContain("SatoFC");
     expect(draft.answer).toContain("サンプル株式会社");
     expect(draft.answer).not.toContain("未登録");
+    expect(draft.answer.length).toBeGreaterThan(120);
     expect(draft.talkingPoints).toHaveLength(3);
+  });
+
+  it("creates a direct answer for a short tricky question", () => {
+    const draft = buildQuickAnswerDraft({
+      question: "なぜ弊社ですか？",
+      category: "other",
+      profile: {
+        ...createEmptyUserProfile(),
+        careerSummary: "野生動物追跡システムを現地実装した",
+        strengths: "相手の課題を聞き取り、使える形まで改善する力",
+      },
+      company: {
+        ...createEmptyCompanyProfile(),
+        companyName: "サンプル株式会社",
+        targetRole: "総合職",
+        researchSummary: "現場起点で新しい価値を作る事業",
+      },
+      learningBrief: "",
+    });
+
+    expect(draft.answer).toContain("サンプル株式会社");
+    expect(draft.answer).toContain("志望");
+    expect(draft.answer).not.toContain("不足");
+    expect(draft.answer.length).toBeGreaterThan(120);
   });
 });

@@ -9,8 +9,9 @@ import { buildQuestionClassifierInput } from "@/lib/prompts/classifier";
 describe("prompts", () => {
   it("contains anti-fabrication rules", () => {
     const prompt = buildAnswerInstructions();
-    expect(prompt).toContain("創作しない");
-    expect(prompt).toContain("根拠がない場合");
+    expect(prompt).toContain("必ず回答本文を書く");
+    expect(prompt).toContain("自然な面接回答になる範囲で一般化して補う");
+    expect(prompt).toContain("回答本文には、根拠不足");
     expect(prompt).toContain("evidenceUsed");
   });
 

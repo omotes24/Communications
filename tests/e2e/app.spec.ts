@@ -63,8 +63,10 @@ test("manual question flow with mock OpenAI", async ({ page }) => {
     .fill("これまでの経験について教えてください。");
   await page.getByRole("button", { name: "回答案を作成" }).click();
 
-  await expect(page.getByText("話すポイント3点")).toBeVisible();
-  await expect(page.getByText("使用した根拠情報")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "回答チャット" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "回答案" })).toBeVisible();
 
   await page.getByRole("button", { name: "履歴に保存" }).click();
   await page.goto("/history");

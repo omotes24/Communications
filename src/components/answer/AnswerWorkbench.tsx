@@ -244,8 +244,7 @@ export function AnswerWorkbench({
             company: activeCompany,
             learningBrief: activeLearningBrief,
           }),
-          warning:
-            "3秒ルール: 暫定回答です。LLM生成が完了すると自動で更新されます。",
+          warning: null,
         }));
       }, quickDraftDelayMs);
       quickDraftTimersRef.current.set(turnId, quickDraftTimer);
@@ -272,17 +271,6 @@ export function AnswerWorkbench({
           classification: classificationResult,
           category: classificationResult.category,
         });
-
-        if (!classificationResult.isQuestion) {
-          clearQuickDraftTimer(turnId);
-          updateTurn(turnId, {
-            draft: {},
-            finalDraft: null,
-            loading: false,
-            warning: "質問または回答要求ではないため、回答案は生成しません。",
-          });
-          return;
-        }
 
         const answerQuestion =
           classificationResult.question || normalizedQuestion;
@@ -329,9 +317,7 @@ export function AnswerWorkbench({
             updateTurn(turnId, {
               finalDraft: parsed,
               draft: parsed,
-              warning: validateAnswerLength(parsed.answer).inRange
-                ? null
-                : "回答案が250〜350文字の範囲外です。必要に応じて再生成してください。",
+              warning: null,
             });
           }
         });
@@ -458,9 +444,6 @@ export function AnswerWorkbench({
 
           {turns.map((turn) => {
             const answer = turn.finalDraft?.answer ?? turn.draft.answer ?? "";
-            const talkingPoints = turn.draft.talkingPoints ?? [];
-            const evidenceUsed = turn.draft.evidenceUsed ?? [];
-            const missingInformation = turn.draft.missingInformation ?? [];
             const length = validateAnswerLength(answer);
 
             return (
@@ -513,83 +496,26 @@ export function AnswerWorkbench({
                       </div>
                     ) : null}
 
-                    {turn.error || turn.warning ? (
+                    {turn.error ? (
                       <div className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">
                         <AlertTriangle
                           className="mt-0.5 h-4 w-4 shrink-0"
                           aria-hidden
                         />
-                        <span>{turn.error ?? turn.warning}</span>
+                        <span>{turn.error}</span>
                       </div>
                     ) : null}
 
                     <div className="mt-4">
-                      <h3 className="text-sm font-semibold">話すポイント3点</h3>
-                      {talkingPoints.length > 0 ? (
-                        <ol className="mt-2 grid gap-2">
-                          {talkingPoints.map((point, index) => (
-                            <li
-                              key={`${turn.id}-point-${index}`}
-                              className="text-sm font-medium leading-6 text-[#424245]"
-                            >
-                              {index + 1}. {point}
-                            </li>
-                          ))}
-                        </ol>
-                      ) : (
-                        <p className="mt-2 text-sm font-medium text-[#86868b]">
-                          {turn.loading ? "抽出中です。" : "未生成です。"}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="mt-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold">
-                          250〜350文字の回答案
-                        </h3>
+                        <h3 className="text-sm font-semibold">回答案</h3>
                       </div>
-                      <p className="mt-2 min-h-20 whitespace-pre-wrap text-base font-medium leading-8 text-[#1d1d1f]">
+                      <p className="mt-2 min-h-24 whitespace-pre-wrap text-lg font-semibold leading-9 text-[#1d1d1f]">
                         {answer ||
                           (turn.loading
                             ? "回答案を作成中です。"
                             : "未生成です。")}
                       </p>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                      <div>
-                        <h3 className="text-sm font-semibold">
-                          使用した根拠情報
-                        </h3>
-                        {evidenceUsed.length > 0 ? (
-                          <ul className="mt-2 grid gap-1 text-sm font-medium leading-6 text-[#424245]">
-                            {evidenceUsed.map((item) => (
-                              <li key={`${turn.id}-evidence-${item}`}>
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="mt-2 text-sm font-medium text-[#86868b]">
-                            まだありません。
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-semibold">不足情報</h3>
-                        {missingInformation.length > 0 ? (
-                          <ul className="mt-2 grid gap-1 text-sm font-medium leading-6 text-[#424245]">
-                            {missingInformation.map((item) => (
-                              <li key={`${turn.id}-missing-${item}`}>{item}</li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="mt-2 text-sm font-medium text-[#86868b]">
-                            不足情報はありません。
-                          </p>
-                        )}
-                      </div>
                     </div>
 
                     <div className="mt-4 flex flex-wrap items-center gap-2">
