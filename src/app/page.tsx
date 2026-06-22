@@ -6,6 +6,7 @@ import {
   UsersRound,
 } from "lucide-react";
 
+import { TypingHeadline } from "@/components/home/TypingHeadline";
 import { AppShell } from "@/components/layout/AppShell";
 
 const steps = [
@@ -13,7 +14,7 @@ const steps = [
     href: "/profile",
     label: "01",
     title: "自分を入れる",
-    body: "ES、研究、強み、弱み、挫折経験を貼る。",
+    body: "サークル、開発経験、強み、弱みを貼る。",
     icon: UserRound,
   },
   {
@@ -38,13 +39,9 @@ export default function Home() {
       <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
         <div className="border-b border-neutral-950 pb-8">
           <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-red-600">
-            Interview Assistant
+            QuestionTurbo
           </p>
-          <h1 className="max-w-5xl text-5xl font-semibold tracking-tight text-neutral-950 sm:text-7xl lg:text-8xl">
-            面接準備を
-            <br />
-            会社ごとに整える。
-          </h1>
+          <TypingHeadline />
           <p className="mt-6 max-w-2xl text-base font-medium leading-8 text-neutral-600">
             自分の情報、会社名、企業Webサイト、志望コースを起点に、面接前の理解メモと回答案を作ります。
           </p>

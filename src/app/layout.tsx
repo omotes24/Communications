@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "日本語面接アシスタント",
+  title: "QuestionTurbo",
   description: "日本語面接の準備と回答案作成を支援するアプリケーション",
 };
 

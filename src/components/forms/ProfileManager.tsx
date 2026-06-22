@@ -130,7 +130,7 @@ export function ProfileManager() {
     <section>
       <PageHeader
         title="自分のこと"
-        description="面接で使いたい経験、強み、弱み、研究、チーム経験をそのまま貼ります。ここにない内容は回答案に使いません。"
+        description="面接で使いたい経験、強み、弱み、サークルでの役割、システム開発経験をそのまま貼ります。ここにない内容は回答案に使いません。"
       />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -155,7 +155,7 @@ export function ProfileManager() {
                 className={`${textareaClassName} min-h-[360px]`}
                 value={selfText}
                 onChange={(event) => setSelfText(event.target.value)}
-                placeholder="SatoFC、研究、塾運営、強み、弱み、挫折経験などをまとめて貼り付けます。"
+                placeholder="サークルで部長、システム開発経験、強み、弱み、挫折経験などをまとめて貼り付けます。"
               />
             </FormField>
 

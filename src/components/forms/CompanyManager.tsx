@@ -253,7 +253,7 @@ export function CompanyManager() {
                     className={textareaClassName}
                     value={selfInfo}
                     onChange={(event) => setSelfInfo(event.target.value)}
-                    placeholder="SatoFC、研究、塾運営、強み、弱みなど"
+                    placeholder="サークルで部長、システム開発経験、強み、弱みなど"
                   />
                 </FormField>
               </div>

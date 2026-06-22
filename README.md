@@ -1,4 +1,4 @@
-# 日本語面接アシスタント
+# QuestionTurbo
 
 日本語の面接で使う回答案・話すポイント提示ツールです。回答の自動代行、自動音声回答、Zoom/Google Meet への自動入力、隠し表示、ステルス表示は実装しません。
 
@@ -20,7 +20,8 @@ npm run dev
 OPENAI_API_KEY=sk-...
 OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
 OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
-OPENAI_ANSWER_MODEL=gpt-5.4-mini
+OPENAI_ANSWER_MODEL=gpt-5.5
+OPENAI_RESEARCH_MODEL=gpt-5.5
 OPENAI_MOCK_MODE=false
 ```
 

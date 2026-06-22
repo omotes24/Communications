@@ -36,3 +36,32 @@ select {
   background: #ef4444;
   color: #fff;
 }
+
+.typing-cursor {
+  display: inline-block;
+  width: 0.08em;
+  height: 0.78em;
+  margin-left: 0.08em;
+  background: #ef4444;
+  transform: translateY(0.08em);
+  animation: typing-cursor-blink 0.86s steps(1, end) infinite;
+}
+
+@keyframes typing-cursor-blink {
+  0%,
+  48% {
+    opacity: 1;
+  }
+
+  49%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-cursor {
+    animation: none;
+    opacity: 0;
+  }
+}

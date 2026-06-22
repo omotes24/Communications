@@ -27,11 +27,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between gap-4">
             <Link href="/" className="group flex min-w-0 items-center gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-sm font-semibold tracking-tight text-white">
-                IA
+                QT
               </span>
               <span className="min-w-0">
                 <span className="block text-[15px] font-semibold leading-5 tracking-tight">
-                  Interview Assistant
+                  QuestionTurbo
                 </span>
                 <span className="block truncate text-xs font-medium text-neutral-500">
                   Japanese Interview Console
