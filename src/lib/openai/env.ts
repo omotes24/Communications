@@ -31,8 +31,10 @@ export type ServerEnv = RawServerEnv & {
 };
 
 export function getServerEnv(): ServerEnv {
+  const rawProvider =
+    process.env.AI_PROVIDER || (process.env.GROQ_API_KEY ? "groq" : "openai");
   const parsed = serverEnvSchema.parse({
-    AI_PROVIDER: process.env.AI_PROVIDER,
+    AI_PROVIDER: rawProvider,
     AI_MOCK_MODE: process.env.AI_MOCK_MODE,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_TRANSCRIPTION_MODEL: process.env.OPENAI_TRANSCRIPTION_MODEL,
