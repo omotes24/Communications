@@ -231,7 +231,7 @@ AI_MOCK_MODE=false`}
             <div className="mt-5 grid gap-2">
               <Link
                 href="/profile"
-                className="inline-flex h-12 items-center justify-between rounded-full bg-[#0071e3] px-5 text-sm font-semibold text-white transition hover:bg-[#147ce5]"
+                className="inline-flex h-12 items-center justify-between rounded-full bg-[#1d1d1f] px-5 text-sm font-semibold text-white transition hover:bg-[#424245]"
               >
                 自分の情報
                 <ArrowRight className="h-4 w-4" aria-hidden />
