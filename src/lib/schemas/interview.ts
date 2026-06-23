@@ -83,6 +83,32 @@ export type ResearchCompanyRequest = z.infer<
   typeof researchCompanyRequestSchema
 >;
 
+export const profileFileImportRequestSchema = z.object({
+  fileName: z.string().trim().min(1, "ファイル名が空です"),
+  fileText: z
+    .string()
+    .trim()
+    .min(20, "読み込める文字情報が少なすぎます")
+    .max(50000, "ファイル内容が大きすぎます"),
+  currentProfile: userProfileSchema.nullable().default(null),
+});
+
+export type ProfileFileImportRequest = z.infer<
+  typeof profileFileImportRequestSchema
+>;
+
+export const profileFileImportOutputSchema = z.object({
+  label: z.string().min(1),
+  nameOrAlias: z.string().default(""),
+  affiliation: z.string().default(""),
+  selfText: z.string().min(1),
+  forbiddenInformation: z.string().default(""),
+});
+
+export type ProfileFileImportOutput = z.infer<
+  typeof profileFileImportOutputSchema
+>;
+
 export const companyResearchOutputSchema = z.object({
   label: z.string().min(1),
   companyName: z.string(),

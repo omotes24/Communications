@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { POST as classifyQuestion } from "@/app/api/classify-question/route";
 import { POST as generateAnswer } from "@/app/api/generate-answer/route";
+import { POST as importProfileFile } from "@/app/api/import-profile-file/route";
 import { POST as learnInterviewContext } from "@/app/api/learn-interview-context/route";
 import { POST as researchCompany } from "@/app/api/research-company/route";
 import {
@@ -84,6 +85,26 @@ describe("API routes in mock mode", () => {
       companyName: "サンプル株式会社",
       targetRole: "A職 Bコース",
       researchSources: ["https://example.com/recruit"],
+    });
+  });
+
+  it("imports a profile file in mock mode", async () => {
+    const response = await importProfileFile(
+      new Request("http://localhost/api/import-profile-file", {
+        method: "POST",
+        body: JSON.stringify({
+          fileName: "profile.md",
+          fileText:
+            "私はSatoFCで野生動物追跡システムを開発し、自治体調整から実装まで担当しました。強みは粘り強くやり抜く力です。",
+          currentProfile: createEmptyUserProfile(),
+        }),
+      }),
+    );
+
+    expect(response.ok).toBe(true);
+    await expect(response.json()).resolves.toMatchObject({
+      label: "メインプロフィール",
+      selfText: expect.stringContaining("SatoFC"),
     });
   });
 

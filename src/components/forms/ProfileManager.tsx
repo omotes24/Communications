@@ -1,7 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Save, Trash2, UserRound } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
+import {
+  Download,
+  FileUp,
+  Loader2,
+  Save,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 
 import {
   FormField,
@@ -11,10 +25,14 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
   createEmptyUserProfile,
+  type ProfileFileImportOutput,
   type UserProfile,
 } from "@/lib/schemas/interview";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 import { cn } from "@/lib/utils";
+
+const profileImportAccept =
+  "application/pdf,.pdf,.txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json";
 
 function profileToSelfText(profile: UserProfile): string {
   return [
@@ -37,11 +55,13 @@ function profileToSelfText(profile: UserProfile): string {
 
 export function ProfileManager() {
   const { storage, actions } = useAppStorage();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [draft, setDraft] = useState<UserProfile>(createEmptyUserProfile());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selfText, setSelfText] = useState("");
   const [forbiddenInformation, setForbiddenInformation] = useState("");
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [fileImportLoading, setFileImportLoading] = useState(false);
 
   const firstProfile = storage.profiles[0] ?? null;
   const activeProfile = useMemo(
@@ -103,6 +123,68 @@ export function ProfileManager() {
     setImportStatus(null);
   }
 
+  function buildCurrentProfile(): UserProfile {
+    return {
+      ...draft,
+      careerSummary: selfText,
+      forbiddenInformation,
+    };
+  }
+
+  async function importProfileFile(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("currentProfile", JSON.stringify(buildCurrentProfile()));
+    const response = await fetch("/api/import-profile-file", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      throw new Error(data?.error ?? "ファイル内容のAI整理に失敗しました。");
+    }
+
+    return (await response.json()) as ProfileFileImportOutput;
+  }
+
+  async function handleProfileFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+
+    try {
+      setFileImportLoading(true);
+      setImportStatus(
+        "ファイルを読み込み、AIでプロフィール下書きを作成中です。",
+      );
+      const imported = await importProfileFile(file);
+      setDraft((current) => ({
+        ...current,
+        label: imported.label || current.label,
+        nameOrAlias: imported.nameOrAlias,
+        affiliation: imported.affiliation,
+      }));
+      setSelfText(imported.selfText);
+      setForbiddenInformation(imported.forbiddenInformation);
+      setImportStatus(
+        "ファイル内容をフォームに反映しました。内容を確認して保存してください。",
+      );
+    } catch (error) {
+      setImportStatus(
+        error instanceof Error
+          ? error.message
+          : "ファイル読み込みに失敗しました。",
+      );
+    } finally {
+      setFileImportLoading(false);
+    }
+  }
+
   const importLocalSeed = useCallback(async () => {
     try {
       const response = await fetch("/api/local-profile-seed", {
@@ -138,6 +220,46 @@ export function ProfileManager() {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <form className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06] sm:p-6">
           <div className="grid gap-5">
+            <div className="rounded-[26px] bg-[#f5f5f7] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
+                    File Import
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-[#1d1d1f]">
+                    入力の手間を省く
+                  </h2>
+                  <p className="mt-2 text-sm font-medium leading-6 text-[#6e6e73]">
+                    自己紹介、ES、面接準備メモを読み込み、AIがプロフィール下書きへ整理します。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={fileImportLoading}
+                  className="inline-flex min-h-12 max-w-full items-center justify-center gap-2 rounded-full bg-[#1d1d1f] px-5 py-3 text-center text-sm font-semibold leading-5 text-white transition hover:bg-[#424245] disabled:cursor-not-allowed disabled:bg-[#86868b]"
+                >
+                  {fileImportLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <FileUp className="h-4 w-4" aria-hidden />
+                  )}
+                  <span className="min-w-0">ファイルをアップロード</span>
+                </button>
+              </div>
+              <p className="mt-3 text-xs font-medium leading-5 text-[#6e6e73]">
+                対応形式: PDF, txt, md, csv,
+                json。PDFはサーバー側で文字抽出してからAIが整理します。
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={profileImportAccept}
+                className="hidden"
+                onChange={handleProfileFileChange}
+              />
+            </div>
+
             <FormField label="プロフィール名">
               <input
                 className={inputClassName}
