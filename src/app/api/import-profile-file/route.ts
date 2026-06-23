@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { zodTextFormat } from "openai/helpers/zod";
-import { PDFParse } from "pdf-parse";
+import {
+  getDocument,
+  GlobalWorkerOptions,
+  VerbosityLevel,
+} from "pdfjs-dist/legacy/build/pdf.mjs";
 
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
@@ -64,14 +68,29 @@ function isTextLikeFile(file: File): boolean {
 }
 
 async function extractPdfText(file: File): Promise<string> {
-  PDFParse.setWorker(getPdfWorkerDataUrl());
+  GlobalWorkerOptions.workerSrc = getPdfWorkerDataUrl();
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const parser = new PDFParse({ data: bytes });
+  const loadingTask = getDocument({
+    data: bytes,
+    verbosity: VerbosityLevel.ERRORS,
+  });
+  const document = await loadingTask.promise;
+
   try {
-    const result = await parser.getText();
-    return result.text;
+    const pageTexts: string[] = [];
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      const page = await document.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const text = content.items
+        .map((item) => ("str" in item ? item.str : ""))
+        .filter(Boolean)
+        .join(" ");
+      pageTexts.push(text);
+      page.cleanup();
+    }
+    return pageTexts.join("\n\n");
   } finally {
-    await parser.destroy();
+    await document.destroy();
   }
 }
 
