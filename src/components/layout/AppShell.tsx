@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -25,18 +26,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-[#fbfbfd]/80 backdrop-blur-2xl">
         <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="group flex min-w-0 items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1d1d1f] text-sm font-semibold tracking-tight text-white">
-                QT
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[15px] font-semibold leading-5 tracking-tight text-[#1d1d1f]">
-                  QuestionTurbo
-                </span>
-                <span className="block truncate text-xs font-medium text-[#6e6e73]">
-                  Japanese Interview Console
-                </span>
-              </span>
+            <Link
+              href="/"
+              aria-label="QuestionTurbo ホーム"
+              className="group flex min-w-0 items-center"
+            >
+              <Image
+                src="/questionturbo-logo.png"
+                alt="QuestionTurbo"
+                width={900}
+                height={275}
+                priority
+                className="h-12 w-auto max-w-[190px] object-contain transition group-hover:opacity-80 sm:max-w-[240px]"
+              />
             </Link>
 
             <div className="flex items-center gap-3">
