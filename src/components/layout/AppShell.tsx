@@ -88,7 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Privacy
           </Link>
           <Link href="/setup" className="hover:text-[#1d1d1f]">
-            Setup
+            Settings
           </Link>
         </footer>
       </div>
