@@ -6,10 +6,19 @@ export const dynamic = "force-dynamic";
 export async function POST(): Promise<Response> {
   try {
     const env = getServerEnv();
-    if (env.OPENAI_MOCK_MODE) {
+    if (env.AI_MOCK_MODE) {
       return Response.json({
         value: "mock-ephemeral-token",
-        model: env.OPENAI_TRANSCRIPTION_MODEL,
+        model: env.TRANSCRIPTION_MODEL,
+        provider: env.AI_PROVIDER,
+      });
+    }
+
+    if (env.AI_PROVIDER === "groq") {
+      return Response.json({
+        value: "groq-chunked-transcription",
+        model: env.TRANSCRIPTION_MODEL,
+        provider: "groq",
       });
     }
 
@@ -28,7 +37,7 @@ export async function POST(): Promise<Response> {
             audio: {
               input: {
                 transcription: {
-                  model: env.OPENAI_TRANSCRIPTION_MODEL,
+                  model: env.TRANSCRIPTION_MODEL,
                   language: "ja",
                   delay: "low",
                 },

@@ -24,14 +24,14 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json(mockClassifyQuestion(body));
     }
 
-    if (env.OPENAI_MOCK_MODE) {
+    if (env.AI_MOCK_MODE) {
       return Response.json(mockClassifyQuestion(body));
     }
 
     const client = createOpenAIClient();
     const response = await client.responses.parse(
       {
-        model: env.OPENAI_CLASSIFIER_MODEL,
+        model: env.CLASSIFIER_MODEL,
         instructions: QUESTION_CLASSIFIER_INSTRUCTIONS,
         input: buildQuestionClassifierInput(body),
         text: {

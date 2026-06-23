@@ -18,7 +18,7 @@ export function PrivacyScreen() {
         <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium leading-6 text-amber-950">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <p>
-            OpenAI API キーはこのブラウザには保存しません。`.env.local`
+            AI API キーはこのブラウザには保存しません。`.env.local`
             のサーバー側環境変数だけで扱います。
           </p>
         </div>

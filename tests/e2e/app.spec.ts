@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("manual question flow with mock OpenAI", async ({ page }) => {
+test("manual question flow with mock AI", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
 

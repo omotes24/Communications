@@ -39,7 +39,7 @@ export async function POST(request: Request): Promise<Response> {
       try {
         send("status", { message: "回答案を生成しています" });
 
-        if (env.OPENAI_MOCK_MODE) {
+        if (env.AI_MOCK_MODE) {
           const draft = mockGenerateAnswer(body);
           for await (const partial of streamMockAnswer(draft)) {
             send("partial", partial);
@@ -55,7 +55,7 @@ export async function POST(request: Request): Promise<Response> {
         const client = createOpenAIClient();
         const responseStream = client.responses.stream(
           {
-            model: env.OPENAI_ANSWER_MODEL,
+            model: env.ANSWER_MODEL,
             instructions: buildAnswerInstructions(),
             input: buildAnswerInput(body),
             text: {

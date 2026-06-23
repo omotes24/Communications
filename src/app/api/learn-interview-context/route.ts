@@ -19,7 +19,7 @@ export async function POST(request: Request): Promise<Response> {
     const body = learnInterviewContextRequestSchema.parse(await request.json());
     const env = getServerEnv();
 
-    if (env.OPENAI_MOCK_MODE) {
+    if (env.AI_MOCK_MODE) {
       return Response.json({
         brief:
           "SatoFCの現場実装経験を中心に、技術を研究で終わらせず現場の意思決定に使える形へ変換した点を軸に回答する。企業・志望コースに対しては、課題ヒアリング、関係者調整、安全なAI設計、継続運用を見据えた改善経験を接続する。",
@@ -36,7 +36,7 @@ export async function POST(request: Request): Promise<Response> {
     const client = createOpenAIClient();
     const response = await client.responses.parse(
       {
-        model: env.OPENAI_RESEARCH_MODEL,
+        model: env.RESEARCH_MODEL,
         instructions: INTERVIEW_LEARNING_INSTRUCTIONS,
         input: buildInterviewLearningInput(body),
         text: {

@@ -95,19 +95,28 @@ export async function POST(request: Request): Promise<Response> {
     const body = researchCompanyRequestSchema.parse(await request.json());
     const env = getServerEnv();
 
-    if (env.OPENAI_MOCK_MODE) {
+    if (env.AI_MOCK_MODE) {
       return Response.json(mockResearchCompany(body));
     }
 
     const client = createOpenAIClient();
     const response = await client.responses.parse(
       {
-        model: env.OPENAI_RESEARCH_MODEL,
+        model: env.RESEARCH_MODEL,
         instructions: COMPANY_RESEARCH_INSTRUCTIONS,
         input: buildCompanyResearchInput(body),
-        tools: [{ type: "web_search", search_context_size: "high" }],
-        tool_choice: "required",
-        include: ["web_search_call.action.sources"],
+        ...(env.AI_PROVIDER === "openai"
+          ? {
+              tools: [
+                {
+                  type: "web_search" as const,
+                  search_context_size: "high" as const,
+                },
+              ],
+              tool_choice: "required" as const,
+              include: ["web_search_call.action.sources" as const],
+            }
+          : {}),
         text: {
           format: zodTextFormat(
             companyResearchOutputSchema,

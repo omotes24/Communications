@@ -17,6 +17,68 @@ type RealtimeEvent = {
   transcript?: string;
 };
 
+type RealtimeSessionResponse = {
+  value?: string;
+  provider?: "openai" | "groq";
+  model?: string;
+};
+
+const groqSegmentMs = 2800;
+
+function getSupportedAudioMimeType(): string | undefined {
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg;codecs=opus",
+  ];
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type));
+}
+
+function recordAudioSegment(
+  stream: MediaStream,
+  durationMs: number,
+  onRecorder: (recorder: MediaRecorder) => void,
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    if (typeof MediaRecorder === "undefined") {
+      reject(new Error("このブラウザは音声録音に対応していません"));
+      return;
+    }
+
+    const mimeType = getSupportedAudioMimeType();
+    const chunks: Blob[] = [];
+    const recorder = new MediaRecorder(
+      stream,
+      mimeType ? { mimeType } : undefined,
+    );
+    onRecorder(recorder);
+
+    recorder.addEventListener("dataavailable", (event) => {
+      if (event.data.size > 0) {
+        chunks.push(event.data);
+      }
+    });
+    recorder.addEventListener("error", () => {
+      reject(new Error("音声録音に失敗しました"));
+    });
+    recorder.addEventListener("stop", () => {
+      resolve(
+        new Blob(chunks, {
+          type: recorder.mimeType || mimeType || "audio/webm",
+        }),
+      );
+    });
+
+    recorder.start();
+    window.setTimeout(() => {
+      if (recorder.state !== "inactive") {
+        recorder.stop();
+      }
+    }, durationMs);
+  });
+}
+
 export function useRealtimeTranscription() {
   const [status, setStatus] = useState<
     "idle" | "connecting" | "live" | "error"
@@ -25,15 +87,95 @@ export function useRealtimeTranscription() {
   const [items, setItems] = useState<TranscriptItem[]>([]);
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const channelRef = useRef<RTCDataChannel | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunkSessionRef = useRef<{
+    stopped: boolean;
+    stream: MediaStream;
+  } | null>(null);
 
   const stop = useCallback(() => {
+    if (chunkSessionRef.current) {
+      chunkSessionRef.current.stopped = true;
+      chunkSessionRef.current.stream
+        .getTracks()
+        .forEach((track) => track.stop());
+    }
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
+      mediaRecorderRef.current.stop();
+    }
     channelRef.current?.close();
     peerRef.current?.getSenders().forEach((sender) => sender.track?.stop());
     peerRef.current?.close();
     channelRef.current = null;
     peerRef.current = null;
+    mediaRecorderRef.current = null;
+    chunkSessionRef.current = null;
     setStatus("idle");
   }, []);
+
+  const startChunkedTranscription = useCallback(
+    async (stream: MediaStream, source: "local" | "remote") => {
+      const session = { stopped: false, stream };
+      chunkSessionRef.current = session;
+      setStatus("live");
+
+      while (!session.stopped) {
+        const blob = await recordAudioSegment(
+          stream,
+          groqSegmentMs,
+          (recorder) => {
+            mediaRecorderRef.current = recorder;
+          },
+        );
+        if (session.stopped || blob.size === 0) {
+          continue;
+        }
+
+        const id = crypto.randomUUID();
+        setItems((current) => [
+          {
+            id,
+            source,
+            text: "...",
+            final: false,
+            createdAt: Date.now(),
+          },
+          ...current,
+        ]);
+
+        try {
+          const formData = new FormData();
+          formData.append("audio", blob, `audio-${Date.now()}.webm`);
+          const response = await fetch("/api/transcribe-audio", {
+            method: "POST",
+            body: formData,
+          });
+          if (!response.ok) {
+            throw new Error("音声文字起こしに失敗しました");
+          }
+          const data = (await response.json()) as { text?: string };
+          const text = data.text?.replace(/\s+/g, " ").trim() ?? "";
+          setItems((current) => {
+            if (!text) {
+              return current.filter((item) => item.id !== id);
+            }
+            return current.map((item) =>
+              item.id === id ? { ...item, text, final: true } : item,
+            );
+          });
+        } catch (caught) {
+          setItems((current) => current.filter((item) => item.id !== id));
+          setError(
+            caught instanceof Error ? caught.message : "音声文字起こしエラー",
+          );
+        }
+      }
+    },
+    [],
+  );
 
   const start = useCallback(
     async (stream: MediaStream, source: "local" | "remote") => {
@@ -48,7 +190,18 @@ export function useRealtimeTranscription() {
         if (!tokenResponse.ok) {
           throw new Error("Realtime セッションを作成できませんでした");
         }
-        const tokenData = (await tokenResponse.json()) as { value?: string };
+        const tokenData =
+          (await tokenResponse.json()) as RealtimeSessionResponse;
+        if (tokenData.provider === "groq") {
+          void startChunkedTranscription(stream, source).catch((caught) => {
+            setError(
+              caught instanceof Error ? caught.message : "音声文字起こしエラー",
+            );
+            setStatus("error");
+          });
+          return;
+        }
+
         const token = tokenData.value;
         if (!token || token.startsWith("mock-")) {
           setItems((current) => [
@@ -154,7 +307,7 @@ export function useRealtimeTranscription() {
         setStatus("error");
       }
     },
-    [stop],
+    [startChunkedTranscription, stop],
   );
 
   return { status, error, items, start, stop, setItems };

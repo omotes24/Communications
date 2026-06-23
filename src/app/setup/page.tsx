@@ -24,7 +24,7 @@ export default function SetupPage() {
               </h2>
               <p className="mt-3 text-sm font-medium leading-7 text-neutral-600">
                 新しいAPIキーに差し替える時は、プロジェクト直下の `.env.local`
-                の `OPENAI_API_KEY` だけを変更します。
+                の `GROQ_API_KEY` だけを変更します。
               </p>
             </div>
           </div>
@@ -34,12 +34,15 @@ export default function SetupPage() {
               環境変数を見る
             </summary>
             <pre className="mt-4 overflow-x-auto rounded-2xl bg-[#1d1d1f] p-4 text-xs leading-6 text-white">
-              {`OPENAI_API_KEY=新しいAPIキー
-OPENAI_MOCK_MODE=false
-OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
-OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
-OPENAI_ANSWER_MODEL=gpt-5.4-mini
-OPENAI_RESEARCH_MODEL=gpt-5.5`}
+              {`AI_PROVIDER=groq
+GROQ_API_KEY=新しいAPIキー
+
+GROQ_TRANSCRIPTION_MODEL=whisper-large-v3-turbo
+GROQ_STRUCTURED_MODEL=openai/gpt-oss-20b
+GROQ_ANSWER_MODEL=openai/gpt-oss-120b
+GROQ_RESEARCH_MODEL=groq/compound
+
+AI_MOCK_MODE=false`}
             </pre>
           </details>
         </div>

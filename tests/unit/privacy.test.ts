@@ -14,15 +14,15 @@ describe("privacy logging", () => {
     expect(masked).not.toContain("test@example.com");
   });
 
-  it("explains OpenAI quota errors without leaking raw provider text", () => {
+  it("explains provider quota errors without leaking raw provider text", () => {
     const message = toPublicError(
       new Error(
         "429 You exceeded your current quota, please check your plan and billing details.",
       ),
     );
 
-    expect(message).toContain("OpenAI API の利用枠または請求設定");
-    expect(message).toContain("OPENAI_MOCK_MODE=true");
+    expect(message).toContain("AI API の利用枠または請求設定");
+    expect(message).toContain("AI_MOCK_MODE=true");
     expect(message).not.toContain("You exceeded your current quota");
   });
 });

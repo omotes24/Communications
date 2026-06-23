@@ -11,7 +11,7 @@ import {
 
 describe("API routes in mock mode", () => {
   beforeEach(() => {
-    process.env.OPENAI_MOCK_MODE = "true";
+    process.env.AI_MOCK_MODE = "true";
   });
 
   it("classifies a simulated transcript", async () => {
