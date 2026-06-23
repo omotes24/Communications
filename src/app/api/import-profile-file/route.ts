@@ -2,11 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { zodTextFormat } from "openai/helpers/zod";
-import {
-  getDocument,
-  GlobalWorkerOptions,
-  VerbosityLevel,
-} from "pdfjs-dist/legacy/build/pdf.mjs";
 
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
@@ -30,6 +25,101 @@ const maxImportedFileBytes = 12 * 1024 * 1024;
 const maxImportedTextChars = 50000;
 
 let pdfWorkerDataUrl: string | null = null;
+let pdfjsPromise: Promise<
+  typeof import("pdfjs-dist/legacy/build/pdf.mjs")
+> | null = null;
+
+class PdfFallbackDOMMatrix {
+  a = 1;
+  b = 0;
+  c = 0;
+  d = 1;
+  e = 0;
+  f = 0;
+
+  constructor(init?: number[]) {
+    if (Array.isArray(init) && init.length >= 6) {
+      [this.a, this.b, this.c, this.d, this.e, this.f] = init;
+    }
+  }
+
+  translateSelf(x = 0, y = 0) {
+    this.e += x;
+    this.f += y;
+    return this;
+  }
+
+  scaleSelf(scaleX = 1, scaleY = scaleX) {
+    this.a *= scaleX;
+    this.d *= scaleY;
+    return this;
+  }
+
+  multiplySelf() {
+    return this;
+  }
+
+  preMultiplySelf() {
+    return this;
+  }
+
+  rotateSelf() {
+    return this;
+  }
+
+  invertSelf() {
+    const determinant = this.a * this.d - this.b * this.c;
+    if (!determinant) {
+      return this;
+    }
+
+    const { a, b, c, d, e, f } = this;
+    this.a = d / determinant;
+    this.b = -b / determinant;
+    this.c = -c / determinant;
+    this.d = a / determinant;
+    this.e = (c * f - d * e) / determinant;
+    this.f = (b * e - a * f) / determinant;
+    return this;
+  }
+}
+
+class PdfFallbackImageData {
+  data: Uint8ClampedArray;
+  width: number;
+  height: number;
+
+  constructor(data: Uint8ClampedArray, width: number, height?: number) {
+    this.data = data;
+    this.width = width;
+    this.height = height ?? Math.floor(data.length / 4 / width);
+  }
+}
+
+class PdfFallbackPath2D {
+  addPath() {}
+}
+
+function ensurePdfRuntimeGlobals() {
+  const globals = globalThis as typeof globalThis & {
+    DOMMatrix: typeof DOMMatrix;
+    ImageData: typeof ImageData;
+    Path2D: typeof Path2D;
+  };
+
+  globals.DOMMatrix ??= PdfFallbackDOMMatrix as unknown as typeof DOMMatrix;
+  globals.ImageData ??= PdfFallbackImageData as unknown as typeof ImageData;
+  globals.Path2D ??= PdfFallbackPath2D as unknown as typeof Path2D;
+}
+
+async function loadPdfjs() {
+  if (!pdfjsPromise) {
+    ensurePdfRuntimeGlobals();
+    pdfjsPromise = import("pdfjs-dist/legacy/build/pdf.mjs");
+  }
+
+  return pdfjsPromise;
+}
 
 function getPdfWorkerDataUrl(): string {
   if (!pdfWorkerDataUrl) {
@@ -68,6 +158,8 @@ function isTextLikeFile(file: File): boolean {
 }
 
 async function extractPdfText(file: File): Promise<string> {
+  const { getDocument, GlobalWorkerOptions, VerbosityLevel } =
+    await loadPdfjs();
   GlobalWorkerOptions.workerSrc = getPdfWorkerDataUrl();
   const bytes = new Uint8Array(await file.arrayBuffer());
   const loadingTask = getDocument({
