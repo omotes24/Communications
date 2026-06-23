@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -31,14 +30,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-label="QuestionTurbo ホーム"
               className="group flex min-w-0 items-center"
             >
-              <Image
-                src="/questionturbo-logo.png"
-                alt="QuestionTurbo"
-                width={900}
-                height={275}
-                priority
-                className="h-12 w-auto max-w-[190px] object-contain transition group-hover:opacity-80 sm:max-w-[240px]"
-              />
+              <span className="truncate text-[22px] font-semibold tracking-normal text-[#1d1d1f] transition group-hover:opacity-70 sm:text-[24px]">
+                QuestionTurbo
+              </span>
             </Link>
 
             <div className="flex items-center gap-3">
