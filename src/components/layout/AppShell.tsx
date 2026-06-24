@@ -179,7 +179,7 @@ export function AppShell({
             href="/help"
             className={isDark ? "hover:text-white" : "hover:text-[#1d1d1f]"}
           >
-            Help
+            問い合わせ
           </Link>
           <Link
             href="/setup"

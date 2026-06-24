@@ -24,6 +24,53 @@ const validBody = {
   company: "",
 };
 
+function buildContactFormData(
+  overrides: Partial<typeof validBody> = {},
+  images: File[] = [],
+): FormData {
+  const body = { ...validBody, ...overrides };
+  return {
+    get(key: string) {
+      return body[key as keyof typeof body] ?? null;
+    },
+    getAll(key: string) {
+      return key === "images" ? images : [];
+    },
+  } as unknown as FormData;
+}
+
+function buildTestFile(
+  bytes: Uint8Array | string,
+  name: string,
+  type: string,
+): File {
+  const data =
+    typeof bytes === "string" ? new TextEncoder().encode(bytes) : bytes;
+  return {
+    name,
+    type,
+    size: data.byteLength,
+    arrayBuffer: async () => data.buffer.slice(0) as ArrayBuffer,
+  } as File;
+}
+
+function buildMultipartContactRequest(
+  formData: FormData,
+  headers: Record<string, string>,
+): Request {
+  const request = new Request("http://localhost/api/help/contact", {
+    method: "POST",
+    headers: {
+      ...headers,
+      "content-type": "multipart/form-data; boundary=vitest",
+    },
+  });
+  Object.defineProperty(request, "formData", {
+    value: vi.fn().mockResolvedValue(formData),
+  });
+  return request;
+}
+
 describe("help contact route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -105,6 +152,49 @@ describe("help contact route", () => {
     );
 
     expect(response.status).toBe(200);
+    expect(mocks.sendContactEmail).not.toHaveBeenCalled();
+  });
+
+  it("sends uploaded images as private email attachments", async () => {
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    const response = await POST(
+      buildMultipartContactRequest(
+        buildContactFormData({}, [
+          buildTestFile(bytes, "screen shot.png", "image/png"),
+        ]),
+        {
+          "x-forwarded-for": "203.0.113.14",
+          "user-agent": "vitest",
+        },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.sendContactEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attachments: [
+          {
+            filename: "screen_shot.png",
+            content: Buffer.from(bytes).toString("base64"),
+          },
+        ],
+      }),
+    );
+  });
+
+  it("rejects unsupported attachments before sending email", async () => {
+    const response = await POST(
+      buildMultipartContactRequest(
+        buildContactFormData({}, [
+          buildTestFile("bad", "notes.txt", "text/plain"),
+        ]),
+        {
+          "x-forwarded-for": "203.0.113.15",
+        },
+      ),
+    );
+
+    expect(response.status).toBe(400);
     expect(mocks.sendContactEmail).not.toHaveBeenCalled();
   });
 });
