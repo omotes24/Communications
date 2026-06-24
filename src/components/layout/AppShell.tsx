@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BriefcaseBusiness,
   Languages,
@@ -32,6 +32,7 @@ export function AppShell({
   children: React.ReactNode;
   variant?: "light" | "dark";
 }) {
+  const router = useRouter();
   const pathname = usePathname();
   const [optimisticPathname, setOptimisticPathname] = useState<{
     from: string;
@@ -40,6 +41,12 @@ export function AppShell({
   const displayedPathname =
     optimisticPathname?.from === pathname ? optimisticPathname.to : pathname;
   const isDark = variant === "dark";
+
+  useEffect(() => {
+    for (const item of navItems) {
+      router.prefetch(item.href);
+    }
+  }, [router]);
 
   function markNavigationIntent(href: string) {
     if (href === displayedPathname) {
@@ -115,6 +122,9 @@ export function AppShell({
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch
+                  onMouseEnter={() => router.prefetch(item.href)}
+                  onFocus={() => router.prefetch(item.href)}
                   onPointerDown={() => markNavigationIntent(item.href)}
                   onClick={() => markNavigationIntent(item.href)}
                   className={cn(
