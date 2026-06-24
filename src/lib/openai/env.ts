@@ -15,7 +15,6 @@ const serverEnvSchema = z.object({
   OPENAI_CLASSIFIER_MODEL: z.string().default("gpt-5.4-nano"),
   OPENAI_ANSWER_MODEL: z.string().default("gpt-5.4-mini"),
   OPENAI_RESEARCH_MODEL: z.string().default("gpt-5.5"),
-  OPENAI_DEEP_RESEARCH_MODEL: z.string().default("o4-mini-deep-research"),
   OPENAI_MOCK_MODE: booleanEnvSchema,
   GROQ_API_KEY: z.string().trim().min(1).optional(),
   GROQ_TRANSCRIPTION_MODEL: z.string().default("whisper-large-v3-turbo"),
@@ -33,7 +32,6 @@ export type ServerEnv = RawServerEnv & {
   FAST_ANSWER_MODEL: string;
   ANSWER_MODEL: string;
   RESEARCH_MODEL: string;
-  DEEP_RESEARCH_MODEL: string;
 };
 
 export function getServerEnv(): ServerEnv {
@@ -46,7 +44,6 @@ export function getServerEnv(): ServerEnv {
     OPENAI_CLASSIFIER_MODEL: process.env.OPENAI_CLASSIFIER_MODEL,
     OPENAI_ANSWER_MODEL: process.env.OPENAI_ANSWER_MODEL,
     OPENAI_RESEARCH_MODEL: process.env.OPENAI_RESEARCH_MODEL,
-    OPENAI_DEEP_RESEARCH_MODEL: process.env.OPENAI_DEEP_RESEARCH_MODEL,
     OPENAI_MOCK_MODE: process.env.OPENAI_MOCK_MODE,
     GROQ_API_KEY: process.env.GROQ_API_KEY,
     GROQ_TRANSCRIPTION_MODEL: process.env.GROQ_TRANSCRIPTION_MODEL,
@@ -78,10 +75,6 @@ export function getServerEnv(): ServerEnv {
       parsed.AI_PROVIDER === "groq"
         ? parsed.GROQ_RESEARCH_MODEL
         : parsed.OPENAI_RESEARCH_MODEL,
-    DEEP_RESEARCH_MODEL:
-      parsed.AI_PROVIDER === "groq"
-        ? parsed.GROQ_RESEARCH_MODEL
-        : parsed.OPENAI_DEEP_RESEARCH_MODEL,
   };
 }
 
