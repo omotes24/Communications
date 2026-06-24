@@ -1,13 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { translateAuthError } from "@/lib/auth/errors";
+import { isAuthThrottleError, translateAuthError } from "@/lib/auth/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AuthMode = "login" | "sign-up" | "forgot-password";
+type AuthAttemptResult = {
+  key: string;
+  kind: "error" | "message";
+  text: string;
+};
 
 const authCopy = {
   login: {
@@ -27,6 +32,24 @@ const authCopy = {
   },
 } satisfies Record<AuthMode, { title: string; description: string; button: string }>;
 
+function throttleSafeMessage(mode: AuthMode): string {
+  if (mode === "sign-up") {
+    return "確認メールを送信済みです。受信メールを確認してください。";
+  }
+  if (mode === "forgot-password") {
+    return "再設定メールを送信済みです。受信メールを確認してください。";
+  }
+  return "メールアドレスまたはパスワードを確認してください。";
+}
+
+function createAuthAttemptKey(mode: AuthMode, email: string, password: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (mode === "forgot-password") {
+    return `${mode}:${normalizedEmail}`;
+  }
+  return `${mode}:${normalizedEmail}:${password}`;
+}
+
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -35,6 +58,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const submittingRef = useRef(false);
+  const lastAttemptRef = useRef<AuthAttemptResult | null>(null);
   const copy = authCopy[mode];
   const supabase = useMemo(() => {
     try {
@@ -46,6 +71,22 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (loading || submittingRef.current) {
+      return;
+    }
+
+    const attemptKey = createAuthAttemptKey(mode, email, password);
+    if (lastAttemptRef.current?.key === attemptKey) {
+      if (lastAttemptRef.current.kind === "message") {
+        setError("");
+        setMessage(lastAttemptRef.current.text);
+      } else {
+        setMessage("");
+        setError(lastAttemptRef.current.text);
+      }
+      return;
+    }
+
     setError("");
     setMessage("");
 
@@ -54,6 +95,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       return;
     }
 
+    submittingRef.current = true;
     setLoading(true);
     try {
       if (mode === "login") {
@@ -64,6 +106,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         if (signInError) {
           throw signInError;
         }
+        lastAttemptRef.current = null;
         router.replace(searchParams.get("next") || "/profile");
         router.refresh();
         return;
@@ -80,7 +123,14 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         if (signUpError) {
           throw signUpError;
         }
-        setMessage("確認メールを送信しました。メール内のリンクを開いてください。");
+        const successMessage =
+          "確認メールを送信しました。メール内のリンクを開いてください。";
+        lastAttemptRef.current = {
+          key: attemptKey,
+          kind: "message",
+          text: successMessage,
+        };
+        setMessage(successMessage);
         return;
       }
 
@@ -93,14 +143,41 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       if (resetError) {
         throw resetError;
       }
-      setMessage("再設定メールを送信しました。");
+      const successMessage = "再設定メールを送信しました。";
+      lastAttemptRef.current = {
+        key: attemptKey,
+        kind: "message",
+        text: successMessage,
+      };
+      setMessage(successMessage);
     } catch (authError) {
-      setError(
+      if (authError instanceof Error && isAuthThrottleError(authError.message)) {
+        const safeMessage = throttleSafeMessage(mode);
+        lastAttemptRef.current = {
+          key: attemptKey,
+          kind: mode === "login" ? "error" : "message",
+          text: safeMessage,
+        };
+        if (mode === "login") {
+          setError(safeMessage);
+          return;
+        }
+        setMessage(safeMessage);
+        return;
+      }
+
+      const safeError =
         authError instanceof Error
           ? translateAuthError(authError.message)
-          : "認証処理に失敗しました。",
-      );
+          : "認証処理に失敗しました。";
+      lastAttemptRef.current = {
+        key: attemptKey,
+        kind: "error",
+        text: safeError,
+      };
+      setError(safeError);
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   }
