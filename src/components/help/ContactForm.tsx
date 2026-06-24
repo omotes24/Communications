@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send } from "lucide-react";
+import { ImagePlus, Send } from "lucide-react";
 
 const categoryOptions = [
   { value: "billing", label: "課金・トークン" },
@@ -20,6 +20,7 @@ export function ContactForm() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,15 +30,11 @@ export function ContactForm() {
 
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const payload = Object.fromEntries(formData.entries());
 
     try {
       const response = await fetch("/api/help/contact", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+        body: formData,
       });
       const data = (await response.json()) as ContactResponse;
 
@@ -46,6 +43,7 @@ export function ContactForm() {
       }
 
       form.reset();
+      setSelectedImages([]);
       setMessage("送信しました。内容を確認して返信します。");
     } catch (submitError) {
       setError(
@@ -131,6 +129,37 @@ export function ContactForm() {
           className="resize-y rounded-2xl border border-black/10 bg-white px-4 py-3 text-base leading-7 outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent-ring)]"
         />
       </label>
+
+      <label className="grid gap-2 text-sm font-semibold">
+        画像
+        <span className="flex min-h-12 items-center gap-3 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-3 text-sm font-semibold text-[#424245] transition hover:border-[var(--accent)]">
+          <ImagePlus className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+          <span>画像を添付</span>
+          <input
+            name="images"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            multiple
+            className="sr-only"
+            onChange={(event) => {
+              setSelectedImages(Array.from(event.currentTarget.files ?? []));
+            }}
+          />
+        </span>
+      </label>
+
+      {selectedImages.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {selectedImages.map((file) => (
+            <span
+              key={`${file.name}-${file.size}-${file.lastModified}`}
+              className="rounded-full bg-[#f5f5f7] px-3 py-1.5 text-xs font-semibold text-[#424245]"
+            >
+              {file.name}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       {error ? (
         <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">

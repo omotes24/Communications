@@ -6,7 +6,7 @@ export default function HelpPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Help"
+        title="問い合わせ"
         description="問い合わせフォームから連絡できます。"
       />
       <article className="grid gap-5 rounded-[28px] bg-white p-6 text-sm font-medium leading-7 text-[#424245] shadow-sm ring-1 ring-black/[0.06]">

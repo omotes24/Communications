@@ -16,15 +16,21 @@ export default function TermsPage() {
           </p>
         </section>
         <section>
-          <h2 className="text-xl font-semibold text-[#1d1d1f]">ユーザーの責任</h2>
+          <h2 className="text-xl font-semibold text-[#1d1d1f]">
+            ユーザーの責任
+          </h2>
           <p className="mt-2">
             ユーザーは、本サービスへの入力内容、本サービスの利用方法、面接での利用可否、録音・文字起こしに関する相手方の同意、会議サービスや所属組織の規約確認について、自らの責任で判断するものとします。本サービスの利用により行った判断、発言、提出物、第三者とのやり取り、その結果については、ユーザー自身が責任を負うものとします。機密情報、第三者の個人情報、契約上入力できない情報は入力しないでください。
           </p>
         </section>
         <section>
-          <h2 className="text-xl font-semibold text-[#1d1d1f]">アプリ内トークン</h2>
+          <h2 className="text-xl font-semibold text-[#1d1d1f]">
+            アプリ内トークン
+          </h2>
           <p className="mt-2">
-            AI処理にはアプリ内トークンを使用します。購入はStripe Checkoutで処理され、支払い完了後にStripe webhookを検証してトークンを付与します。トークンの付与量、消費係数、対象機能は、運用上予告なく変更される場合があります。
+            AI処理にはアプリ内トークンを使用します。購入はStripe
+            Checkoutで処理され、支払い完了後にStripe
+            webhookを検証してトークンを付与します。トークンの付与量、消費係数、対象機能は、運用上予告なく変更される場合があります。
           </p>
         </section>
         <section>
@@ -34,9 +40,11 @@ export default function TermsPage() {
           </p>
         </section>
         <section>
-          <h2 className="text-xl font-semibold text-[#1d1d1f]">データの取り扱い</h2>
+          <h2 className="text-xl font-semibold text-[#1d1d1f]">
+            データの取り扱い
+          </h2>
           <p className="mt-2">
-            本サービスは、プロフィール、企業・求人情報、面接前学習メモ、明示保存した面接履歴、回答チャット履歴、ユーザー設定をSupabaseに保存します。問い合わせフォームでは、名前、返信先メールアドレス、問い合わせ種別、件名、本文を送信します。テーマ設定は、ブラウザのlocalStorageに保存される場合があります。
+            本サービスは、プロフィール、企業・求人情報、面接前学習メモ、明示保存した面接履歴、回答チャット履歴、ユーザー設定をSupabaseに保存します。問い合わせフォームでは、名前、返信先メールアドレス、問い合わせ種別、件名、本文、添付画像を送信します。テーマ設定は、ブラウザのlocalStorageに保存される場合があります。
           </p>
           <p className="mt-2">
             音声は文字起こし処理のためOpenAIへ送信されます。本サービスは音声ファイルそのものを永続保存しません。文字起こし結果は画面表示と質問判定に使われ、ユーザーが履歴保存した場合に限り関連する質問・回答がSupabaseへ保存されます。
@@ -48,7 +56,9 @@ export default function TermsPage() {
         <section>
           <h2 className="text-xl font-semibold text-[#1d1d1f]">データの削除</h2>
           <p className="mt-2">
-            アカウント削除を行うと、Supabase Authユーザーと、RLS対象のDBデータはcascade削除されます。Supabase Storageを使う場合は、設定されたbucket内のユーザーprefixも削除対象です。
+            アカウント削除を行うと、Supabase
+            Authユーザーと、RLS対象のDBデータはcascade削除されます。Supabase
+            Storageを使う場合は、設定されたbucket内のユーザーprefixも削除対象です。
           </p>
         </section>
       </article>
