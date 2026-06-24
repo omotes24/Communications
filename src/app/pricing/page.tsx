@@ -1,14 +1,38 @@
 import { CheckoutButton } from "@/components/billing/CheckoutButton";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { getCurrentUser } from "@/lib/auth/server";
 import { billingPlans, formatJpy } from "@/lib/billing/plans";
+import Link from "next/link";
 
-export default function PricingPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PricingPage() {
+  const user = await getCurrentUser();
+  const isLoggedIn = Boolean(user);
+
   return (
     <AppShell>
       <PageHeader title="課金" />
 
       <section className="grid gap-5">
+        {!isLoggedIn ? (
+          <div className="rounded-[26px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
+            <p className="text-sm font-semibold leading-6 text-[#1d1d1f]">
+              トークン購入にはログインが必要です。
+            </p>
+            <p className="mt-2 text-sm font-medium leading-6 text-[#6e6e73]">
+              ログイン後、購入したトークンはログイン中のアカウントに反映されます。
+            </p>
+            <Link
+              href="/auth/login?next=/pricing"
+              className="mt-4 inline-flex h-11 items-center rounded-full bg-[#1d1d1f] px-5 text-sm font-semibold text-white"
+            >
+              ログインして購入へ
+            </Link>
+          </div>
+        ) : null}
+
         <div className="grid gap-4 md:grid-cols-3">
           {billingPlans.map((plan) => (
             <article
@@ -43,7 +67,16 @@ export default function PricingPage() {
               </p>
 
               <div className="mt-auto pt-5">
-                <CheckoutButton planId={plan.id} />
+                {isLoggedIn ? (
+                  <CheckoutButton planId={plan.id} />
+                ) : (
+                  <Link
+                    href="/auth/login?next=/pricing"
+                    className="inline-flex h-11 items-center justify-center rounded-full bg-[#1d1d1f] px-4 text-sm font-semibold text-white"
+                  >
+                    ログインして購入
+                  </Link>
+                )}
               </div>
             </article>
           ))}

@@ -107,6 +107,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           throw signInError;
         }
         lastAttemptRef.current = null;
+        window.dispatchEvent(new Event("yfy-auth-state-change"));
         router.replace(searchParams.get("next") || "/profile");
         router.refresh();
         return;
