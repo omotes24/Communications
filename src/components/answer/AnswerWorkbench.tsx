@@ -77,7 +77,7 @@ function answerModelLabel(mode: AnswerModelMode): string {
   );
 }
 
-const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.1";
+const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.2";
 
 type AnswerTurn = {
   id: string;

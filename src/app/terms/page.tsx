@@ -6,7 +6,7 @@ export default function TermsPage() {
     <AppShell>
       <PageHeader
         title="規約"
-        description="Yell for You 1.1の利用に関する規約です。"
+        description="Yell for You 1.2の利用に関する規約です。"
       />
       <article className="grid gap-5 rounded-[28px] bg-white p-6 text-sm font-medium leading-7 text-[#424245] shadow-sm ring-1 ring-black/[0.06]">
         <section>

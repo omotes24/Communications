@@ -9,7 +9,7 @@ export function PageHeader({
   description?: string;
   tone?: "light" | "dark";
 }) {
-  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.1";
+  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.2";
   const isDark = tone === "dark";
 
   return (

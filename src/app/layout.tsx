@@ -18,10 +18,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const appDescription = "Web面接をAIで攻略。";
+const appDescription = "Web面接をAIで完全攻略。";
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.1",
+  title: process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.2",
   description: appDescription,
   openGraph: {
     description: appDescription,
