@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, Languages } from "lucide-react";
+import { Languages } from "lucide-react";
 
+import { ChromeStartButton } from "@/components/home/ChromeStartButton";
 import { TypingHeadline } from "@/components/home/TypingHeadline";
 import { AppShell } from "@/components/layout/AppShell";
 import { getCompanyInputCopy } from "@/lib/company-input-mode";
@@ -40,13 +41,7 @@ export default function Home() {
             瞬時に面接で回答する文章を生成します。
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/profile"
-              className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--accent)] px-6 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
-            >
-              はじめる
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
+            <ChromeStartButton />
             <Link
               href="/support"
               className="inline-flex h-12 items-center rounded-full bg-white px-6 text-sm font-semibold text-[#1d1d1f] shadow-sm ring-1 ring-black/[0.08] transition hover:bg-[#fdfdfd]"
