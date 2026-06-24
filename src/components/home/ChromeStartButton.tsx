@@ -2,7 +2,6 @@
 
 import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
 
 type UserAgentDataBrand = {
   brand: string;
@@ -38,7 +37,6 @@ export function toChromeUrl(
     typeof navigator !== "undefined" ? navigator.userAgent : "",
 ): string {
   const url = new URL(targetUrl);
-  const encodedTargetUrl = encodeURIComponent(url.toString());
 
   if (/iPhone|iPad|iPod/.test(userAgent)) {
     if (url.protocol === "http:") {
@@ -57,10 +55,10 @@ export function toChromeUrl(
   }
 
   if (url.protocol === "http:") {
-    return `google-chrome://navigate?url=${encodedTargetUrl}`;
+    return `google-chrome://${url.toString()}`;
   }
   if (url.protocol === "https:") {
-    return `google-chrome://navigate?url=${encodedTargetUrl}`;
+    return `google-chrome://${url.toString()}`;
   }
   return targetUrl;
 }
@@ -82,19 +80,8 @@ function ChromeMark() {
 
 export function ChromeStartButton() {
   const router = useRouter();
-  const fallbackTimerRef = useRef<number | null>(null);
-  const [showFallback, setShowFallback] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (fallbackTimerRef.current) {
-        window.clearTimeout(fallbackTimerRef.current);
-      }
-    };
-  }, []);
 
   function openProfile() {
-    setShowFallback(false);
     const profileUrl = new URL("/profile", window.location.href).toString();
     if (
       isDesktopGoogleChrome(navigator as NavigatorWithUserAgentData) ||
@@ -107,62 +94,17 @@ export function ChromeStartButton() {
     }
 
     window.location.href = toChromeUrl(profileUrl, navigator.userAgent);
-    if (fallbackTimerRef.current) {
-      window.clearTimeout(fallbackTimerRef.current);
-    }
-    fallbackTimerRef.current = window.setTimeout(() => {
-      if (document.visibilityState === "visible") {
-        setShowFallback(true);
-      }
-    }, 1200);
   }
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={openProfile}
-        className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--accent)] px-6 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
-      >
-        <ChromeMark />
-        Chromeで始める
-        <ArrowRight className="h-4 w-4" aria-hidden />
-      </button>
-
-      {showFallback ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Chromeで開く"
-          className="fixed inset-0 z-50 grid place-items-center bg-black/20 px-4 backdrop-blur-sm"
-        >
-          <div className="w-full max-w-sm rounded-[28px] bg-white p-5 text-left shadow-2xl ring-1 ring-black/[0.08]">
-            <h2 className="text-lg font-semibold tracking-tight text-[#1d1d1f]">
-              Chromeで開けませんでした
-            </h2>
-            <p className="mt-2 text-sm font-medium leading-6 text-[#6e6e73]">
-              このアプリはChromeのみに対応しています。Chromeをインストールしてから、もう一度開いてください。
-            </p>
-            <div className="mt-5 grid gap-2">
-              <a
-                href="https://www.google.com/chrome/"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-11 items-center justify-center rounded-full bg-[var(--accent)] px-4 text-sm font-semibold text-white"
-              >
-                Chromeをインストール
-              </a>
-              <button
-                type="button"
-                onClick={() => setShowFallback(false)}
-                className="h-10 text-sm font-semibold text-[#86868b]"
-              >
-                閉じる
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </>
+    <button
+      type="button"
+      onClick={openProfile}
+      className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--accent)] px-6 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
+    >
+      <ChromeMark />
+      Chromeで始める
+      <ArrowRight className="h-4 w-4" aria-hidden />
+    </button>
   );
 }

@@ -8,10 +8,10 @@ import {
 describe("ChromeStartButton helpers", () => {
   it("converts desktop app URLs to the macOS Chrome URL scheme", () => {
     expect(toChromeUrl("http://localhost:3000/profile")).toBe(
-      "google-chrome://navigate?url=http%3A%2F%2Flocalhost%3A3000%2Fprofile",
+      "google-chrome://http://localhost:3000/profile",
     );
     expect(toChromeUrl("https://communications-umber.vercel.app/profile")).toBe(
-      "google-chrome://navigate?url=https%3A%2F%2Fcommunications-umber.vercel.app%2Fprofile",
+      "google-chrome://https://communications-umber.vercel.app/profile",
     );
   });
 
