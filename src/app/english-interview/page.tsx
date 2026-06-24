@@ -3,7 +3,7 @@ import { SupportScreen } from "@/components/support/SupportScreen";
 
 export default function EnglishInterviewPage() {
   return (
-    <AppShell variant="dark">
+    <AppShell accent="brown">
       <SupportScreen variant="english" />
     </AppShell>
   );

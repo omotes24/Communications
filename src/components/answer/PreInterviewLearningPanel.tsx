@@ -5,7 +5,13 @@ import { Brain, Building2, CheckCircle2, Loader2, X } from "lucide-react";
 
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 
-export function PreInterviewLearningPanel() {
+type LearningLanguage = "ja" | "en";
+
+export function PreInterviewLearningPanel({
+  learningLanguage = "ja",
+}: {
+  learningLanguage?: LearningLanguage;
+}) {
   const {
     storage,
     activeCompany: company,
@@ -15,9 +21,29 @@ export function PreInterviewLearningPanel() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const companyName = company?.companyName || company?.label || "";
+  const isEnglish = learningLanguage === "en";
   const learningMatchesCompany =
     Boolean(storage.learning) &&
-    storage.learning?.companyId === (company?.id ?? null);
+    storage.learning?.companyId === (company?.id ?? null) &&
+    storage.learning?.language === learningLanguage;
+  const learningStatusLabel = learningMatchesCompany
+    ? isEnglish
+      ? "英語学習済み"
+      : "学習済み"
+    : isEnglish
+      ? "英語未学習"
+      : "未学習";
+  const learnButtonLabel = loading
+    ? isEnglish
+      ? "英語で学習中"
+      : "学習中"
+    : learningMatchesCompany
+      ? isEnglish
+        ? "英語で再学習"
+        : "再学習"
+      : isEnglish
+        ? "英語で学習開始"
+        : "学習開始";
 
   async function learn() {
     setLoading(true);
@@ -36,6 +62,7 @@ export function PreInterviewLearningPanel() {
           selfInfo: profile?.careerSummary ?? "",
           desiredCourse: company?.targetRole ?? "",
           additionalNotes: company?.interviewFocus ?? "",
+          learningLanguage,
         }),
       });
       if (!response.ok) {
@@ -51,8 +78,13 @@ export function PreInterviewLearningPanel() {
         ...data,
         learnedAt: new Date().toISOString(),
         companyId: company?.id ?? null,
+        language: learningLanguage,
       });
-      setStatus("理解しました。以後の回答案にこの理解メモを使います。");
+      setStatus(
+        isEnglish
+          ? "English learning is ready. Future English answers will use this memo."
+          : "理解しました。以後の回答案にこの理解メモを使います。",
+      );
     } catch (error) {
       setStatus(
         error instanceof Error ? error.message : "面接前学習に失敗しました",
@@ -70,13 +102,17 @@ export function PreInterviewLearningPanel() {
             Pre Interview
           </p>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight">
-            面接前に学習
+            {isEnglish ? "英語面接前に学習" : "面接前に学習"}
           </h2>
           {learningMatchesCompany || companyName ? (
             <p className="mt-2 text-sm font-medium leading-6 text-neutral-600">
               {learningMatchesCompany
-                ? "この会社の理解メモを回答案に使います。"
-                : "まだこの会社の面接前学習は完了していません。学習開始を押してください。"}
+                ? isEnglish
+                  ? "この会社の英語理解メモを回答案に使います。"
+                  : "この会社の理解メモを回答案に使います。"
+                : isEnglish
+                  ? "まだこの会社の英語面接前学習は完了していません。学習開始を押してください。"
+                  : "まだこの会社の面接前学習は完了していません。学習開始を押してください。"}
             </p>
           ) : null}
         </div>
@@ -91,7 +127,7 @@ export function PreInterviewLearningPanel() {
           {learningMatchesCompany ? (
             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
           ) : null}
-          {learningMatchesCompany ? "学習済み" : "未学習"}
+          {learningStatusLabel}
         </span>
       </div>
       {learningMatchesCompany && companyName ? (
@@ -101,7 +137,7 @@ export function PreInterviewLearningPanel() {
           </span>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-              LLM学習済み
+              {isEnglish ? "ENGLISH LLM学習済み" : "LLM学習済み"}
             </p>
             <p className="truncate text-base font-semibold tracking-tight text-emerald-950">
               {companyName}
@@ -121,7 +157,7 @@ export function PreInterviewLearningPanel() {
           ) : (
             <Brain className="h-5 w-5" aria-hidden />
           )}
-          {loading ? "学習中" : learningMatchesCompany ? "再学習" : "学習開始"}
+          {learnButtonLabel}
         </button>
         {storage.learning ? (
           <button
