@@ -33,6 +33,24 @@ export default function TermsPage() {
             決済情報はStripeが処理します。本アプリはカード番号や銀行口座番号を保存しません。購入内容、支払い状況、付与トークン数など、サービス提供に必要な範囲の決済関連情報を保存します。返金その他の決済に関する対応は、法令により必要な場合を除き、個別の状況に応じて判断します。
           </p>
         </section>
+        <section>
+          <h2 className="text-xl font-semibold text-[#1d1d1f]">データの取り扱い</h2>
+          <p className="mt-2">
+            本サービスは、プロフィール、企業・求人情報、面接前学習メモ、明示保存した面接履歴、回答チャット履歴、ユーザー設定をSupabaseに保存します。問い合わせフォームでは、名前、返信先メールアドレス、問い合わせ種別、件名、本文を送信します。未保存フォームの一時下書きとテーマ設定は、ブラウザのlocalStorageに保存される場合があります。
+          </p>
+          <p className="mt-2">
+            音声は文字起こし処理のためOpenAIまたはGroqへ送信されます。本サービスは音声ファイルそのものを永続保存しません。文字起こし結果は画面表示と質問判定に使われ、ユーザーが履歴保存した場合に限り関連する質問・回答がSupabaseへ保存されます。
+          </p>
+          <p className="mt-2">
+            認証・DB保存にはSupabase、ホスティングにはVercel、AI処理にはOpenAIまたはGroq、決済にはStripe、認証メールと問い合わせメール送信には設定済みのメール配信事業者を利用します。
+          </p>
+        </section>
+        <section>
+          <h2 className="text-xl font-semibold text-[#1d1d1f]">データの削除</h2>
+          <p className="mt-2">
+            アカウント削除を行うと、Supabase Authユーザーと、RLS対象のDBデータはcascade削除されます。Supabase Storageを使う場合は、設定されたbucket内のユーザーprefixも削除対象です。
+          </p>
+        </section>
       </article>
     </AppShell>
   );
