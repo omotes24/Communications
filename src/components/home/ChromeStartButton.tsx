@@ -43,6 +43,21 @@ export function toChromeUrl(targetUrl: string): string {
   return targetUrl;
 }
 
+function ChromeMark() {
+  return (
+    <span
+      aria-hidden="true"
+      className="relative inline-flex h-5 w-5 shrink-0 rounded-full shadow-sm ring-1 ring-white/40"
+      style={{
+        background:
+          "conic-gradient(#ea4335 0deg 115deg, #fbbc05 115deg 240deg, #34a853 240deg 360deg)",
+      }}
+    >
+      <span className="absolute inset-[5px] rounded-full bg-[#4285f4] ring-2 ring-white" />
+    </span>
+  );
+}
+
 export function ChromeStartButton() {
   const router = useRouter();
   const fallbackTimerRef = useRef<number | null>(null);
@@ -79,11 +94,6 @@ export function ChromeStartButton() {
     }, 1200);
   }
 
-  function continueInCurrentBrowser() {
-    setShowFallback(false);
-    router.push("/profile");
-  }
-
   return (
     <>
       <button
@@ -91,7 +101,8 @@ export function ChromeStartButton() {
         onClick={openProfile}
         className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--accent)] px-6 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
       >
-        はじめる
+        <ChromeMark />
+        Chromeで始める
         <ArrowRight className="h-4 w-4" aria-hidden />
       </button>
 
@@ -107,7 +118,7 @@ export function ChromeStartButton() {
               Chromeで開けませんでした
             </h2>
             <p className="mt-2 text-sm font-medium leading-6 text-[#6e6e73]">
-              面接中の音声取得はChromeで動作します。Chromeを入れてから開くか、プロフィール入力だけ現在のブラウザで続けられます。
+              このアプリはChromeのみに対応しています。Chromeをインストールしてから、もう一度開いてください。
             </p>
             <div className="mt-5 grid gap-2">
               <a
@@ -118,13 +129,6 @@ export function ChromeStartButton() {
               >
                 Chromeをインストール
               </a>
-              <button
-                type="button"
-                onClick={continueInCurrentBrowser}
-                className="h-11 rounded-full bg-[#f5f5f7] px-4 text-sm font-semibold text-[#1d1d1f]"
-              >
-                このブラウザで自分を入力
-              </button>
               <button
                 type="button"
                 onClick={() => setShowFallback(false)}

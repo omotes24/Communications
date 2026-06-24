@@ -40,6 +40,9 @@ export default function Home() {
             <br />
             瞬時に面接で回答する文章を生成します。
           </p>
+          <p className="mt-4 text-sm font-semibold text-[#86868b]">
+            Chromeのみに対応しています。
+          </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <ChromeStartButton />
             <Link
