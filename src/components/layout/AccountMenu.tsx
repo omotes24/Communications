@@ -148,14 +148,14 @@ export function AccountMenu() {
 
   return (
     <div ref={rootRef} className="relative flex items-center gap-2">
-      <Link
-        href="/account/usage"
-        className="hidden rounded-full bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--accent)] sm:inline-flex"
-      >
-        {state.walletStatus === "ready" && state.availableBalance !== null
-          ? `${state.availableBalance.toLocaleString()} tokens`
-          : "ログイン中"}
-      </Link>
+      {state.walletStatus === "ready" && state.availableBalance !== null ? (
+        <Link
+          href="/account/usage"
+          className="hidden rounded-full bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--accent)] sm:inline-flex"
+        >
+          {state.availableBalance.toLocaleString()} tokens
+        </Link>
+      ) : null}
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
