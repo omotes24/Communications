@@ -10,7 +10,7 @@ export default defineConfig({
   },
   webServer: {
     command:
-      "AI_MOCK_MODE=true npm run dev -- --hostname 127.0.0.1 --port 3100",
+      "AI_MOCK_MODE=true E2E_TEST_AUTH=true TEST_AUTH_USER_ID=00000000-0000-4000-8000-0000000000e2 TOKEN_TEST_MODE=true NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_ANON_KEY= SUPABASE_SERVICE_ROLE_KEY= npm run dev -- --hostname 127.0.0.1 --port 3100",
     url: "http://127.0.0.1:3100",
     reuseExistingServer: false,
     timeout: 120_000,

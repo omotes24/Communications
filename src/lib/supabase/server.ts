@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
@@ -5,7 +7,7 @@ import { cookies } from "next/headers";
 import {
   requireServerSupabaseConfig,
   requireSupabaseServiceRoleKey,
-} from "@/lib/supabase/config";
+} from "@/lib/supabase/server-config";
 import type { SupabaseDatabase } from "@/lib/supabase/types";
 
 export async function createSupabaseServerClient() {
@@ -37,10 +39,10 @@ export function createSupabaseServiceClient() {
     config.url,
     requireSupabaseServiceRoleKey(),
     {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
     },
   );
 }

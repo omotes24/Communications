@@ -32,7 +32,7 @@ AI_MOCK_MODE=false
 
 ## マルチユーザー / Supabase
 
-Yell for You 1.1 は Supabase Auth、RLS付きPostgres、アプリ内トークン台帳に対応しています。設定手順、migration、Vercel環境変数、localStorage移行方針は [docs/multi-user-supabase.md](docs/multi-user-supabase.md) を参照してください。
+Yell for You 1.1 は Supabase Auth、RLS付きPostgres、アプリ内トークン台帳に対応しています。設定手順、migration、Vercel環境変数、localStorage移行方針は [docs/multi-user-supabase.md](docs/multi-user-supabase.md) を参照してください。本番化前監査とStaging導入は [docs/staging-hardening-runbook.md](docs/staging-hardening-runbook.md) にまとめています。
 
 AI API を呼ばずに E2E を実行する場合は `AI_MOCK_MODE=true` を使います。
 

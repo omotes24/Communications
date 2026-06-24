@@ -78,4 +78,50 @@ describe("app token reservations", () => {
     expect(wallet.available_balance).toBe(1000);
     expect(wallet.reserved_balance).toBe(0);
   });
+
+  it("keeps balance non-negative with more than 10 parallel reservations", async () => {
+    resetTestTokenState(userId, 1000);
+
+    const reservations = await Promise.all(
+      Array.from({ length: 12 }, (_, index) =>
+        reserveAiTokens({
+          userId,
+          requestId: `request-parallel-${index}`,
+          operationId: "00000000-0000-4000-8000-000000000103",
+          feature: "generate-answer",
+          provider: "openai",
+          model: "gpt-test",
+          estimatedAmount: 50,
+        }),
+      ),
+    );
+    await Promise.all(
+      reservations.map((reservation) =>
+        settleAiTokens(reservation, { inputTokens: 5, outputTokens: 5 }),
+      ),
+    );
+
+    const wallet = await getWalletBalance(userId);
+
+    expect(wallet.available_balance).toBeGreaterThanOrEqual(0);
+    expect(wallet.reserved_balance).toBe(0);
+  });
+
+  it("models SSE interruption by releasing the reserved amount", async () => {
+    const reservation = await reserveAiTokens({
+      userId,
+      requestId: "request-sse-interrupted",
+      operationId: "00000000-0000-4000-8000-000000000104",
+      feature: "generate-answer",
+      provider: "openai",
+      model: "gpt-test",
+      estimatedAmount: 400,
+    });
+
+    await releaseAiTokenReservation(reservation, "sse_interrupted");
+
+    const wallet = await getWalletBalance(userId);
+    expect(wallet.available_balance).toBe(1000);
+    expect(wallet.reserved_balance).toBe(0);
+  });
 });

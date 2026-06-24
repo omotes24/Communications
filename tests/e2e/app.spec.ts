@@ -18,7 +18,6 @@ test("manual question flow with mock AI", async ({ page }) => {
   await expect(page.getByText("メインプロフィール")).toBeVisible();
 
   await page.goto("/company");
-  await page.getByRole("button", { name: "自分スロットを反映" }).click();
   await page.getByLabel("会社名").fill("サンプル株式会社");
   await page
     .getByLabel("社風・採用情報・特筆事項など(詳細)")
@@ -77,7 +76,14 @@ test("manual question flow with mock AI", async ({ page }) => {
     page.getByText("これまでの経験について教えてください。"),
   ).toBeVisible();
 
-  await page.goto("/privacy");
-  await page.getByRole("button", { name: "すべてのデータを削除" }).click();
+  await page.goto("/account/privacy");
+  await page.getByRole("button", { name: "アプリ内データを削除" }).click();
   await expect(page.getByText("プロフィール: 0件")).toBeVisible();
+});
+
+test("public legal and help pages render", async ({ page }) => {
+  for (const path of ["/privacy", "/terms", "/account-deletion", "/help"]) {
+    await page.goto(path);
+    await expect(page.locator("main")).toBeVisible();
+  }
 });

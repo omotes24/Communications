@@ -4,6 +4,7 @@ import { POST as classifyQuestion } from "@/app/api/classify-question/route";
 import { POST as generateAnswer } from "@/app/api/generate-answer/route";
 import { POST as importProfileFile } from "@/app/api/import-profile-file/route";
 import { POST as learnInterviewContext } from "@/app/api/learn-interview-context/route";
+import { POST as realtimeSession } from "@/app/api/realtime-session/route";
 import { POST as researchCompany } from "@/app/api/research-company/route";
 import {
   createEmptyCompanyProfile,
@@ -169,6 +170,22 @@ describe("API routes in mock mode", () => {
     expect(response.ok).toBe(true);
     await expect(response.json()).resolves.toMatchObject({
       keyPoints: expect.any(Array),
+    });
+  });
+
+  it("returns a bounded realtime reservation in mock mode", async () => {
+    process.env.APP_REALTIME_SESSION_RESERVATION_SECONDS = "10";
+
+    const response = await realtimeSession(
+      new Request("http://localhost/api/realtime-session", {
+        method: "POST",
+      }),
+    );
+
+    expect(response.ok).toBe(true);
+    await expect(response.json()).resolves.toMatchObject({
+      reservationSeconds: 10,
+      reservationExpiresAt: expect.any(String),
     });
   });
 });

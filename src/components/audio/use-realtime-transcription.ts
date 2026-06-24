@@ -26,6 +26,8 @@ type RealtimeSessionResponse = {
   value?: string;
   provider?: "openai" | "groq";
   model?: string;
+  reservationExpiresAt?: string;
+  reservationSeconds?: number;
 };
 
 const groqSegmentMs = 2800;
@@ -93,6 +95,7 @@ export function useRealtimeTranscription() {
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const channelRef = useRef<RTCDataChannel | null>(null);
   const realtimeCommitIntervalRef = useRef<number | null>(null);
+  const realtimeExpiryTimerRef = useRef<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunkSessionRef = useRef<{
     stopped: boolean;
@@ -100,6 +103,10 @@ export function useRealtimeTranscription() {
   } | null>(null);
 
   const stop = useCallback(() => {
+    if (realtimeExpiryTimerRef.current) {
+      window.clearTimeout(realtimeExpiryTimerRef.current);
+      realtimeExpiryTimerRef.current = null;
+    }
     if (realtimeCommitIntervalRef.current) {
       window.clearInterval(realtimeCommitIntervalRef.current);
       realtimeCommitIntervalRef.current = null;
@@ -210,6 +217,17 @@ export function useRealtimeTranscription() {
         }
         const tokenData =
           (await tokenResponse.json()) as RealtimeSessionResponse;
+        const reservationMs = Math.max(
+          1000,
+          Math.floor((tokenData.reservationSeconds ?? 180) * 1000),
+        );
+        realtimeExpiryTimerRef.current = window.setTimeout(() => {
+          stop();
+          setError(
+            "Realtime予約時間が終了しました。続ける場合は再接続してください。",
+          );
+          setStatus("error");
+        }, reservationMs);
         if (tokenData.provider === "groq") {
           void startChunkedTranscription(stream, source).catch((caught) => {
             setError(

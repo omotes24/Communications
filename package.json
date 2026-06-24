@@ -11,6 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "tokens:grant-test": "node scripts/grant-test-tokens.mjs",
+    "tokens:release-expired": "node scripts/release-expired-reservations.mjs",
+    "supabase:verify-rls": "node scripts/verify-rls.mjs",
     "format": "prettier --check .",
     "format:write": "prettier --write ."
   },
@@ -24,6 +27,7 @@
     "pdfjs-dist": "^5.4.296",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "server-only": "^0.0.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

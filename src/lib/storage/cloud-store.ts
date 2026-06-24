@@ -1,3 +1,5 @@
+import "server-only";
+
 import {
   appStorageSchema,
   type AppStorage,
@@ -285,13 +287,24 @@ export async function importLocalStorageOnce({
   }
 
   await saveCloudStorage(userId, storage);
-  const { error } = await supabase.from("local_storage_imports").insert({
-    user_id: userId,
-    import_id: importId,
-    migration_version: migrationVersion,
-  });
+  const { data, error } = await supabase
+    .from("local_storage_imports")
+    .insert({
+      user_id: userId,
+      import_id: importId,
+      migration_version: migrationVersion,
+    })
+    .select("id");
   if (error) {
+    if ("code" in error && error.code === "23505") {
+      const current = await loadCloudStorage(userId);
+      return { imported: false, storage: current.storage };
+    }
     throw error;
+  }
+  if (!data?.length) {
+    const current = await loadCloudStorage(userId);
+    return { imported: false, storage: current.storage };
   }
 
   return { imported: true, storage };

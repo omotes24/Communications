@@ -12,6 +12,16 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const hardeningMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202606240002_staging_hardening.sql",
+  ),
+  "utf8",
+);
+const allMigrations = `${migration}\n${hardeningMigration}`;
 
 describe("Supabase migration", () => {
   it("enables RLS for user data tables and defines token functions", () => {
@@ -34,10 +44,27 @@ describe("Supabase migration", () => {
       "reserve_tokens",
       "settle_tokens",
       "release_token_reservation",
+      "release_expired_token_reservations",
       "grant_tokens",
       "admin_adjust_tokens",
     ]) {
-      expect(migration).toContain(`function public.${fn}`);
+      expect(allMigrations).toContain(`function public.${fn}`);
     }
+  });
+
+  it("keeps token mutation RPCs away from browser roles", () => {
+    expect(hardeningMigration).toContain(
+      "revoke execute on function public.reserve_tokens",
+    );
+    expect(hardeningMigration).toContain(
+      "revoke execute on function public.grant_tokens",
+    );
+    expect(hardeningMigration).toContain(
+      "grant execute on function public.reserve_tokens",
+    );
+    expect(hardeningMigration).toContain(
+      "duplicate_request_id_for_different_user",
+    );
+    expect(hardeningMigration).toContain("for update skip locked");
   });
 });

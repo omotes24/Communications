@@ -1,3 +1,5 @@
+import "server-only";
+
 import OpenAI from "openai";
 
 import { assertProviderKey, getServerEnv } from "@/lib/openai/env";

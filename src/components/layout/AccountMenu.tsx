@@ -139,6 +139,12 @@ export function AccountMenu() {
             >
               利用履歴
             </Link>
+            <Link
+              href="/account/privacy"
+              className="rounded-2xl px-3 py-2 hover:bg-[#f5f5f7]"
+            >
+              データ設定
+            </Link>
             <button
               type="button"
               onClick={logout}

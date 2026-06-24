@@ -49,6 +49,8 @@ export async function POST(request: Request): Promise<Response> {
         value: "mock-ephemeral-token",
         model: env.TRANSCRIPTION_MODEL,
         provider: env.AI_PROVIDER,
+        reservationExpiresAt: reservation.expiresAt,
+        reservationSeconds: reservedSeconds,
       });
     }
 
@@ -58,6 +60,8 @@ export async function POST(request: Request): Promise<Response> {
         value: "groq-chunked-transcription",
         model: env.TRANSCRIPTION_MODEL,
         provider: "groq",
+        reservationExpiresAt: reservation.expiresAt,
+        reservationSeconds: reservedSeconds,
       });
     }
 
@@ -72,6 +76,10 @@ export async function POST(request: Request): Promise<Response> {
             "OpenAI-Safety-Identifier": "local-interview-assistant",
           },
           body: JSON.stringify({
+            expires_after: {
+              anchor: "created_at",
+              seconds: Math.max(10, Math.min(reservedSeconds, 7200)),
+            },
             session: {
               type: "transcription",
               audio: {
@@ -95,7 +103,11 @@ export async function POST(request: Request): Promise<Response> {
       }
 
       await settleAiTokens(reservation, { audioSeconds: reservedSeconds });
-      return Response.json(await response.json());
+      return Response.json({
+        ...(await response.json()),
+        reservationExpiresAt: reservation.expiresAt,
+        reservationSeconds: reservedSeconds,
+      });
     } catch (error) {
       await releaseAiTokenReservation(reservation, "api_failed");
       throw error;

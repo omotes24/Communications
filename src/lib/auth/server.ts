@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getServerSupabaseConfig } from "@/lib/supabase/config";
+import { getServerSupabaseConfig } from "@/lib/supabase/server-config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type AuthenticatedUser = {
@@ -8,10 +8,24 @@ export type AuthenticatedUser = {
   email: string | null;
 };
 
+function shouldUseTestAuth(): boolean {
+  if (!process.env.TEST_AUTH_USER_ID) {
+    return false;
+  }
+  if (process.env.NODE_ENV === "test") {
+    return true;
+  }
+  return (
+    process.env.NODE_ENV === "development" &&
+    process.env.E2E_TEST_AUTH === "true" &&
+    process.env.AI_MOCK_MODE === "true"
+  );
+}
+
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
-  if (process.env.NODE_ENV === "test" && process.env.TEST_AUTH_USER_ID) {
+  if (shouldUseTestAuth()) {
     return {
-      id: process.env.TEST_AUTH_USER_ID,
+      id: process.env.TEST_AUTH_USER_ID!,
       email: "test@example.com",
     };
   }

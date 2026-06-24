@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { getServerSupabaseConfig } from "@/lib/supabase/config";
+import { getServerSupabaseConfig } from "@/lib/supabase/server-config";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import {
   calculateAppTokens,
@@ -22,6 +22,7 @@ type TokenReservation = {
   model: string;
   rateCard: TokenRateCard;
   reservedAmount: number;
+  expiresAt: string;
   startedAt: number;
 };
 
@@ -65,7 +66,17 @@ export function resetTestTokenState(userId: string, balance = 100000) {
 }
 
 function shouldUseTestTokenStore(): boolean {
-  return process.env.NODE_ENV === "test" && process.env.TOKEN_TEST_MODE === "true";
+  if (process.env.TOKEN_TEST_MODE !== "true") {
+    return false;
+  }
+  if (process.env.NODE_ENV === "test") {
+    return true;
+  }
+  return (
+    process.env.NODE_ENV === "development" &&
+    process.env.E2E_TEST_AUTH === "true" &&
+    process.env.AI_MOCK_MODE === "true"
+  );
 }
 
 function isTokenSystemConfigured(): boolean {
@@ -219,6 +230,9 @@ export async function reserveAiTokens({
     const wallet = await getWalletBalance(userId);
     const existing = testReservations.get(requestId);
     if (existing) {
+      if (existing.userId !== userId) {
+        throw new Error("duplicate_request_id_for_different_user");
+      }
       return existing;
     }
     if (wallet.available_balance < reservedAmount) {
@@ -235,6 +249,7 @@ export async function reserveAiTokens({
       model,
       rateCard,
       reservedAmount,
+      expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
       startedAt: Date.now(),
       status: "reserved",
     };
@@ -269,7 +284,7 @@ export async function reserveAiTokens({
   }
 
   const reservationRow = (Array.isArray(data) ? data[0] : data) as
-    | { reserved_amount?: number }
+    | { reserved_amount?: number; expires_at?: string }
     | null;
   return {
     requestId,
@@ -280,7 +295,47 @@ export async function reserveAiTokens({
     model,
     rateCard,
     reservedAmount: Number(reservationRow?.reserved_amount ?? reservedAmount),
+    expiresAt: String(reservationRow?.expires_at ?? ""),
     startedAt: Date.now(),
+  };
+}
+
+export async function reconcileExpiredTokenReservations(limit = 100): Promise<{
+  released: number;
+  reservations: Array<{
+    request_id: string;
+    user_id: string;
+    released_amount: number;
+  }>;
+}> {
+  if (shouldUseTestTokenStore()) {
+    return { released: 0, reservations: [] };
+  }
+
+  if (!isTokenSystemConfigured()) {
+    throw new Error("トークン管理のSupabase設定が不足しています。");
+  }
+
+  const supabase = createSupabaseServiceClient();
+  const { data, error } = await supabase.rpc(
+    "release_expired_token_reservations",
+    {
+      p_limit: Math.max(1, Math.min(Math.floor(limit), 1000)),
+    },
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  const reservations = (data ?? []) as unknown as Array<{
+    request_id: string;
+    user_id: string;
+    released_amount: number;
+  }>;
+  return {
+    released: reservations.length,
+    reservations,
   };
 }
 

@@ -224,9 +224,16 @@ export function useAppStorage() {
         window.localStorage.setItem(LOCAL_STORAGE_IMPORT_STATUS_KEY, "declined");
         setCloudSyncEnabled(true);
         setStorage(defaultStorage);
+        if (cloudSyncEnabled) {
+          void fetch("/api/storage", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(defaultStorage),
+          });
+        }
       },
     }),
-    [commit],
+    [cloudSyncEnabled, commit],
   );
 
   return {

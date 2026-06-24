@@ -1,0 +1,156 @@
+# 本番化前監査 / Staging導入 Runbook
+
+## 最終アプリ名とBundle ID候補
+
+- App name: `Yell for You`
+- iOS Bundle ID候補: `jp.omotes.yellforyou`
+- Android applicationId候補: `jp.omotes.yellforyou`
+- Web production domain候補: `yell-for-you.app` または現行Vercel domain
+
+Capacitor、iOS、Android、決済機能はこのPhaseでは追加しません。
+
+## 人間が先に行う設定
+
+1. Supabase projectを2つ作成します。
+   - `Yell for You Staging`
+   - `Yell for You Production`
+2. 認証メール用SMTPを契約・設定します。
+   - 推奨候補: Resend、Postmark、Amazon SES
+   - Supabase標準メール配信のまま一般公開しないでください。
+3. Vercel Environment Variablesを分離します。
+   - Preview -> Supabase Staging
+   - Production -> Supabase Production
+4. 秘密鍵はCodex会話欄へ貼らず、Vercelとローカル `.env.local` に直接設定します。
+
+## Vercel Preview環境変数
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=<staging url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<staging anon key>
+SUPABASE_SERVICE_ROLE_KEY=<staging service role key>
+SUPABASE_STORAGE_BUCKETS=
+APP_SIGNUP_GRANT_TOKENS=100000
+APP_REALTIME_SESSION_RESERVATION_SECONDS=180
+VERCEL_CRON_SECRET=<preview cron secret>
+AI_PROVIDER=groq
+GROQ_API_KEY=<staging/test key>
+AI_MOCK_MODE=false
+```
+
+## Vercel Production環境変数
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=<production url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<production anon key>
+SUPABASE_SERVICE_ROLE_KEY=<production service role key>
+SUPABASE_STORAGE_BUCKETS=
+APP_SIGNUP_GRANT_TOKENS=0
+APP_REALTIME_SESSION_RESERVATION_SECONDS=180
+VERCEL_CRON_SECRET=<production cron secret>
+AI_PROVIDER=groq
+GROQ_API_KEY=<production key>
+AI_MOCK_MODE=false
+```
+
+環境変数変更は既存デプロイへ反映されません。Preview/Productionとも再デプロイが必要です。
+
+## Supabase migration適用
+
+Staging:
+
+```bash
+supabase login
+supabase link --project-ref <staging-project-ref>
+supabase db push
+```
+
+Productionは明示許可が出るまで実行しません。
+
+Production実行時:
+
+```bash
+supabase link --project-ref <production-project-ref>
+supabase db push
+```
+
+## 初期rate card投入
+
+`supabase/migrations/202606240001_multi_user_tokens.sql` に `default-v1` の初期rate card投入が含まれます。係数変更は `token_rate_cards` に新versionを追加し、既存行を上書きしないでください。
+
+## テストユーザー作成
+
+Supabase DashboardのAuthenticationからStaging用に2ユーザーを作成し、メール確認済みにします。
+
+```env
+RLS_USER_A_EMAIL=
+RLS_USER_A_PASSWORD=
+RLS_USER_B_EMAIL=
+RLS_USER_B_PASSWORD=
+```
+
+## テストトークン付与CLI
+
+```bash
+SUPABASE_URL=<staging url> \
+SUPABASE_SERVICE_ROLE_KEY=<staging service key> \
+npm run tokens:grant-test -- --user <auth-user-uuid> --amount 100000
+```
+
+## expired reservation解放
+
+CLI:
+
+```bash
+SUPABASE_URL=<staging url> \
+SUPABASE_SERVICE_ROLE_KEY=<staging service key> \
+npm run tokens:release-expired -- --limit 100
+```
+
+Vercel Cronまたは手動HTTP:
+
+```bash
+curl -X POST https://<preview-domain>/api/admin/reconcile-token-reservations \
+  -H "Authorization: Bearer $VERCEL_CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"limit":100}'
+```
+
+この処理は `status='reserved' and expires_at < now()` だけを `for update skip locked` で処理するため、複数回実行しても二重返却されません。
+
+## Previewデプロイ
+
+```bash
+git push origin codex/staging-hardening-auth-tokens
+```
+
+VercelがPreview deploymentを作成します。Preview環境変数がStaging Supabaseを指していることを確認してください。
+
+## Staging検証
+
+```bash
+npm run typecheck
+npm run lint
+npm run test
+npm run build
+
+SUPABASE_URL=<staging url> \
+SUPABASE_ANON_KEY=<staging anon key> \
+RLS_USER_A_EMAIL=... \
+RLS_USER_A_PASSWORD=... \
+RLS_USER_B_EMAIL=... \
+RLS_USER_B_PASSWORD=... \
+npm run supabase:verify-rls
+
+npm run e2e
+```
+
+## Production移行時のrollback
+
+1. Production適用前にGit tagを作成します。
+   ```bash
+   git tag production-before-multi-user-YYYYMMDD <commit>
+   git push origin production-before-multi-user-YYYYMMDD
+   ```
+2. Vercelは直前のProduction DeploymentへPromote/Rollbackします。
+3. DB migration後のrollbackが必要な場合は、SupabaseのPITRまたは事前backupから復元します。RLS/関数だけの問題なら追加migrationで権限を閉じる方を優先します。
+4. Production DBに破壊的DROPを含むmigrationは、このPhaseでは作りません。

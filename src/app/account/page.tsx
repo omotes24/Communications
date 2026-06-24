@@ -38,6 +38,12 @@ export default async function AccountPage() {
             利用履歴を見る
           </Link>
           <Link
+            href="/account/privacy"
+            className="rounded-[22px] bg-white p-5 text-sm font-semibold shadow-sm ring-1 ring-black/[0.06] transition hover:-translate-y-0.5"
+          >
+            データ設定
+          </Link>
+          <Link
             href="/account/delete"
             className="rounded-[22px] bg-red-50 p-5 text-sm font-semibold text-red-700 ring-1 ring-red-100 transition hover:-translate-y-0.5"
           >

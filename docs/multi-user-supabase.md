@@ -10,6 +10,8 @@
    - `https://<your-domain>/auth/callback`
 5. Project Settingsから `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY` を取得します。
 
+Staging/Production分離、SMTP、Previewデプロイ、RLS検証、rollbackは `docs/staging-hardening-runbook.md` を参照してください。
+
 ## Vercel
 
 Vercel Environment Variablesに次を設定します。
