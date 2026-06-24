@@ -31,7 +31,7 @@ SUPABASE_SERVICE_ROLE_KEY=<staging service role key>
 SUPABASE_STORAGE_BUCKETS=
 APP_SIGNUP_GRANT_TOKENS=100000
 APP_REALTIME_SESSION_RESERVATION_SECONDS=180
-VERCEL_CRON_SECRET=<preview cron secret>
+CRON_SECRET=<preview manual admin secret>
 AI_PROVIDER=groq
 GROQ_API_KEY=<staging/test key>
 AI_MOCK_MODE=false
@@ -46,7 +46,7 @@ SUPABASE_SERVICE_ROLE_KEY=<production service role key>
 SUPABASE_STORAGE_BUCKETS=
 APP_SIGNUP_GRANT_TOKENS=0
 APP_REALTIME_SESSION_RESERVATION_SECONDS=180
-VERCEL_CRON_SECRET=<production cron secret>
+CRON_SECRET=<production cron secret>
 AI_PROVIDER=groq
 GROQ_API_KEY=<production key>
 AI_MOCK_MODE=false
@@ -98,6 +98,8 @@ npm run tokens:grant-test -- --user <auth-user-uuid> --amount 100000
 
 ## expired reservation解放
 
+Vercel CronはProduction deploymentのURLだけを定期実行します。Preview deploymentはVercel Cronで定期実行されないため、Staging PreviewではCLI、または `Authorization: Bearer $CRON_SECRET` で保護された管理APIから手動実行してください。
+
 CLI:
 
 ```bash
@@ -106,14 +108,16 @@ SUPABASE_SERVICE_ROLE_KEY=<staging service key> \
 npm run tokens:release-expired -- --limit 100
 ```
 
-Vercel Cronまたは手動HTTP:
+Staging Previewでの手動HTTP:
 
 ```bash
 curl -X POST https://<preview-domain>/api/admin/reconcile-token-reservations \
-  -H "Authorization: Bearer $VERCEL_CRON_SECRET" \
+  -H "Authorization: Bearer $CRON_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"limit":100}'
 ```
+
+ProductionでVercel Cronを設定する場合、Vercelは `CRON_SECRET` の値を `Authorization: Bearer <CRON_SECRET>` として送信します。Route Handlerはこの `Authorization` ヘッダーだけを検証し、secret未設定時はfail closedします。
 
 この処理は `status='reserved' and expires_at < now()` だけを `for update skip locked` で処理するため、複数回実行しても二重返却されません。
 
