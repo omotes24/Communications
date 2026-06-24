@@ -137,7 +137,7 @@ export function AccountMenu() {
               href="/account/usage"
               className="rounded-2xl px-3 py-2 hover:bg-[#f5f5f7]"
             >
-              利用履歴
+              トークン利用
             </Link>
             <Link
               href="/pricing"

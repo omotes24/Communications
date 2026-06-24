@@ -22,15 +22,21 @@ export default async function UsagePage() {
   return (
     <AppShell>
       <PageHeader
-        title="Usage"
-        description="アプリ内トークンの残高、予約中残高、直近の増減を確認できます。"
+        title="トークン利用"
+        description="アプリ内トークンの残高、累計消費、予約中残高、直近の増減を確認できます。"
       />
 
-      <section className="grid gap-5 md:grid-cols-3">
+      <section className="grid gap-5 md:grid-cols-4">
         <div className="rounded-[26px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
           <p className="text-xs font-semibold text-[#6e6e73]">利用可能残高</p>
           <p className="mt-3 text-3xl font-semibold">
             {wallet.available_balance.toLocaleString()}
+          </p>
+        </div>
+        <div className="rounded-[26px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
+          <p className="text-xs font-semibold text-[#6e6e73]">累計消費</p>
+          <p className="mt-3 text-3xl font-semibold">
+            {wallet.lifetime_consumed.toLocaleString()}
           </p>
         </div>
         <div className="rounded-[26px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
