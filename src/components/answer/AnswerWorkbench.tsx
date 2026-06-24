@@ -768,47 +768,40 @@ export function AnswerWorkbench({
                   <Brain className="h-3.5 w-3.5" aria-hidden />
                   フェルミ推定
                 </button>
-              </div>
-
-              {answerModelMode === "fermi" ? (
-                <label
-                  className={cn(
-                    "grid gap-2 rounded-2xl p-3 text-xs font-semibold",
-                    isDark
-                      ? "bg-white/10 text-white/70"
-                      : "bg-[#f5f5f7] text-[#6e6e73]",
-                  )}
-                >
-                  <span className="flex items-center justify-between gap-2">
-                    <span>回答尺</span>
+                {answerModelMode === "fermi" ? (
+                  <label
+                    className={cn(
+                      "inline-flex min-h-9 w-full items-center gap-2 rounded-full px-3 text-xs font-semibold sm:w-[300px]",
+                      isDark
+                        ? "bg-white/10 text-white/70"
+                        : "bg-[#f5f5f7] text-[#6e6e73]",
+                    )}
+                  >
+                    <span className="shrink-0">回答尺</span>
+                    <input
+                      type="range"
+                      min={300}
+                      max={900}
+                      step={10}
+                      value={answerLengthTarget}
+                      onChange={(event) =>
+                        setAnswerLengthTarget(Number(event.target.value))
+                      }
+                      className="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--accent)]"
+                    />
                     <span
                       className={cn(
-                        "rounded-full px-2.5 py-1",
+                        "shrink-0 rounded-full px-2 py-0.5",
                         isDark
                           ? "bg-neutral-950 text-white"
                           : "bg-white text-[#1d1d1f]",
                       )}
                     >
-                      約{answerLengthTarget}文字
+                      約{answerLengthTarget}
                     </span>
-                  </span>
-                  <input
-                    type="range"
-                    min={300}
-                    max={900}
-                    step={10}
-                    value={answerLengthTarget}
-                    onChange={(event) =>
-                      setAnswerLengthTarget(Number(event.target.value))
-                    }
-                    className="h-2 w-full cursor-pointer accent-[var(--accent)]"
-                  />
-                  <span className="flex justify-between text-[11px] text-[#86868b]">
-                    <span>短め</span>
-                    <span>長め</span>
-                  </span>
-                </label>
-              ) : null}
+                  </label>
+                ) : null}
+              </div>
 
               <label
                 className={cn(
