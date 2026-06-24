@@ -20,7 +20,7 @@ export function getCompanyInputCopy(mode = getCompanyInputMode()) {
         "自分スロット、会社名、企業Webサイト・採用情報など、志望コースを入力してください。",
       placeholder: "企業サイト、採用ページ、募集要項URL",
       progress:
-        "Webサイトと採用情報を確認し、自己情報に合わせた会社スロットへ整理しています。予測は約3.5分を基準にした経過時間からの推定です。",
+        "Webサイト、採用情報、ニュースなどを確認し、自己情報に合わせた会社スロットへ整理しています。通常2〜5分程度かかります。",
       promptField: "企業Webサイト・採用情報など",
       schemaMissing: "企業Webサイト・採用情報などを入力してください",
     };
@@ -39,7 +39,7 @@ export function getCompanyInputCopy(mode = getCompanyInputMode()) {
     placeholder:
       "例: 採用ページURL、募集要項URL、社風、採用で強調されている人物像、選考で見られそうな点、特筆事項、直近のニュースメモなど",
     progress:
-      "入力されたURL、社風、採用情報、特筆事項を読み、自己情報に合わせた会社スロットへ整理しています。予測は約3.5分を基準にした経過時間からの推定です。",
+      "入力されたURL、社風、採用情報、特筆事項、ニュースなどを確認し、自己情報に合わせた会社スロットへ整理しています。通常2〜5分程度かかります。",
     promptField: "社風・採用情報・URL・特筆事項など(詳細)",
     schemaMissing: "社風・採用情報・URL・特筆事項などを入力してください",
   };

@@ -30,7 +30,7 @@ export default function SetupPage() {
   const providerName = "OpenAI API";
   const providerStatus = "OpenAI APIで動作";
   const modelRoleText =
-    "OpenAI APIを使う設定では、音声文字起こし、質問判定、回答生成、企業理解を用途別のOpenAIモデルに分けています。企業理解では必要に応じてweb_searchを使います。";
+    "OpenAI APIを使う設定では、音声文字起こし、質問判定、回答生成、企業理解を用途別のOpenAIモデルに分けています。企業理解ではDeep Researchモデルとweb searchを使います。";
   const envExample = `AI_PROVIDER=openai
 NEXT_PUBLIC_AI_PROVIDER=openai
 OPENAI_API_KEY=新しいAPIキー
@@ -39,6 +39,7 @@ OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
 OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
 OPENAI_ANSWER_MODEL=gpt-5.4-mini
 OPENAI_RESEARCH_MODEL=gpt-5.5
+OPENAI_DEEP_RESEARCH_MODEL=o4-mini-deep-research
 
 AI_MOCK_MODE=false`;
   const systemFlow = [

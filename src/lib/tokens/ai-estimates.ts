@@ -46,8 +46,8 @@ export function estimateResearchCompanyTokens(
       body.desiredCourse,
       body.additionalNotes,
     ].join("\n"),
-    1200,
-    1,
+    9000,
+    12,
   );
 }
 

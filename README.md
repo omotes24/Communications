@@ -10,6 +10,7 @@
 - プロフィール、企業情報、面接ログ、設定のクラウド保存
 - localStorageからクラウド保存への移行
 - OpenAI APIを使ったAI処理
+- OpenAI Deep Researchによる企業・採用情報の調査
 - アプリ内トークン残高、予約、消費履歴
 - Stripe Checkoutによるトークン購入
 - Stripe webhook検証後のトークン付与
@@ -38,6 +39,7 @@ OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
 OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
 OPENAI_ANSWER_MODEL=gpt-5.4-mini
 OPENAI_RESEARCH_MODEL=gpt-5.5
+OPENAI_DEEP_RESEARCH_MODEL=o4-mini-deep-research
 
 AI_MOCK_MODE=false
 

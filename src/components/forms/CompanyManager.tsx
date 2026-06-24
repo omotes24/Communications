@@ -30,7 +30,7 @@ import {
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 import { cn } from "@/lib/utils";
 
-const estimatedResearchMs = 210_000;
+const estimatedResearchMs = 300_000;
 const maxInProgressResearchPercent = 96;
 const progressRangePercent = 92;
 

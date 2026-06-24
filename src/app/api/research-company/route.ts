@@ -1,4 +1,5 @@
 import { zodTextFormat } from "openai/helpers/zod";
+import type { ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
 import { requireApiUser } from "@/lib/auth/server";
 import {
@@ -8,8 +9,12 @@ import {
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
 import {
+  buildCompanyDeepResearchPrompt,
   buildCompanyResearchInput,
+  buildCompanyResearchSynthesisInput,
+  COMPANY_DEEP_RESEARCH_INSTRUCTIONS,
   COMPANY_RESEARCH_INSTRUCTIONS,
+  COMPANY_RESEARCH_SYNTHESIS_INSTRUCTIONS,
 } from "@/lib/prompts/company-research";
 import { jsonError, toPublicError } from "@/lib/privacy/logging";
 import {
@@ -27,12 +32,24 @@ import {
   settleAiTokens,
   TokenBalanceError,
 } from "@/lib/tokens/service";
-import { extractOpenAIUsage } from "@/lib/tokens/usage";
+import { extractOpenAIUsage, type UsageParts } from "@/lib/tokens/usage";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const companyInputMode = getCompanyInputMode();
 const companyInputCopy = getCompanyInputCopy(companyInputMode);
+const deepResearchMaxToolCalls = 12;
+const deepResearchTimeoutMs = 295_000;
+
+type CompanyResearchResult = {
+  output: CompanyResearchOutput | null;
+  usage: UsageParts;
+};
+type DeepResearchCreateParams = ResponseCreateParamsNonStreaming & {
+  max_tool_calls?: number;
+};
 
 function extractUrls(text: string): string[] {
   return Array.from(
@@ -117,6 +134,169 @@ function toCompanyProfile(
   };
 }
 
+function mergeUsageParts(...items: UsageParts[]): UsageParts {
+  return items.reduce<UsageParts>(
+    (total, item) => ({
+      inputTokens: (total.inputTokens ?? 0) + (item.inputTokens ?? 0),
+      cachedInputTokens:
+        (total.cachedInputTokens ?? 0) + (item.cachedInputTokens ?? 0),
+      outputTokens: (total.outputTokens ?? 0) + (item.outputTokens ?? 0),
+      reasoningTokens:
+        (total.reasoningTokens ?? 0) + (item.reasoningTokens ?? 0),
+      audioSeconds: (total.audioSeconds ?? 0) + (item.audioSeconds ?? 0),
+      webSearchCalls:
+        (total.webSearchCalls ?? 0) + (item.webSearchCalls ?? 0),
+    }),
+    {},
+  );
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function extractResponseText(response: unknown): string {
+  const responseRecord = asRecord(response);
+  const directText = responseRecord?.output_text;
+  if (typeof directText === "string" && directText.trim()) {
+    return directText.trim();
+  }
+
+  const output = responseRecord?.output;
+  if (!Array.isArray(output)) {
+    return "";
+  }
+
+  const textParts: string[] = [];
+  for (const item of output) {
+    const itemRecord = asRecord(item);
+    const content = itemRecord?.content;
+    if (!Array.isArray(content)) {
+      continue;
+    }
+    for (const part of content) {
+      const partRecord = asRecord(part);
+      const text = partRecord?.text;
+      if (typeof text === "string" && text.trim()) {
+        textParts.push(text.trim());
+      }
+    }
+  }
+  return textParts.join("\n\n").trim();
+}
+
+function countWebSearchCalls(response: unknown): number {
+  const output = asRecord(response)?.output;
+  if (!Array.isArray(output)) {
+    return 0;
+  }
+  return output.reduce((count, item) => {
+    return asRecord(item)?.type === "web_search_call" ? count + 1 : count;
+  }, 0);
+}
+
+async function runStructuredCompanyResearch(
+  client: ReturnType<typeof createOpenAIClient>,
+  model: string,
+  body: ResearchCompanyRequest,
+  signal: AbortSignal,
+  useWebSearch: boolean,
+): Promise<CompanyResearchResult> {
+  const response = await client.responses.parse(
+    {
+      model,
+      instructions: COMPANY_RESEARCH_INSTRUCTIONS,
+      input: buildCompanyResearchInput(body),
+      ...(useWebSearch
+        ? {
+            tools: [
+              {
+                type: "web_search" as const,
+                search_context_size: "high" as const,
+              },
+            ],
+            tool_choice: "required" as const,
+            include: ["web_search_call.action.sources" as const],
+          }
+        : {}),
+      text: {
+        format: zodTextFormat(companyResearchOutputSchema, "company_research"),
+      },
+      store: false,
+    },
+    { signal },
+  );
+
+  return {
+    output: response.output_parsed,
+    usage: {
+      ...extractOpenAIUsage(response),
+      webSearchCalls: useWebSearch
+        ? Math.max(countWebSearchCalls(response), 1)
+        : 0,
+    },
+  };
+}
+
+async function runDeepOpenAICompanyResearch(
+  client: ReturnType<typeof createOpenAIClient>,
+  env: ReturnType<typeof getServerEnv>,
+  body: ResearchCompanyRequest,
+  signal: AbortSignal,
+): Promise<CompanyResearchResult> {
+  const reportParams: DeepResearchCreateParams = {
+    model: env.DEEP_RESEARCH_MODEL,
+    instructions: COMPANY_DEEP_RESEARCH_INSTRUCTIONS,
+    input: buildCompanyDeepResearchPrompt(body),
+    tools: [
+      {
+        type: "web_search_preview" as const,
+        search_context_size: "high" as const,
+      },
+    ],
+    tool_choice: "required" as const,
+    max_tool_calls: deepResearchMaxToolCalls,
+    include: ["web_search_call.action.sources" as const],
+    store: false,
+  };
+  const reportResponse = await client.responses.create(reportParams, {
+    signal,
+  });
+  const deepResearchReport = extractResponseText(reportResponse);
+  if (!deepResearchReport) {
+    return {
+      output: null,
+      usage: extractOpenAIUsage(reportResponse),
+    };
+  }
+
+  const synthesisResponse = await client.responses.parse(
+    {
+      model: env.RESEARCH_MODEL,
+      instructions: COMPANY_RESEARCH_SYNTHESIS_INSTRUCTIONS,
+      input: buildCompanyResearchSynthesisInput(body, deepResearchReport),
+      text: {
+        format: zodTextFormat(companyResearchOutputSchema, "company_research"),
+      },
+      store: false,
+    },
+    { signal },
+  );
+
+  return {
+    output: synthesisResponse.output_parsed,
+    usage: mergeUsageParts(
+      {
+        ...extractOpenAIUsage(reportResponse),
+        webSearchCalls: Math.max(countWebSearchCalls(reportResponse), 1),
+      },
+      extractOpenAIUsage(synthesisResponse),
+    ),
+  };
+}
+
 export async function POST(request: Request): Promise<Response> {
   const auth = await requireApiUser();
   if (!auth.ok) {
@@ -126,7 +306,10 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const body = researchCompanyRequestSchema.parse(await request.json());
     const env = getServerEnv();
-    const model = env.RESEARCH_MODEL;
+    const model =
+      env.AI_PROVIDER === "openai"
+        ? env.DEEP_RESEARCH_MODEL
+        : env.RESEARCH_MODEL;
     const { requestId, operationId } = createRequestIds(request);
     const reservation = await reserveAiTokens({
       userId: auth.user.id,
@@ -140,53 +323,42 @@ export async function POST(request: Request): Promise<Response> {
 
     if (env.AI_MOCK_MODE) {
       await settleAiTokens(reservation, {
-        inputTokens: 500,
-        outputTokens: 600,
-        webSearchCalls: env.AI_PROVIDER === "openai" ? 1 : 0,
+        inputTokens: 1200,
+        outputTokens: 1800,
+        webSearchCalls: env.AI_PROVIDER === "openai" ? 8 : 0,
       });
       return Response.json(mockResearchCompany(body));
     }
 
     try {
-      const client = createOpenAIClient();
-      const response = await client.responses.parse(
-        {
-          model,
-          instructions: COMPANY_RESEARCH_INSTRUCTIONS,
-          input: buildCompanyResearchInput(body),
-          ...(env.AI_PROVIDER === "openai"
-            ? {
-                tools: [
-                  {
-                    type: "web_search" as const,
-                    search_context_size: "high" as const,
-                  },
-                ],
-                tool_choice: "required" as const,
-                include: ["web_search_call.action.sources" as const],
-              }
-            : {}),
-          text: {
-            format: zodTextFormat(
-              companyResearchOutputSchema,
-              "company_research",
-            ),
-          },
-          store: false,
-        },
-        { signal: request.signal },
+      const client = createOpenAIClient(
+        env.AI_PROVIDER === "openai"
+          ? { timeoutMs: deepResearchTimeoutMs }
+          : undefined,
       );
+      const result =
+        env.AI_PROVIDER === "openai"
+          ? await runDeepOpenAICompanyResearch(
+              client,
+              env,
+              body,
+              request.signal,
+            )
+          : await runStructuredCompanyResearch(
+              client,
+              model,
+              body,
+              request.signal,
+              false,
+            );
 
-      if (!response.output_parsed) {
+      if (!result.output) {
         await releaseAiTokenReservation(reservation, "parse_failed");
         return jsonError("企業調査結果の解析に失敗しました", 502);
       }
 
-      await settleAiTokens(reservation, {
-        ...extractOpenAIUsage(response),
-        webSearchCalls: env.AI_PROVIDER === "openai" ? 1 : 0,
-      });
-      return Response.json(toCompanyProfile(response.output_parsed, body));
+      await settleAiTokens(reservation, result.usage);
+      return Response.json(toCompanyProfile(result.output, body));
     } catch (error) {
       await releaseAiTokenReservation(reservation, "api_failed");
       throw error;
