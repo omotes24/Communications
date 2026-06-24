@@ -12,6 +12,12 @@ const serverEnvSchema = z.object({
   AI_MOCK_MODE: booleanEnvSchema,
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-realtime-whisper"),
+  OPENAI_TRANSCRIPTION_DELAY: z
+    .enum(["minimal", "low", "medium", "high", "xhigh"])
+    .default("low"),
+  OPENAI_AUDIO_NOISE_REDUCTION: z
+    .enum(["near_field", "far_field", "off"])
+    .default("near_field"),
   OPENAI_CLASSIFIER_MODEL: z.string().default("gpt-5.4-nano"),
   OPENAI_ANSWER_MODEL: z.string().default("gpt-5.4-mini"),
   OPENAI_RESEARCH_MODEL: z.string().default("gpt-5.5"),

@@ -63,6 +63,16 @@ describe("transcript auto submit helpers", () => {
     expect(
       looksLikeInterviewQuestion("研究で工夫した点について聞かせてください"),
     ).toBe(true);
+    expect(
+      looksLikeInterviewQuestion(
+        "なぜエンジニア職ではなくビジネス職を志望しているのですか",
+      ),
+    ).toBe(true);
+    expect(
+      looksLikeInterviewQuestion(
+        "当社であなたの強みがどう生きるか教えてください",
+      ),
+    ).toBe(true);
     expect(looksLikeInterviewQuestion("本日はよろしくお願いいたします。")).toBe(
       false,
     );

@@ -23,6 +23,17 @@ export async function POST(request: Request): Promise<Response> {
     const reservedSeconds = Number(
       process.env.APP_REALTIME_SESSION_RESERVATION_SECONDS ?? 180,
     );
+    const transcriptionConfig = {
+      model: env.TRANSCRIPTION_MODEL,
+      language: "ja",
+      ...(env.TRANSCRIPTION_MODEL === "gpt-realtime-whisper"
+        ? { delay: env.OPENAI_TRANSCRIPTION_DELAY }
+        : {}),
+    };
+    const noiseReductionConfig =
+      env.OPENAI_AUDIO_NOISE_REDUCTION === "off"
+        ? null
+        : { type: env.OPENAI_AUDIO_NOISE_REDUCTION };
     const { requestId, operationId } = createRequestIds(request);
     const reservation = await reserveAiTokens({
       userId: auth.user.id,
@@ -75,10 +86,9 @@ export async function POST(request: Request): Promise<Response> {
               type: "transcription",
               audio: {
                 input: {
+                  noise_reduction: noiseReductionConfig,
                   transcription: {
-                    model: env.TRANSCRIPTION_MODEL,
-                    language: "ja",
-                    delay: "low",
+                    ...transcriptionConfig,
                   },
                   turn_detection: null,
                 },

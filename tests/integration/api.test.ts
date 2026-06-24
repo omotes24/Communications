@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST as classifyQuestion } from "@/app/api/classify-question/route";
 import { POST as generateAnswer } from "@/app/api/generate-answer/route";
@@ -16,6 +16,7 @@ const testUserId = "00000000-0000-4000-8000-000000000001";
 
 describe("API routes in mock mode", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     process.env.AI_MOCK_MODE = "true";
     process.env.TEST_AUTH_USER_ID = testUserId;
     process.env.TOKEN_TEST_MODE = "true";
@@ -207,5 +208,44 @@ describe("API routes in mock mode", () => {
       reservationSeconds: 10,
       reservationExpiresAt: expect.any(String),
     });
+  });
+
+  it("keeps realtime transcription low latency while enabling input cleanup", async () => {
+    process.env.AI_MOCK_MODE = "false";
+    process.env.AI_PROVIDER = "openai";
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    process.env.OPENAI_TRANSCRIPTION_MODEL = "gpt-realtime-whisper";
+    delete process.env.OPENAI_TRANSCRIPTION_DELAY;
+    delete process.env.OPENAI_AUDIO_NOISE_REDUCTION;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          value: "ephemeral-token",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const response = await realtimeSession(
+      new Request("http://localhost/api/realtime-session", {
+        method: "POST",
+      }),
+    );
+
+    expect(response.ok).toBe(true);
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    const body = JSON.parse(String(init?.body));
+    expect(body.session.audio.input.transcription).toMatchObject({
+      model: "gpt-realtime-whisper",
+      language: "ja",
+      delay: "low",
+    });
+    expect(body.session.audio.input.noise_reduction).toEqual({
+      type: "near_field",
+    });
+    expect(body.session.audio.input.turn_detection).toBeNull();
   });
 });

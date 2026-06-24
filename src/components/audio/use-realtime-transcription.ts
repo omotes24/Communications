@@ -31,6 +31,7 @@ type RealtimeSessionResponse = {
 };
 
 const groqSegmentMs = 2800;
+const realtimeCommitIntervalMs = 1800;
 const realtimeRenewalLeadMs = 15_000;
 
 function getSupportedAudioMimeType(): string | undefined {
@@ -313,7 +314,7 @@ export function useRealtimeTranscription() {
               type: "input_audio_buffer.commit",
             }),
           );
-        }, 1800);
+        }, realtimeCommitIntervalMs);
       });
 
       channel.addEventListener("close", () => {

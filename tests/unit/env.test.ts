@@ -23,6 +23,8 @@ describe("server env", () => {
 
     expect(env.AI_PROVIDER).toBe("openai");
     expect(env.CLASSIFIER_MODEL).toBe("gpt-5.4-nano");
+    expect(env.OPENAI_TRANSCRIPTION_DELAY).toBe("low");
+    expect(env.OPENAI_AUDIO_NOISE_REDUCTION).toBe("near_field");
   });
 
   it("uses Groq only when explicitly selected", () => {
