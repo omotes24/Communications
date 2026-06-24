@@ -32,13 +32,35 @@ export function isDesktopGoogleChrome(
   );
 }
 
-export function toChromeUrl(targetUrl: string): string {
+export function toChromeUrl(
+  targetUrl: string,
+  userAgent =
+    typeof navigator !== "undefined" ? navigator.userAgent : "",
+): string {
   const url = new URL(targetUrl);
+  const encodedTargetUrl = encodeURIComponent(url.toString());
+
+  if (/iPhone|iPad|iPod/.test(userAgent)) {
+    if (url.protocol === "http:") {
+      return `googlechrome:${url.href.slice("http:".length)}`;
+    }
+    if (url.protocol === "https:") {
+      return `googlechromes:${url.href.slice("https:".length)}`;
+    }
+  }
+
+  if (/Android/.test(userAgent)) {
+    return `intent://${url.host}${url.pathname}${url.search}${url.hash}#Intent;scheme=${url.protocol.slice(
+      0,
+      -1,
+    )};package=com.android.chrome;end`;
+  }
+
   if (url.protocol === "http:") {
-    return `googlechrome:${url.href.slice("http:".length)}`;
+    return `google-chrome://navigate?url=${encodedTargetUrl}`;
   }
   if (url.protocol === "https:") {
-    return `googlechromes:${url.href.slice("https:".length)}`;
+    return `google-chrome://navigate?url=${encodedTargetUrl}`;
   }
   return targetUrl;
 }
@@ -77,13 +99,14 @@ export function ChromeStartButton() {
     if (
       isDesktopGoogleChrome(navigator as NavigatorWithUserAgentData) ||
       window.location.protocol === "googlechrome:" ||
-      window.location.protocol === "googlechromes:"
+      window.location.protocol === "googlechromes:" ||
+      window.location.protocol === "google-chrome:"
     ) {
       router.push("/profile");
       return;
     }
 
-    window.location.href = toChromeUrl(profileUrl);
+    window.location.href = toChromeUrl(profileUrl, navigator.userAgent);
     if (fallbackTimerRef.current) {
       window.clearTimeout(fallbackTimerRef.current);
     }
