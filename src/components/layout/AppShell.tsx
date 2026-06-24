@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -26,22 +27,24 @@ const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.2";
 export function AppShell({
   children,
   variant = "light",
-  accent = "default",
 }: {
   children: React.ReactNode;
   variant?: "light" | "dark";
-  accent?: "default" | "brown";
 }) {
   const pathname = usePathname();
+  const [optimisticPathname, setOptimisticPathname] = useState<{
+    from: string;
+    to: string;
+  } | null>(null);
+  const displayedPathname =
+    optimisticPathname?.from === pathname ? optimisticPathname.to : pathname;
   const isDark = variant === "dark";
-  const hasBrownAccent = accent === "brown";
 
   return (
     <div
       className={cn(
         "min-h-screen",
         isDark ? "bg-[#050506] text-white" : "bg-[#f5f5f7] text-[#1d1d1f]",
-        hasBrownAccent ? "english-interview-theme" : null,
       )}
     >
       <header
@@ -96,20 +99,24 @@ export function AppShell({
             {navItems.map((item) => {
               const Icon = item.icon;
               const active =
-                pathname === item.href ||
-                (item.href !== "/" && pathname.startsWith(item.href));
+                displayedPathname === item.href ||
+                (item.href !== "/" && displayedPathname.startsWith(item.href));
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  onPointerDown={() =>
+                    setOptimisticPathname({ from: pathname, to: item.href })
+                  }
+                  onClick={() =>
+                    setOptimisticPathname({ from: pathname, to: item.href })
+                  }
                   className={cn(
-                    "flex h-10 items-center justify-center gap-2 rounded-full px-2 text-sm font-semibold tracking-tight transition",
+                    "flex h-10 items-center justify-center gap-2 rounded-full px-2 text-sm font-semibold tracking-tight transition-colors duration-75",
                     active
                       ? isDark
                         ? "bg-white text-neutral-950 shadow-sm"
-                        : hasBrownAccent
-                          ? "bg-[var(--accent)] text-white shadow-sm"
-                          : "bg-[#1d1d1f] text-white shadow-sm"
+                        : "bg-[var(--accent)] text-white shadow-sm"
                       : isDark
                         ? "text-white/60 hover:bg-white/10 hover:text-white"
                         : "text-[#6e6e73] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",

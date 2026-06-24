@@ -8,7 +8,7 @@ export default async function EnglishInterviewPage() {
   await requireCurrentUser();
 
   return (
-    <AppShell accent="brown">
+    <AppShell>
       <SupportScreen variant="english" />
     </AppShell>
   );

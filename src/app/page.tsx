@@ -53,7 +53,7 @@ export default function Home() {
             </Link>
             <Link
               href="/english-interview"
-              className="inline-flex h-12 items-center gap-2 rounded-full bg-[#8b5e34] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[#6f4726]"
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--accent)] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--accent-hover)]"
             >
               <Languages className="h-4 w-4" aria-hidden />
               英語面接
