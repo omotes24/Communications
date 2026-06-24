@@ -1,19 +1,12 @@
 import { CheckoutButton } from "@/components/billing/CheckoutButton";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
-import {
-  billingPlans,
-  formatJpy,
-  TOKEN_MULTIPLIER_PER_JPY,
-} from "@/lib/billing/plans";
+import { billingPlans, formatJpy } from "@/lib/billing/plans";
 
 export default function PricingPage() {
   return (
     <AppShell>
-      <PageHeader
-        title="課金"
-        description={`支払額1円につき${TOKEN_MULTIPLIER_PER_JPY} tokensを付与します。購入はStripe Checkoutで処理されます。`}
-      />
+      <PageHeader title="課金" />
 
       <section className="grid gap-5">
         <div className="grid gap-4 md:grid-cols-3">

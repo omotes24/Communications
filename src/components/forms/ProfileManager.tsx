@@ -149,7 +149,7 @@ export function ProfileManager() {
     setSelfText("");
     setForbiddenInformation("");
     setImportStatus(
-      "新規スロットを入力できます。保存するとSaved Slotsに追加されます。",
+      "新規スロットを入力できます。保存すると自分フォルダに追加されます。",
     );
   }
 
@@ -411,7 +411,7 @@ export function ProfileManager() {
                 Profile
               </p>
               <h2 className="mt-1 text-xl font-semibold tracking-tight text-[#1d1d1f]">
-                Saved Slots
+                自分フォルダ
               </h2>
               <p className="mt-1 text-xs font-semibold text-[#86868b]">
                 {activeProfiles.length}件を回答に使用
