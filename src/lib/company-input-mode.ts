@@ -29,8 +29,7 @@ export function getCompanyInputCopy(mode = getCompanyInputMode()) {
   return {
     label: "社風・採用情報・特筆事項など(詳細)",
     shortLabel: "社風・採用情報",
-    description:
-      "自分スロット、会社名、社風・採用情報・特筆事項など、志望コース、その他だけで企業研究を作ります。複数社はスロットとして切り替えます。",
+    description: "",
     homeLead:
       "事前学習した自分の情報、会社名、社風・採用情報、志望コースをもとに、",
     setupFlow: "社風・採用情報・特筆事項と志望コースをもとに面接前メモを作成",

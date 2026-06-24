@@ -1,5 +1,3 @@
-import { BadgeJapaneseYen, ReceiptText, ShieldCheck } from "lucide-react";
-
 import { CheckoutButton } from "@/components/billing/CheckoutButton";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -17,7 +15,7 @@ export default function PricingPage() {
         description={`支払額1円につき${TOKEN_MULTIPLIER_PER_JPY} tokensを付与します。購入はStripe Checkoutで処理されます。`}
       />
 
-      <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <section className="grid gap-5">
         <div className="grid gap-4 md:grid-cols-3">
           {billingPlans.map((plan) => (
             <article
@@ -57,47 +55,6 @@ export default function PricingPage() {
             </article>
           ))}
         </div>
-
-        <aside className="grid content-start gap-3">
-          <section className="rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
-            <BadgeJapaneseYen
-              className="h-5 w-5 text-[var(--accent)]"
-              aria-hidden
-            />
-            <h2 className="mt-4 text-lg font-semibold tracking-tight">
-              入金
-            </h2>
-            <p className="mt-2 text-sm font-medium leading-7 text-[#6e6e73]">
-              売上はStripe残高へ入り、Stripe Dashboardで設定した銀行口座へ入金されます。
-            </p>
-          </section>
-
-          <section className="rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
-            <ReceiptText
-              className="h-5 w-5 text-[var(--accent)]"
-              aria-hidden
-            />
-            <h2 className="mt-4 text-lg font-semibold tracking-tight">
-              反映
-            </h2>
-            <p className="mt-2 text-sm font-medium leading-7 text-[#6e6e73]">
-              支払い完了後、Stripe webhookの検証後にトークン残高へ反映されます。
-            </p>
-          </section>
-
-          <section className="rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
-            <ShieldCheck
-              className="h-5 w-5 text-[var(--accent)]"
-              aria-hidden
-            />
-            <h2 className="mt-4 text-lg font-semibold tracking-tight">
-              冪等処理
-            </h2>
-            <p className="mt-2 text-sm font-medium leading-7 text-[#6e6e73]">
-              同じCheckout Sessionのwebhookが再送されても、付与は1回だけです。
-            </p>
-          </section>
-        </aside>
       </section>
     </AppShell>
   );
