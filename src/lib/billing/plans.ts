@@ -7,7 +7,7 @@ export type BillingPlan = {
   badge?: string;
 };
 
-export const TOKEN_MULTIPLIER_PER_JPY = 3;
+export const TOKEN_MULTIPLIER_PER_JPY = 300;
 
 const planInputs = [
   {

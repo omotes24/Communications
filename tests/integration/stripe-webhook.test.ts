@@ -30,7 +30,7 @@ const paidSession = {
   metadata: {
     userId: "00000000-0000-4000-8000-000000000003",
     planId: "standard",
-    tokenAmount: "9000",
+    tokenAmount: "900000",
     amountJpy: "3000",
   },
   currency: "jpy",
@@ -81,7 +81,7 @@ describe("Stripe webhook route", () => {
     );
     expect(mocks.rpc).toHaveBeenCalledWith("grant_purchased_tokens", {
       p_user_id: "00000000-0000-4000-8000-000000000003",
-      p_amount: 9000,
+      p_amount: 900000,
       p_request_id: "stripe:cs_test_123",
       p_plan_id: "standard",
       p_amount_jpy: 3000,
