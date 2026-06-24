@@ -50,7 +50,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     setMessage("");
 
     if (!supabase) {
-      setError("Supabaseの公開設定が不足しています。Settingsを確認してください。");
+      setError("Supabaseの公開設定が不足しています。仕組みページを確認してください。");
       return;
     }
 

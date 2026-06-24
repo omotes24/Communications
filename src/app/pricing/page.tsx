@@ -11,7 +11,7 @@ export default function PricingPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Pricing"
+        title="課金"
         description={`支払額1円につき${TOKEN_MULTIPLIER_PER_JPY} tokensを付与します。購入はStripe Checkoutで処理されます。`}
       />
 

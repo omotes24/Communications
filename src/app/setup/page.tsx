@@ -67,7 +67,7 @@ AI_MOCK_MODE=false`;
   return (
     <AppShell>
       <PageHeader
-        title="Settings"
+        title="仕組み"
         description={`${appName}のフロントエンド、バックエンド、AI連携、音声処理の動作を確認できます。`}
       />
 
@@ -183,7 +183,7 @@ AI_MOCK_MODE=false`;
               </span>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
-                  Privacy
+                  Data
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight">
                   キーとデータの扱い
@@ -246,7 +246,7 @@ AI_MOCK_MODE=false`;
               保存される情報
             </h2>
             <p className="mt-3 text-sm font-medium leading-7 text-[#6e6e73]">
-              プロフィール、会社スロット、学習メモ、回答履歴はこのブラウザ内に保存します。削除はPrivacyページから実行できます。
+              プロフィール、会社スロット、学習メモ、回答履歴はこのブラウザ内に保存します。削除はアカウントのデータ設定画面から実行できます。
             </p>
           </div>
 

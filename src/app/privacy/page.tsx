@@ -5,8 +5,8 @@ export default function PrivacyPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Privacy Policy"
-        description="Yell for You 1.1のデータ処理に関する公開プライバシーポリシーです。"
+        title="データの取り扱い"
+        description="Yell for You 1.1で扱うデータの説明です。"
       />
       <article className="grid gap-5 rounded-[28px] bg-white p-6 text-sm font-medium leading-7 text-[#424245] shadow-sm ring-1 ring-black/[0.06]">
         <section>
@@ -24,7 +24,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-xl font-semibold text-[#1d1d1f]">外部送信先</h2>
           <p className="mt-2">
-            認証・DB保存にはSupabase、ホスティングにはVercel、AI処理にはOpenAIまたはGroq、決済にはStripe、認証メールと問い合わせメール送信には設定済みのメール配信事業者を利用します。メール配信事業者はStaging/Production設定時にResend、Postmark、Amazon SES等から確定します。
+            認証・DB保存にはSupabase、ホスティングにはVercel、AI処理にはOpenAIまたはGroq、決済にはStripe、認証メールと問い合わせメール送信には設定済みのメール配信事業者を利用します。
           </p>
         </section>
         <section>
@@ -37,12 +37,6 @@ export default function PrivacyPage() {
           <h2 className="text-xl font-semibold text-[#1d1d1f]">削除</h2>
           <p className="mt-2">
             アカウント削除を行うと、Supabase Authユーザーと、RLS対象のDBデータはcascade削除されます。Supabase Storageを使う場合は、設定されたbucket内のユーザーprefixも削除対象です。
-          </p>
-        </section>
-        <section>
-          <h2 className="text-xl font-semibold text-[#1d1d1f]">未確認事項</h2>
-          <p className="mt-2">
-            会社運営者情報、正式な問い合わせメールアドレス、メール配信事業者、法域、公開日、改定日は本番公開前に確定が必要です。この文章は実装に基づく下書きであり、法務確認前です。
           </p>
         </section>
       </article>

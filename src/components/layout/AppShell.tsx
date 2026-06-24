@@ -79,10 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             History
           </Link>
           <Link href="/pricing" className="hover:text-[#1d1d1f]">
-            Pricing
-          </Link>
-          <Link href="/privacy" className="hover:text-[#1d1d1f]">
-            Privacy
+            課金
           </Link>
           <Link href="/terms" className="hover:text-[#1d1d1f]">
             規約
@@ -91,7 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Help
           </Link>
           <Link href="/setup" className="hover:text-[#1d1d1f]">
-            Settings
+            仕組み
           </Link>
           <ThemeCustomizer />
         </footer>
