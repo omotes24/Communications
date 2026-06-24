@@ -7,6 +7,7 @@ import {
   useRealtimeTranscription,
   type TranscriptItem,
 } from "@/components/audio/use-realtime-transcription";
+import { mergeTranscriptItemsForReading } from "@/components/audio/transcript-items";
 import {
   createTranscriptSubmitKey,
   extractLikelyInterviewQuestion,
@@ -77,8 +78,8 @@ export function AudioCapturePanel({
       : activeSource === "local"
         ? "マイク"
         : "未選択";
-  const transcriptItemsForDisplay = useMemo(
-    () => transcription.items.slice().reverse(),
+  const transcriptItemsForReading = useMemo(
+    () => mergeTranscriptItemsForReading(transcription.items),
     [transcription.items],
   );
 
@@ -87,7 +88,7 @@ export function AudioCapturePanel({
     if (scrollContainer && transcriptStickToBottomRef.current) {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
-  }, [transcription.items]);
+  }, [transcriptItemsForReading]);
 
   function updateTranscriptScrollMode() {
     const scrollContainer = transcriptScrollRef.current;
@@ -109,17 +110,18 @@ export function AudioCapturePanel({
   }, []);
 
   useEffect(() => {
-    const latestRemoteItem = transcription.items.find(
-      (item) => item.source === "remote" && item.text.trim(),
-    );
+    const latestRemoteItem = transcriptItemsForReading
+      .slice()
+      .reverse()
+      .find((item) => item.source === "remote" && item.text.trim());
     latestRemoteTranscriptTextRef.current = latestRemoteItem
       ? normalizeTranscriptForSubmit(latestRemoteItem.text)
       : "";
-  }, [transcription.items]);
+  }, [transcriptItemsForReading]);
 
   useEffect(() => {
-    onTranscriptItemsChange?.(transcription.items);
-  }, [onTranscriptItemsChange, transcription.items]);
+    onTranscriptItemsChange?.(transcriptItemsForReading);
+  }, [onTranscriptItemsChange, transcriptItemsForReading]);
 
   const getTextAfterResumeBaseline = useCallback((text: string): string => {
     const normalizedText = normalizeTranscriptForSubmit(text);
@@ -174,9 +176,12 @@ export function AudioCapturePanel({
       return;
     }
 
-    const latestRemoteItem = transcription.items.find(
-      (item) => item.source === "remote" && isSubmittableTranscript(item.text),
-    );
+    const latestRemoteItem = transcriptItemsForReading
+      .slice()
+      .reverse()
+      .find(
+        (item) => item.source === "remote" && isSubmittableTranscript(item.text),
+      );
     if (!latestRemoteItem) {
       return;
     }
@@ -227,7 +232,7 @@ export function AudioCapturePanel({
     onRemoteTranscript,
     questionLocked,
     submitRemoteTranscript,
-    transcription.items,
+    transcriptItemsForReading,
   ]);
 
   useEffect(() => {
@@ -455,7 +460,7 @@ export function AudioCapturePanel({
               isDark ? "bg-neutral-900" : "bg-neutral-50",
             )}
           >
-            {transcriptItemsForDisplay.length === 0 ? (
+            {transcriptItemsForReading.length === 0 ? (
               <p
                 className={cn(
                   "mt-auto p-4 text-sm font-medium",
@@ -465,7 +470,7 @@ export function AudioCapturePanel({
                 まだ文字起こしはありません。
               </p>
             ) : (
-              transcriptItemsForDisplay.map((item) => {
+              transcriptItemsForReading.map((item) => {
                 const canConfirmQuestion =
                   item.source === "remote" &&
                   isSubmittableTranscript(item.text) &&

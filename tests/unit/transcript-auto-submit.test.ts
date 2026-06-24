@@ -10,6 +10,7 @@ import {
   remoteTranscriptMinimumAutoSubmitGapMs,
   remoteTranscriptQuestionCueDelayMs,
 } from "@/components/audio/transcript-auto-submit";
+import { mergeTranscriptItemsForReading } from "@/components/audio/transcript-items";
 
 describe("transcript auto submit helpers", () => {
   it("normalizes and filters tiny partial transcripts", () => {
@@ -71,5 +72,39 @@ describe("transcript auto submit helpers", () => {
         "はい、ありがとうございます。承知しました。",
       ),
     ).toBe("");
+  });
+
+  it("merges adjacent finalized transcript fragments for reading", () => {
+    const merged = mergeTranscriptItemsForReading([
+      {
+        id: "3",
+        source: "remote",
+        text: "弱み弱みを教えてください。",
+        final: true,
+        createdAt: 3000,
+      },
+      {
+        id: "2",
+        source: "remote",
+        text: "あなたの",
+        final: true,
+        createdAt: 2000,
+      },
+      {
+        id: "1",
+        source: "remote",
+        text: "面白いですね。",
+        final: true,
+        createdAt: 1000,
+      },
+    ]);
+
+    expect(merged.map((item) => item.text)).toEqual([
+      "面白いですね。",
+      "あなたの 弱みを教えてください。",
+    ]);
+    expect(extractLikelyInterviewQuestion(merged.at(-1)?.text ?? "")).toBe(
+      "あなたの 弱みを教えてください。",
+    );
   });
 });

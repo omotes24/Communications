@@ -6,6 +6,7 @@ import { Wand2 } from "lucide-react";
 import { AnswerWorkbench } from "@/components/answer/AnswerWorkbench";
 import { PreInterviewLearningPanel } from "@/components/answer/PreInterviewLearningPanel";
 import { AudioCapturePanel } from "@/components/audio/AudioCapturePanel";
+import { mergeTranscriptItemsForReading } from "@/components/audio/transcript-items";
 import type { TranscriptItem } from "@/components/audio/use-realtime-transcription";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
@@ -29,7 +30,10 @@ function RealtimeTranscriptPanel({
 }: RealtimeTranscriptPanelProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const stickToBottomRef = useRef(true);
-  const visibleItems = useMemo(() => items.slice().reverse(), [items]);
+  const visibleItems = useMemo(
+    () => mergeTranscriptItemsForReading(items),
+    [items],
+  );
   const isDark = tone === "dark";
 
   useEffect(() => {
