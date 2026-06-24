@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   sessionsCreate: vi.fn(),
+  requireServiceRoleKey: vi.fn(),
 }));
 
 vi.mock("@/lib/billing/stripe", () => ({
@@ -14,6 +15,10 @@ vi.mock("@/lib/billing/stripe", () => ({
   }),
 }));
 
+vi.mock("@/lib/supabase/server-config", () => ({
+  requireSupabaseServiceRoleKey: mocks.requireServiceRoleKey,
+}));
+
 import { POST } from "@/app/api/billing/checkout/route";
 
 const testUserId = "00000000-0000-4000-8000-000000000002";
@@ -22,6 +27,7 @@ describe("billing checkout route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.TEST_AUTH_USER_ID = testUserId;
+    mocks.requireServiceRoleKey.mockReturnValue("service-role-test");
     mocks.sessionsCreate.mockResolvedValue({
       url: "https://checkout.stripe.test/session",
     });
@@ -73,6 +79,22 @@ describe("billing checkout route", () => {
     );
 
     expect(response.status).toBe(404);
+    expect(mocks.sessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects checkout when token grants cannot be written", async () => {
+    mocks.requireServiceRoleKey.mockImplementation(() => {
+      throw new Error("SUPABASE_SERVICE_ROLE_KEYが設定されていません。");
+    });
+
+    const response = await POST(
+      new Request("https://app.example.test/api/billing/checkout", {
+        method: "POST",
+        body: JSON.stringify({ planId: "standard" }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
     expect(mocks.sessionsCreate).not.toHaveBeenCalled();
   });
 });

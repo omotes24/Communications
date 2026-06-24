@@ -4,6 +4,7 @@ import { requireApiUser } from "@/lib/auth/server";
 import { createStripeClient } from "@/lib/billing/stripe";
 import { getBillingPlan } from "@/lib/billing/plans";
 import { jsonError, toPublicError } from "@/lib/privacy/logging";
+import { requireSupabaseServiceRoleKey } from "@/lib/supabase/server-config";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -24,6 +25,8 @@ export async function POST(request: Request): Promise<Response> {
     if (!plan) {
       return jsonError("指定されたプランが見つかりません。", 404);
     }
+
+    requireSupabaseServiceRoleKey();
 
     const origin = new URL(request.url).origin;
     const stripe = createStripeClient();
