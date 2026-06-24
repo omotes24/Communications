@@ -42,7 +42,7 @@ OPENAI_RESEARCH_MODEL=gpt-5.5
 
 AI_MOCK_MODE=false`;
   const systemFlow = [
-    "プロフィールと会社スロットをブラウザに保存",
+    "プロフィールと会社スロットをアカウントに保存",
     companyInputCopy.setupFlow,
     "Meet/Zoomのタブ音声を文字起こしして質問候補を検知",
     "検知した質問を回答チャットへ自動送信し、回答案を生成",
@@ -99,7 +99,7 @@ AI_MOCK_MODE=false`;
                 フロントエンド
               </h2>
               <p className="mt-3 text-sm font-medium leading-7 text-[#6e6e73]">
-                Next.jsの画面でプロフィール、会社スロット、面接チャットを操作します。入力中のプロフィールや会社情報、履歴はブラウザのlocalStorageに保存されます。
+                Next.jsの画面でプロフィール、会社スロット、面接チャットを操作します。保存したプロフィール、会社情報、履歴はログイン中のアカウントに紐づいてSupabaseへ保存されます。
               </p>
               <div className="mt-4 grid gap-2 text-xs font-semibold text-[#424245]">
                 <span className="rounded-full bg-[#f5f5f7] px-3 py-2">

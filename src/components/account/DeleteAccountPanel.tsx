@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  clearAppStorage,
+  LOCAL_STORAGE_IMPORT_STATUS_KEY,
+} from "@/lib/storage/browser-store";
+
 export function DeleteAccountPanel() {
   const router = useRouter();
   const [confirmation, setConfirmation] = useState("");
@@ -29,7 +34,9 @@ export function DeleteAccountPanel() {
         };
         throw new Error(data.error ?? "削除に失敗しました。");
       }
-      window.localStorage.removeItem("jp-interview-assistant:v1");
+      clearAppStorage();
+      window.localStorage.removeItem(LOCAL_STORAGE_IMPORT_STATUS_KEY);
+      window.localStorage.removeItem(`${LOCAL_STORAGE_IMPORT_STATUS_KEY}:import-id`);
       router.replace("/auth/sign-up");
       router.refresh();
     } catch (deleteError) {

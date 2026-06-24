@@ -52,7 +52,7 @@ npm run dev
 
 既存ブラウザの `jp-interview-assistant:v1` は、初回ログイン後に同意ダイアログを表示します。
 
-同意した場合だけ `/api/storage/import-local` へ送信し、`local_storage_imports` の `import_id` と `migration_version` で二重移行を防止します。同意しない限り既存localStorageデータはサーバーに送信しません。
+同意した場合だけ `/api/storage/import-local` へ送信し、`local_storage_imports` の `import_id` と `migration_version` で二重移行を防止します。同意しない限り既存localStorageデータはサーバーに送信しません。移行または拒否後は、別アカウントへ旧ブラウザデータが見えないようにローカルのアプリデータを削除します。
 
 ## Token Model
 

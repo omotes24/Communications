@@ -27,22 +27,12 @@ import {
   type CompanyProfile,
   type UserProfile,
 } from "@/lib/schemas/interview";
-import { COMPANY_FORM_DRAFT_KEY } from "@/lib/storage/browser-store";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 import { cn } from "@/lib/utils";
 
 const estimatedResearchMs = 210_000;
 const maxInProgressResearchPercent = 96;
 const progressRangePercent = 92;
-
-type CompanyFormDraft = {
-  selfInfo: string;
-  companyName: string;
-  companyDetails: string;
-  companyWebsite?: string;
-  desiredCourse: string;
-  additionalNotes: string;
-};
 
 type ResearchProgress = {
   startedAt: number;
@@ -87,39 +77,6 @@ function profilesToSelfInfo(
         .join("\n"),
     )
     .join("\n\n---\n\n");
-}
-
-function readCompanyFormDraft(): CompanyFormDraft | null {
-  try {
-    const raw = window.localStorage.getItem(COMPANY_FORM_DRAFT_KEY);
-    if (!raw) {
-      return null;
-    }
-    const parsed = JSON.parse(raw) as Partial<CompanyFormDraft>;
-    return {
-      selfInfo: typeof parsed.selfInfo === "string" ? parsed.selfInfo : "",
-      companyName:
-        typeof parsed.companyName === "string" ? parsed.companyName : "",
-      companyDetails:
-        typeof parsed.companyDetails === "string"
-          ? parsed.companyDetails
-          : typeof parsed.companyWebsite === "string"
-            ? parsed.companyWebsite
-            : "",
-      desiredCourse:
-        typeof parsed.desiredCourse === "string" ? parsed.desiredCourse : "",
-      additionalNotes:
-        typeof parsed.additionalNotes === "string"
-          ? parsed.additionalNotes
-          : "",
-    };
-  } catch {
-    return null;
-  }
-}
-
-function writeCompanyFormDraft(draft: CompanyFormDraft): void {
-  window.localStorage.setItem(COMPANY_FORM_DRAFT_KEY, JSON.stringify(draft));
 }
 
 function createProgress(startedAt: number): ResearchProgress {
@@ -234,13 +191,6 @@ export function CompanyManager() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const savedDraft = readCompanyFormDraft();
-      if (savedDraft) {
-        setCompanyName(savedDraft.companyName);
-        setCompanyDetails(savedDraft.companyDetails);
-        setDesiredCourse(savedDraft.desiredCourse);
-        setAdditionalNotes(savedDraft.additionalNotes);
-      }
       setFormReady(true);
     }, 0);
     return () => window.clearTimeout(timer);
@@ -255,26 +205,6 @@ export function CompanyManager() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [formReady, suggestedSelfInfo]);
-
-  useEffect(() => {
-    if (!formReady) {
-      return;
-    }
-    writeCompanyFormDraft({
-      selfInfo,
-      companyName,
-      companyDetails,
-      desiredCourse,
-      additionalNotes,
-    });
-  }, [
-    formReady,
-    selfInfo,
-    companyName,
-    companyDetails,
-    desiredCourse,
-    additionalNotes,
-  ]);
 
   useEffect(() => {
     const companyToSelect = activeCompany;

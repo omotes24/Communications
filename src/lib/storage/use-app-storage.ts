@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   addSessionRecord,
@@ -11,10 +11,7 @@ import {
   getActiveCompanies,
   getActiveProfile,
   getActiveProfiles,
-  hasMeaningfulLocalStorage,
-  loadAppStorage,
   LOCAL_STORAGE_IMPORT_STATUS_KEY,
-  saveAppStorage,
   saveLearning,
   setActiveCompany,
   setActiveProfile,
@@ -37,29 +34,11 @@ export function useAppStorage() {
   const [storage, setStorage] = useState<AppStorage>(defaultStorage);
   const [ready, setReady] = useState(false);
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
+  const storageRef = useRef<AppStorage>(defaultStorage);
 
-  useEffect(() => {
-    const loadLatestStorage = () => {
-      setStorage(loadAppStorage());
-      setReady(true);
-    };
-    const timer = window.setTimeout(() => {
-      loadLatestStorage();
-    }, 0);
-
-    const handleBrowserStorage = (event: StorageEvent) => {
-      if (!event.key || event.key === "jp-interview-assistant:v1") {
-        loadLatestStorage();
-      }
-    };
-
-    window.addEventListener(APP_STORAGE_EVENT, loadLatestStorage);
-    window.addEventListener("storage", handleBrowserStorage);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener(APP_STORAGE_EVENT, loadLatestStorage);
-      window.removeEventListener("storage", handleBrowserStorage);
-    };
+  const applyStorage = useCallback((next: AppStorage) => {
+    storageRef.current = next;
+    setStorage(next);
   }, []);
 
   useEffect(() => {
@@ -71,55 +50,43 @@ export function useAppStorage() {
           headers: { Accept: "application/json" },
         });
         if (!response.ok) {
+          applyStorage(defaultStorage);
+          setCloudSyncEnabled(false);
           return;
         }
         const data = (await response.json()) as {
           storage: AppStorage;
-          hasCloudData: boolean;
-          importedLocalStorage: boolean;
         };
         if (cancelled) {
           return;
         }
-
-        const local = loadAppStorage();
-        const importStatus = window.localStorage.getItem(
-          LOCAL_STORAGE_IMPORT_STATUS_KEY,
-        );
-        const localHasData = hasMeaningfulLocalStorage(local);
-        const canUseCloud =
-          data.hasCloudData ||
-          data.importedLocalStorage ||
-          importStatus === "accepted" ||
-          importStatus === "declined" ||
-          !localHasData;
-
-        if (canUseCloud) {
-          setStorage(data.storage);
-          saveAppStorage(data.storage);
-          setCloudSyncEnabled(true);
-        } else {
+        applyStorage(data.storage);
+        setCloudSyncEnabled(true);
+      } catch {
+        if (!cancelled) {
+          applyStorage(defaultStorage);
           setCloudSyncEnabled(false);
         }
-      } catch {
-        setCloudSyncEnabled(false);
+      } finally {
+        if (!cancelled) {
+          setReady(true);
+        }
       }
     }
 
-    if (ready) {
-      void loadCloudStorage();
-    }
+    void loadCloudStorage();
+    window.addEventListener(APP_STORAGE_EVENT, loadCloudStorage);
 
     return () => {
       cancelled = true;
+      window.removeEventListener(APP_STORAGE_EVENT, loadCloudStorage);
     };
-  }, [ready]);
+  }, [applyStorage]);
 
   const commit = useCallback(
     (buildNext: (current: AppStorage) => AppStorage) => {
-      const next = buildNext(loadAppStorage());
-      setStorage(next);
-      saveAppStorage(next);
+      const next = buildNext(storageRef.current);
+      applyStorage(next);
       if (cloudSyncEnabled) {
         void fetch("/api/storage", {
           method: "PUT",
@@ -128,7 +95,7 @@ export function useAppStorage() {
         });
       }
     },
-    [cloudSyncEnabled],
+    [applyStorage, cloudSyncEnabled],
   );
 
   const actions = useMemo(
