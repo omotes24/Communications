@@ -30,10 +30,6 @@ import {
   type QuestionClassification,
 } from "@/lib/schemas/interview";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
-import {
-  estimateClassifyTokens,
-  estimateGenerateAnswerTokens,
-} from "@/lib/tokens/ai-estimates";
 import { normalizeCommonTranscriptErrors } from "@/components/audio/transcript-auto-submit";
 import { cn } from "@/lib/utils";
 
@@ -249,30 +245,6 @@ export function AnswerWorkbench({
     )
       ? storage.learning.brief
       : "";
-  const estimatedOperationTokens =
-    question.trim().length > 0
-      ? estimateClassifyTokens({
-          transcript: question,
-          speaker: autoSource === "remote-audio" ? "remote" : "manual",
-          source: autoSource,
-        }) +
-        estimateGenerateAnswerTokens({
-          question,
-          category: "other",
-          profile: activeProfile,
-          company: activeCompany,
-          profiles: activeProfiles,
-          companies: activeCompanies,
-          learningBrief: activeLearningBrief,
-          conversationContext: buildConversationContext(turns),
-          answerModelMode,
-          fermiEstimationMode,
-          selfSlot,
-          answerLanguage,
-          answerLengthTarget:
-            answerModelMode === "fermi" ? answerLengthTarget : undefined,
-        })
-      : null;
 
   const updateTurn = useCallback(
     (
@@ -639,19 +611,6 @@ export function AnswerWorkbench({
             <Send className="h-4 w-4" aria-hidden />
             {answerLanguage === "en" ? "Create answer" : "回答案を作成"}
           </button>
-          {estimatedOperationTokens ? (
-            <span
-              className={cn(
-                "text-xs font-semibold",
-                isDark ? "text-white/60" : "text-[#6e6e73]",
-              )}
-            >
-              予想消費 約{estimatedOperationTokens.toLocaleString()} tokens
-              <span className="ml-1 font-medium">
-                最終消費量は実際のAPI usageで確定します。
-              </span>
-            </span>
-          ) : null}
           {manualNotice ? (
             <span className="text-sm font-medium text-amber-500">
               {manualNotice}
