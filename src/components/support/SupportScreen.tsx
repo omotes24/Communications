@@ -25,21 +25,27 @@ function RealtimeTranscriptPanel({
   onConfirm,
 }: RealtimeTranscriptPanelProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const latestTextRef = useRef<HTMLParagraphElement | null>(null);
-  const latestItemId = items[0]?.id;
-  const visibleItems = useMemo(() => items.slice(0, 8).reverse(), [items]);
+  const stickToBottomRef = useRef(true);
+  const visibleItems = useMemo(() => items.slice().reverse(), [items]);
 
   useEffect(() => {
     const scrollContainer = scrollRef.current;
-    if (scrollContainer) {
+    if (scrollContainer && stickToBottomRef.current) {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
-
-    const latestText = latestTextRef.current;
-    if (latestText) {
-      latestText.scrollTop = latestText.scrollHeight;
-    }
   }, [items]);
+
+  function updateScrollMode() {
+    const scrollContainer = scrollRef.current;
+    if (!scrollContainer) {
+      return;
+    }
+    const distanceFromBottom =
+      scrollContainer.scrollHeight -
+      scrollContainer.scrollTop -
+      scrollContainer.clientHeight;
+    stickToBottomRef.current = distanceFromBottom < 32;
+  }
 
   function confirmItem(item: TranscriptItem) {
     const normalizedText = normalizeTranscriptForSubmit(item.text);
@@ -65,7 +71,8 @@ function RealtimeTranscriptPanel({
 
       <div
         ref={scrollRef}
-        className="mt-3 flex max-h-72 min-h-40 flex-col overflow-y-auto rounded-2xl border border-neutral-950/10 bg-[#f5f5f7] xl:max-h-[620px]"
+        onScroll={updateScrollMode}
+        className="mt-3 flex h-[calc(var(--transcript-lines)*1.5rem+3rem)] [--transcript-lines:4] flex-col overflow-y-auto overscroll-contain rounded-2xl border border-neutral-950/10 bg-[#f5f5f7] sm:[--transcript-lines:6] lg:[--transcript-lines:8]"
       >
         {visibleItems.length === 0 ? (
           <p className="mt-auto p-4 text-sm font-medium text-[#86868b]">
@@ -85,10 +92,7 @@ function RealtimeTranscriptPanel({
                   <span>{item.source === "remote" ? "相手側" : "自分側"}</span>
                   <span>{item.final ? "確定" : "入力中"}</span>
                 </div>
-                <p
-                  ref={item.id === latestItemId ? latestTextRef : null}
-                  className="max-h-24 overflow-y-auto whitespace-pre-wrap text-[13px] font-medium leading-6 text-[#1d1d1f]"
-                >
+                <p className="whitespace-pre-wrap text-[13px] font-medium leading-6 text-[#1d1d1f]">
                   {item.text}
                 </p>
                 {canConfirm ? (

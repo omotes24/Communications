@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Mic, MonitorUp, Square, Wand2 } from "lucide-react";
 
 import {
@@ -50,6 +50,8 @@ export function AudioCapturePanel({
   const submittedIdsRef = useRef<Set<string>>(new Set());
   const pendingQuestionCueSubmitTimerRef = useRef<number | null>(null);
   const lastAutoSubmittedAtRef = useRef(0);
+  const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
+  const transcriptStickToBottomRef = useRef(true);
   const latestRemoteCandidateRef = useRef<{ id: string; text: string } | null>(
     null,
   );
@@ -72,6 +74,29 @@ export function AudioCapturePanel({
       : activeSource === "local"
         ? "マイク"
         : "未選択";
+  const transcriptItemsForDisplay = useMemo(
+    () => transcription.items.slice().reverse(),
+    [transcription.items],
+  );
+
+  useEffect(() => {
+    const scrollContainer = transcriptScrollRef.current;
+    if (scrollContainer && transcriptStickToBottomRef.current) {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
+  }, [transcription.items]);
+
+  function updateTranscriptScrollMode() {
+    const scrollContainer = transcriptScrollRef.current;
+    if (!scrollContainer) {
+      return;
+    }
+    const distanceFromBottom =
+      scrollContainer.scrollHeight -
+      scrollContainer.scrollTop -
+      scrollContainer.clientHeight;
+    transcriptStickToBottomRef.current = distanceFromBottom < 32;
+  }
 
   const clearPendingRemoteSubmitTimers = useCallback(() => {
     if (pendingQuestionCueSubmitTimerRef.current) {
@@ -375,56 +400,62 @@ export function AudioCapturePanel({
       {showTranscript ? (
         <div className="mt-4 grid gap-2">
           <h3 className="text-sm font-semibold">リアルタイム文字起こし</h3>
-          {transcription.items.length === 0 ? (
-            <p className="rounded-2xl bg-neutral-50 p-4 text-sm font-medium text-neutral-500">
-              まだ文字起こしはありません。
-            </p>
-          ) : (
-            transcription.items.slice(0, 6).map((item) => {
-              const canConfirmQuestion =
-                item.source === "remote" &&
-                isSubmittableTranscript(item.text) &&
-                Boolean(onRemoteTranscript);
+          <div
+            ref={transcriptScrollRef}
+            onScroll={updateTranscriptScrollMode}
+            className="flex h-[calc(var(--transcript-lines)*1.5rem+3rem)] [--transcript-lines:4] flex-col overflow-y-auto overscroll-contain rounded-2xl bg-neutral-50 sm:[--transcript-lines:6] lg:[--transcript-lines:8]"
+          >
+            {transcriptItemsForDisplay.length === 0 ? (
+              <p className="mt-auto p-4 text-sm font-medium text-neutral-500">
+                まだ文字起こしはありません。
+              </p>
+            ) : (
+              transcriptItemsForDisplay.map((item) => {
+                const canConfirmQuestion =
+                  item.source === "remote" &&
+                  isSubmittableTranscript(item.text) &&
+                  Boolean(onRemoteTranscript);
 
-              return (
-                <div
-                  key={`${item.id}-${item.createdAt}`}
-                  className="rounded-2xl border border-neutral-950/10 p-4"
-                >
-                  <div className="mb-1 flex items-center justify-between gap-2 text-xs font-semibold text-neutral-500">
-                    <span>
-                      {item.source === "remote" ? "相手側" : "自分側"}
-                    </span>
-                    <span>{item.final ? "確定" : "入力中"}</span>
+                return (
+                  <div
+                    key={`${item.id}-${item.createdAt}`}
+                    className="border-b border-neutral-950/10 p-3 last:border-b-0"
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-2 text-xs font-semibold text-neutral-500">
+                      <span>
+                        {item.source === "remote" ? "相手側" : "自分側"}
+                      </span>
+                      <span>{item.final ? "確定" : "入力中"}</span>
+                    </div>
+                    <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-800">
+                      {item.text}
+                    </p>
+                    {canConfirmQuestion ? (
+                      <button
+                        type="button"
+                        disabled={questionLocked}
+                        onClick={() => {
+                          const normalizedCandidate =
+                            getTextAfterResumeBaseline(item.text);
+                          const questionCandidate =
+                            extractLikelyInterviewQuestion(
+                              normalizedCandidate,
+                            ) || normalizedCandidate;
+                          if (isSubmittableTranscript(questionCandidate)) {
+                            onRemoteTranscript?.(questionCandidate);
+                          }
+                        }}
+                        className="mt-2 inline-flex h-8 items-center gap-2 rounded-full border border-neutral-950/15 bg-white px-3 text-xs font-semibold transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:text-neutral-400"
+                      >
+                        <Wand2 className="h-3.5 w-3.5" aria-hidden />
+                        {questionLocked ? "質問確定済み" : "質問を確定"}
+                      </button>
+                    ) : null}
                   </div>
-                  <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-800">
-                    {item.text}
-                  </p>
-                  {canConfirmQuestion ? (
-                    <button
-                      type="button"
-                      disabled={questionLocked}
-                      onClick={() => {
-                        const normalizedCandidate = getTextAfterResumeBaseline(
-                          item.text,
-                        );
-                        const questionCandidate =
-                          extractLikelyInterviewQuestion(normalizedCandidate) ||
-                          normalizedCandidate;
-                        if (isSubmittableTranscript(questionCandidate)) {
-                          onRemoteTranscript?.(questionCandidate);
-                        }
-                      }}
-                      className="mt-3 inline-flex h-9 items-center gap-2 rounded-full border border-neutral-950/15 px-3 text-xs font-semibold transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:text-neutral-400"
-                    >
-                      <Wand2 className="h-3.5 w-3.5" aria-hidden />
-                      {questionLocked ? "質問確定済み" : "質問を確定"}
-                    </button>
-                  ) : null}
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
       ) : null}
     </section>

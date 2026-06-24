@@ -16,8 +16,11 @@ export default async function UsagePage() {
   const [wallet, ledger, usage] = await Promise.all([
     getWalletBalance(user.id),
     listLedgerEvents(user.id),
-    listUsageEvents(user.id),
+    listUsageEvents(user.id, 120),
   ]);
+  const dailyUsage = buildDailyUsageChart(usage, 14);
+  const recentUsageTotal = dailyUsage.reduce((sum, item) => sum + item.total, 0);
+  const maxDailyUsage = Math.max(...dailyUsage.map((item) => item.total), 1);
 
   return (
     <AppShell>
@@ -53,6 +56,60 @@ export default async function UsagePage() {
           >
             トークンを追加
           </Link>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-[28px] bg-white p-6 shadow-sm ring-1 ring-black/[0.06]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">
+              日別トークン消費
+            </h2>
+            <p className="mt-2 text-sm font-medium text-[#6e6e73]">
+              直近14日間のAI利用で消費したapp tokensです。
+            </p>
+          </div>
+          <div className="rounded-2xl bg-[#f5f5f7] px-4 py-3 text-right">
+            <p className="text-xs font-semibold text-[#6e6e73]">直近14日</p>
+            <p className="mt-1 text-2xl font-semibold">
+              {recentUsageTotal.toLocaleString()}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 overflow-x-auto pb-2">
+          <div className="grid min-w-[720px] grid-cols-[repeat(14,minmax(0,1fr))] items-end gap-2">
+            {dailyUsage.map((day) => {
+              const barHeight =
+                day.total > 0
+                  ? `${Math.max((day.total / maxDailyUsage) * 100, 6)}%`
+                  : "2px";
+
+              return (
+                <div key={day.key} className="grid gap-2">
+                  <div className="flex h-44 items-end rounded-2xl bg-[#f5f5f7] px-2 py-2">
+                    <div
+                      className={
+                        day.total > 0
+                          ? "w-full rounded-t-xl bg-[var(--accent)]"
+                          : "w-full rounded-full bg-black/10"
+                      }
+                      style={{ height: barHeight }}
+                      title={`${day.label}: ${day.total.toLocaleString()} tokens`}
+                    />
+                  </div>
+                  <div className="grid gap-1 text-center">
+                    <span className="text-[11px] font-semibold text-[#6e6e73]">
+                      {day.label}
+                    </span>
+                    <span className="text-xs font-semibold text-[#1d1d1f]">
+                      {day.total.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
@@ -124,4 +181,43 @@ function formatDate(value: string) {
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function buildDailyUsageChart(
+  usageEvents: Awaited<ReturnType<typeof listUsageEvents>>,
+  days: number,
+) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const rows = Array.from({ length: days }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (days - 1 - index));
+    return {
+      key: formatDateKey(date),
+      label: new Intl.DateTimeFormat("ja-JP", {
+        month: "numeric",
+        day: "numeric",
+      }).format(date),
+      total: 0,
+    };
+  });
+  const rowByKey = new Map(rows.map((row) => [row.key, row]));
+
+  for (const event of usageEvents) {
+    const row = rowByKey.get(formatDateKey(new Date(event.created_at)));
+    if (row) {
+      row.total += Number(event.calculated_app_tokens) || 0;
+    }
+  }
+
+  return rows;
+}
+
+function formatDateKey(value: Date) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(value);
 }
