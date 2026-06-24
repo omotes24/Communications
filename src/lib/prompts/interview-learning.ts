@@ -16,7 +16,7 @@ export function buildInterviewLearningInput(
     "",
     buildEvidenceBlock(request.profile, request.company),
     "",
-    `自分のこと追加メモ: ${request.selfInfo || "なし"}`,
+    `自分スロット追加メモ: ${request.selfInfo || "なし"}`,
     `志望コース: ${request.desiredCourse || request.company?.targetRole || "未指定"}`,
     `その他: ${request.additionalNotes || "なし"}`,
     "",

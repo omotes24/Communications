@@ -2,6 +2,11 @@
 
 import { useCallback, useRef, useState } from "react";
 
+import {
+  normalizeCommonTranscriptErrors,
+  normalizeTranscriptForSubmit,
+} from "@/components/audio/transcript-auto-submit";
+
 export type TranscriptItem = {
   id: string;
   source: "local" | "remote";
@@ -87,6 +92,7 @@ export function useRealtimeTranscription() {
   const [items, setItems] = useState<TranscriptItem[]>([]);
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const channelRef = useRef<RTCDataChannel | null>(null);
+  const realtimeCommitIntervalRef = useRef<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunkSessionRef = useRef<{
     stopped: boolean;
@@ -94,6 +100,10 @@ export function useRealtimeTranscription() {
   } | null>(null);
 
   const stop = useCallback(() => {
+    if (realtimeCommitIntervalRef.current) {
+      window.clearInterval(realtimeCommitIntervalRef.current);
+      realtimeCommitIntervalRef.current = null;
+    }
     if (chunkSessionRef.current) {
       chunkSessionRef.current.stopped = true;
       chunkSessionRef.current.stream
@@ -151,13 +161,17 @@ export function useRealtimeTranscription() {
           formData.append("audio", blob, `audio-${Date.now()}.webm`);
           const response = await fetch("/api/transcribe-audio", {
             method: "POST",
+            headers: {
+              "x-operation-id": crypto.randomUUID(),
+              "x-request-id": crypto.randomUUID(),
+            },
             body: formData,
           });
           if (!response.ok) {
             throw new Error("音声文字起こしに失敗しました");
           }
           const data = (await response.json()) as { text?: string };
-          const text = data.text?.replace(/\s+/g, " ").trim() ?? "";
+          const text = normalizeTranscriptForSubmit(data.text ?? "");
           setItems((current) => {
             if (!text) {
               return current.filter((item) => item.id !== id);
@@ -186,6 +200,10 @@ export function useRealtimeTranscription() {
       try {
         const tokenResponse = await fetch("/api/realtime-session", {
           method: "POST",
+          headers: {
+            "x-operation-id": crypto.randomUUID(),
+            "x-request-id": crypto.randomUUID(),
+          },
         });
         if (!tokenResponse.ok) {
           throw new Error("Realtime セッションを作成できませんでした");
@@ -226,6 +244,26 @@ export function useRealtimeTranscription() {
         const channel = peer.createDataChannel("oai-events");
         channelRef.current = channel;
 
+        channel.addEventListener("open", () => {
+          realtimeCommitIntervalRef.current = window.setInterval(() => {
+            if (channel.readyState !== "open") {
+              return;
+            }
+            channel.send(
+              JSON.stringify({
+                type: "input_audio_buffer.commit",
+              }),
+            );
+          }, 1800);
+        });
+
+        channel.addEventListener("close", () => {
+          if (realtimeCommitIntervalRef.current) {
+            window.clearInterval(realtimeCommitIntervalRef.current);
+            realtimeCommitIntervalRef.current = null;
+          }
+        });
+
         channel.addEventListener("message", (event) => {
           const data = JSON.parse(event.data as string) as RealtimeEvent;
           if (
@@ -233,13 +271,14 @@ export function useRealtimeTranscription() {
           ) {
             setItems((current) => {
               const id = data.item_id ?? "pending";
+              const delta = normalizeCommonTranscriptErrors(data.delta ?? "");
               const existing = current.find((item) => item.id === id);
               if (!existing) {
                 return [
                   {
                     id,
                     source,
-                    text: data.delta ?? "",
+                    text: delta,
                     final: false,
                     createdAt: Date.now(),
                   },
@@ -248,7 +287,12 @@ export function useRealtimeTranscription() {
               }
               return current.map((item) =>
                 item.id === id
-                  ? { ...item, text: `${item.text}${data.delta ?? ""}` }
+                  ? {
+                      ...item,
+                      text: normalizeCommonTranscriptErrors(
+                        `${item.text}${data.delta ?? ""}`,
+                      ),
+                    }
                   : item,
               );
             });
@@ -259,13 +303,16 @@ export function useRealtimeTranscription() {
           ) {
             setItems((current) => {
               const id = data.item_id ?? crypto.randomUUID();
+              const transcript = normalizeTranscriptForSubmit(
+                data.transcript ?? "",
+              );
               const existing = current.some((item) => item.id === id);
               if (!existing) {
                 return [
                   {
                     id,
                     source,
-                    text: data.transcript ?? "",
+                    text: transcript,
                     final: true,
                     createdAt: Date.now(),
                   },
@@ -274,7 +321,11 @@ export function useRealtimeTranscription() {
               }
               return current.map((item) =>
                 item.id === id
-                  ? { ...item, text: data.transcript ?? item.text, final: true }
+                  ? {
+                      ...item,
+                      text: transcript || item.text,
+                      final: true,
+                    }
                   : item,
               );
             });

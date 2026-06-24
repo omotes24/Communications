@@ -36,10 +36,12 @@ describe("interview schemas", () => {
 
   it("counts Japanese characters without whitespace", () => {
     expect(countJapaneseCharacters("あ い\nう")).toBe(3);
+    expect(countJapaneseCharacters("**重要** な回答")).toBe(5);
   });
 
   it("flags answers outside 250-350 characters", () => {
     expect(validateAnswerLength("短い").inRange).toBe(false);
     expect(validateAnswerLength("あ".repeat(260)).inRange).toBe(true);
+    expect(validateAnswerLength("あ".repeat(850), 900).inRange).toBe(true);
   });
 });

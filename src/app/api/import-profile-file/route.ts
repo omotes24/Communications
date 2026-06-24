@@ -3,6 +3,8 @@ import { join } from "node:path";
 
 import { zodTextFormat } from "openai/helpers/zod";
 
+import { requireApiUser } from "@/lib/auth/server";
+import { checkRateLimit, rateLimitResponse } from "@/lib/api/rate-limit";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
 import {
@@ -17,6 +19,15 @@ import {
   type ProfileFileImportOutput,
   type ProfileFileImportRequest,
 } from "@/lib/schemas/interview";
+import { estimateProfileImportTokens } from "@/lib/tokens/ai-estimates";
+import {
+  createRequestIds,
+  releaseAiTokenReservation,
+  reserveAiTokens,
+  settleAiTokens,
+  TokenBalanceError,
+} from "@/lib/tokens/service";
+import { extractOpenAIUsage } from "@/lib/tokens/usage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -264,37 +275,74 @@ function mockImportProfile(
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const auth = await requireApiUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const body = await parseImportRequest(request);
     const env = getServerEnv();
+    const rateLimit = checkRateLimit({
+      key: `${auth.user.id}:import-profile-file`,
+      limit: 10,
+      windowMs: 60_000,
+    });
+    if (!rateLimit.ok) {
+      return rateLimitResponse(rateLimit.retryAfterSeconds);
+    }
+    const { requestId, operationId } = createRequestIds(request);
+    const reservation = await reserveAiTokens({
+      userId: auth.user.id,
+      requestId,
+      operationId,
+      feature: "import-profile-file",
+      provider: env.AI_PROVIDER,
+      model: env.CLASSIFIER_MODEL,
+      estimatedAmount: estimateProfileImportTokens(body),
+    });
 
     if (env.AI_MOCK_MODE) {
+      await settleAiTokens(reservation, {
+        inputTokens: Math.ceil(body.fileText.length / 3),
+        outputTokens: 350,
+      });
       return Response.json(mockImportProfile(body));
     }
 
-    const client = createOpenAIClient();
-    const response = await client.responses.parse(
-      {
-        model: env.CLASSIFIER_MODEL,
-        instructions: PROFILE_IMPORT_INSTRUCTIONS,
-        input: buildProfileImportInput(body),
-        text: {
-          format: zodTextFormat(
-            profileFileImportOutputSchema,
-            "profile_file_import",
-          ),
+    try {
+      const client = createOpenAIClient();
+      const response = await client.responses.parse(
+        {
+          model: env.CLASSIFIER_MODEL,
+          instructions: PROFILE_IMPORT_INSTRUCTIONS,
+          input: buildProfileImportInput(body),
+          text: {
+            format: zodTextFormat(
+              profileFileImportOutputSchema,
+              "profile_file_import",
+            ),
+          },
+          store: false,
         },
-        store: false,
-      },
-      { signal: request.signal },
-    );
+        { signal: request.signal },
+      );
 
-    if (!response.output_parsed) {
-      return jsonError("プロフィール下書きの解析に失敗しました", 502);
+      if (!response.output_parsed) {
+        await releaseAiTokenReservation(reservation, "parse_failed");
+        return jsonError("プロフィール下書きの解析に失敗しました", 502);
+      }
+
+      await settleAiTokens(reservation, extractOpenAIUsage(response));
+      return Response.json(response.output_parsed);
+    } catch (error) {
+      await releaseAiTokenReservation(reservation, "api_failed");
+      throw error;
     }
-
-    return Response.json(response.output_parsed);
   } catch (error) {
+    if (error instanceof TokenBalanceError) {
+      return jsonError(error.message, error.status);
+    }
     return jsonError(toPublicError(error), 400);
   }
 }

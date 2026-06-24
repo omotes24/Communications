@@ -1,7 +1,13 @@
 import { zodTextFormat } from "openai/helpers/zod";
 
+import { requireApiUser } from "@/lib/auth/server";
+import { checkRateLimit, rateLimitResponse } from "@/lib/api/rate-limit";
+import {
+  getCompanyInputCopy,
+  getCompanyInputMode,
+} from "@/lib/company-input-mode";
 import { createOpenAIClient } from "@/lib/openai/client";
-import { getServerEnv } from "@/lib/openai/env";
+import { getServerEnv, structuredOutputModel } from "@/lib/openai/env";
 import {
   buildCompanyResearchInput,
   COMPANY_RESEARCH_INSTRUCTIONS,
@@ -14,21 +20,39 @@ import {
   type CompanyProfile,
   type ResearchCompanyRequest,
 } from "@/lib/schemas/interview";
+import { estimateResearchCompanyTokens } from "@/lib/tokens/ai-estimates";
+import {
+  createRequestIds,
+  releaseAiTokenReservation,
+  reserveAiTokens,
+  settleAiTokens,
+  TokenBalanceError,
+} from "@/lib/tokens/service";
+import { extractOpenAIUsage } from "@/lib/tokens/usage";
 
 export const dynamic = "force-dynamic";
 
+const companyInputMode = getCompanyInputMode();
+const companyInputCopy = getCompanyInputCopy(companyInputMode);
+
+function extractUrls(text: string): string[] {
+  return Array.from(
+    new Set(text.match(/https?:\/\/[^\s<>"'、。)）]+/g) ?? []),
+  );
+}
+
 function mockResearchCompany(request: ResearchCompanyRequest): CompanyProfile {
   const now = new Date().toISOString();
-  const companyHint =
-    request.companyName ||
-    (request.companyWebsite.match(/https?:\/\/(?:www\.)?([^/\s]+)/)?.[1] ??
-      "調査対象企業");
+  const companyHint = request.companyName || "調査対象企業";
+  const researchSources = extractUrls(request.companyWebsite);
   return {
     id: crypto.randomUUID(),
     label: `${companyHint} 調査メモ`,
     companyName: companyHint,
     business:
-      "指定されたWebサイトと志望内容をもとに、事業内容・採用情報・職種要件を調査して整理します。",
+      companyInputMode === "url"
+        ? "指定されたWebサイトと志望内容をもとに、事業内容・採用情報・職種要件を調査して整理します。"
+        : "入力された社風・採用情報・特筆事項と志望内容をもとに、事業内容・採用情報・職種要件を整理します。",
     philosophy:
       "企業理念・価値観・採用メッセージから、面接で触れるべき考え方を抽出します。",
     targetRole: request.desiredCourse,
@@ -43,16 +67,18 @@ function mockResearchCompany(request: ResearchCompanyRequest): CompanyProfile {
     reverseQuestions:
       "配属後に現場課題を把握するプロセス、技術検証から運用定着までの進め方、若手に期待する役割。",
     researchInput: [
-      `自分のこと: ${request.selfInfo}`,
+      `自分スロット: ${request.selfInfo}`,
       `会社名: ${request.companyName}`,
-      `企業Webサイト: ${request.companyWebsite}`,
+      `${companyInputCopy.promptField}: ${request.companyWebsite}`,
       `志望コース: ${request.desiredCourse}`,
       `その他: ${request.additionalNotes}`,
     ].join("\n"),
     researchInstruction: request.desiredCourse,
     researchSummary:
-      "モックモードの調査結果です。実APIではResponses APIのweb_searchで企業サイトや採用情報を確認し、ユーザーの自己情報に合わせて要約します。",
-    researchSources: [request.companyWebsite],
+      companyInputMode === "url"
+        ? "モックモードの調査結果です。実APIではResponses APIのweb_searchで企業サイトや採用情報を確認し、ユーザーの自己情報に合わせて要約します。"
+        : "モックモードの調査結果です。実APIでは入力された社風・採用情報・特筆事項を読み、ユーザーの自己情報に合わせて要約します。",
+    researchSources,
     fitHypotheses: [
       "SatoFCでの現場課題ヒアリングから開発・運用改善までの経験を、応募先の課題解決業務に接続できる。",
       "未知種をUnknownとして棄却する設計思想を、安全性や信頼性が求められる業務に接続できる。",
@@ -78,9 +104,9 @@ function toCompanyProfile(
     label: companyName ? `${companyName} 調査メモ` : output.label,
     companyName,
     researchInput: [
-      `自分のこと: ${body.selfInfo}`,
+      `自分スロット: ${body.selfInfo}`,
       `会社名: ${body.companyName}`,
-      `企業Webサイト: ${body.companyWebsite}`,
+      `${companyInputCopy.promptField}: ${body.companyWebsite}`,
       `志望コース: ${body.desiredCourse}`,
       `その他: ${body.additionalNotes}`,
     ].join("\n"),
@@ -91,49 +117,91 @@ function toCompanyProfile(
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const auth = await requireApiUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const body = researchCompanyRequestSchema.parse(await request.json());
     const env = getServerEnv();
+    const model = structuredOutputModel(env);
+    const rateLimit = checkRateLimit({
+      key: `${auth.user.id}:research-company`,
+      limit: 12,
+      windowMs: 60_000,
+    });
+    if (!rateLimit.ok) {
+      return rateLimitResponse(rateLimit.retryAfterSeconds);
+    }
+    const { requestId, operationId } = createRequestIds(request);
+    const reservation = await reserveAiTokens({
+      userId: auth.user.id,
+      requestId,
+      operationId,
+      feature: "research-company",
+      provider: env.AI_PROVIDER,
+      model,
+      estimatedAmount: estimateResearchCompanyTokens(body),
+    });
 
     if (env.AI_MOCK_MODE) {
+      await settleAiTokens(reservation, {
+        inputTokens: 500,
+        outputTokens: 600,
+        webSearchCalls: env.AI_PROVIDER === "openai" ? 1 : 0,
+      });
       return Response.json(mockResearchCompany(body));
     }
 
-    const client = createOpenAIClient();
-    const response = await client.responses.parse(
-      {
-        model: env.RESEARCH_MODEL,
-        instructions: COMPANY_RESEARCH_INSTRUCTIONS,
-        input: buildCompanyResearchInput(body),
-        ...(env.AI_PROVIDER === "openai"
-          ? {
-              tools: [
-                {
-                  type: "web_search" as const,
-                  search_context_size: "high" as const,
-                },
-              ],
-              tool_choice: "required" as const,
-              include: ["web_search_call.action.sources" as const],
-            }
-          : {}),
-        text: {
-          format: zodTextFormat(
-            companyResearchOutputSchema,
-            "company_research",
-          ),
+    try {
+      const client = createOpenAIClient();
+      const response = await client.responses.parse(
+        {
+          model,
+          instructions: COMPANY_RESEARCH_INSTRUCTIONS,
+          input: buildCompanyResearchInput(body),
+          ...(env.AI_PROVIDER === "openai"
+            ? {
+                tools: [
+                  {
+                    type: "web_search" as const,
+                    search_context_size: "high" as const,
+                  },
+                ],
+                tool_choice: "required" as const,
+                include: ["web_search_call.action.sources" as const],
+              }
+            : {}),
+          text: {
+            format: zodTextFormat(
+              companyResearchOutputSchema,
+              "company_research",
+            ),
+          },
+          store: false,
         },
-        store: false,
-      },
-      { signal: request.signal },
-    );
+        { signal: request.signal },
+      );
 
-    if (!response.output_parsed) {
-      return jsonError("企業調査結果の解析に失敗しました", 502);
+      if (!response.output_parsed) {
+        await releaseAiTokenReservation(reservation, "parse_failed");
+        return jsonError("企業調査結果の解析に失敗しました", 502);
+      }
+
+      await settleAiTokens(reservation, {
+        ...extractOpenAIUsage(response),
+        webSearchCalls: env.AI_PROVIDER === "openai" ? 1 : 0,
+      });
+      return Response.json(toCompanyProfile(response.output_parsed, body));
+    } catch (error) {
+      await releaseAiTokenReservation(reservation, "api_failed");
+      throw error;
     }
-
-    return Response.json(toCompanyProfile(response.output_parsed, body));
   } catch (error) {
+    if (error instanceof TokenBalanceError) {
+      return jsonError(error.message, error.status);
+    }
     return jsonError(toPublicError(error), 400);
   }
 }

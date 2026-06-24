@@ -1,7 +1,9 @@
 import { zodTextFormat } from "openai/helpers/zod";
 
+import { requireApiUser } from "@/lib/auth/server";
+import { checkRateLimit, rateLimitResponse } from "@/lib/api/rate-limit";
 import { createOpenAIClient } from "@/lib/openai/client";
-import { getServerEnv } from "@/lib/openai/env";
+import { getServerEnv, structuredOutputModel } from "@/lib/openai/env";
 import {
   buildInterviewLearningInput,
   INTERVIEW_LEARNING_INSTRUCTIONS,
@@ -11,15 +13,52 @@ import {
   learnInterviewContextOutputSchema,
   learnInterviewContextRequestSchema,
 } from "@/lib/schemas/interview";
+import { estimateLearningTokens } from "@/lib/tokens/ai-estimates";
+import {
+  createRequestIds,
+  releaseAiTokenReservation,
+  reserveAiTokens,
+  settleAiTokens,
+  TokenBalanceError,
+} from "@/lib/tokens/service";
+import { extractOpenAIUsage } from "@/lib/tokens/usage";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request): Promise<Response> {
+  const auth = await requireApiUser();
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   try {
     const body = learnInterviewContextRequestSchema.parse(await request.json());
     const env = getServerEnv();
+    const model = structuredOutputModel(env);
+    const rateLimit = checkRateLimit({
+      key: `${auth.user.id}:learn-interview-context`,
+      limit: 20,
+      windowMs: 60_000,
+    });
+    if (!rateLimit.ok) {
+      return rateLimitResponse(rateLimit.retryAfterSeconds);
+    }
+    const { requestId, operationId } = createRequestIds(request);
+    const reservation = await reserveAiTokens({
+      userId: auth.user.id,
+      requestId,
+      operationId,
+      feature: "learn-interview-context",
+      provider: env.AI_PROVIDER,
+      model,
+      estimatedAmount: estimateLearningTokens(body),
+    });
 
     if (env.AI_MOCK_MODE) {
+      await settleAiTokens(reservation, {
+        inputTokens: 400,
+        outputTokens: 260,
+      });
       return Response.json({
         brief:
           "SatoFCの現場実装経験を中心に、技術を研究で終わらせず現場の意思決定に使える形へ変換した点を軸に回答する。企業・志望コースに対しては、課題ヒアリング、関係者調整、安全なAI設計、継続運用を見据えた改善経験を接続する。",
@@ -33,29 +72,39 @@ export async function POST(request: Request): Promise<Response> {
       });
     }
 
-    const client = createOpenAIClient();
-    const response = await client.responses.parse(
-      {
-        model: env.RESEARCH_MODEL,
-        instructions: INTERVIEW_LEARNING_INSTRUCTIONS,
-        input: buildInterviewLearningInput(body),
-        text: {
-          format: zodTextFormat(
-            learnInterviewContextOutputSchema,
-            "interview_learning",
-          ),
+    try {
+      const client = createOpenAIClient();
+      const response = await client.responses.parse(
+        {
+          model,
+          instructions: INTERVIEW_LEARNING_INSTRUCTIONS,
+          input: buildInterviewLearningInput(body),
+          text: {
+            format: zodTextFormat(
+              learnInterviewContextOutputSchema,
+              "interview_learning",
+            ),
+          },
+          store: false,
         },
-        store: false,
-      },
-      { signal: request.signal },
-    );
+        { signal: request.signal },
+      );
 
-    if (!response.output_parsed) {
-      return jsonError("面接前学習メモの解析に失敗しました", 502);
+      if (!response.output_parsed) {
+        await releaseAiTokenReservation(reservation, "parse_failed");
+        return jsonError("面接前学習メモの解析に失敗しました", 502);
+      }
+
+      await settleAiTokens(reservation, extractOpenAIUsage(response));
+      return Response.json(response.output_parsed);
+    } catch (error) {
+      await releaseAiTokenReservation(reservation, "api_failed");
+      throw error;
     }
-
-    return Response.json(response.output_parsed);
   } catch (error) {
+    if (error instanceof TokenBalanceError) {
+      return jsonError(error.message, error.status);
+    }
     return jsonError(toPublicError(error), 400);
   }
 }

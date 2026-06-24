@@ -11,17 +11,77 @@ export const STORAGE_KEY = "jp-interview-assistant:v1";
 export const COMPANY_FORM_DRAFT_KEY =
   "jp-interview-assistant:company-form-draft:v1";
 export const APP_STORAGE_EVENT = "jp-interview-assistant:storage-updated";
+export const LOCAL_STORAGE_IMPORT_STATUS_KEY =
+  "jp-interview-assistant:local-import-status:v1";
+export const LOCAL_STORAGE_IMPORT_VERSION = "app-storage-v1-to-supabase-v1";
 
 export const defaultStorage: AppStorage = {
   profiles: [],
   companies: [],
+  activeProfileId: null,
   activeCompanyId: null,
+  selectedProfileIds: [],
+  selectedCompanyIds: [],
   history: [],
   learning: null,
   privacy: {
     saveHistoryByDefault: false,
   },
 };
+
+function normalizeSelectedIds<T extends { id: string }>(
+  ids: string[],
+  items: T[],
+): string[] {
+  const validIds = new Set(items.map((item) => item.id));
+  return Array.from(new Set(ids)).filter((id) => validIds.has(id));
+}
+
+function normalizeStorage(storage: AppStorage): AppStorage {
+  const selectedProfileIds = normalizeSelectedIds(
+    storage.selectedProfileIds,
+    storage.profiles,
+  );
+  const fallbackProfileId =
+    selectedProfileIds[0] ??
+    (storage.activeProfileId &&
+    storage.profiles.some((profile) => profile.id === storage.activeProfileId)
+      ? storage.activeProfileId
+      : storage.profiles[0]?.id) ??
+    null;
+  const normalizedProfileIds =
+    selectedProfileIds.length > 0
+      ? selectedProfileIds
+      : fallbackProfileId
+        ? [fallbackProfileId]
+        : [];
+
+  const selectedCompanyIds = normalizeSelectedIds(
+    storage.selectedCompanyIds,
+    storage.companies,
+  );
+  const fallbackCompanyId =
+    selectedCompanyIds[0] ??
+    (storage.activeCompanyId &&
+    storage.companies.some((company) => company.id === storage.activeCompanyId)
+      ? storage.activeCompanyId
+      : storage.companies[0]?.id) ??
+    null;
+  const normalizedCompanyIds =
+    selectedCompanyIds.length > 0
+      ? selectedCompanyIds
+      : fallbackCompanyId
+        ? [fallbackCompanyId]
+        : [];
+
+  return {
+    ...storage,
+    selectedProfileIds: normalizedProfileIds,
+    activeProfileId: normalizedProfileIds[0] ?? fallbackProfileId,
+    selectedCompanyIds: normalizedCompanyIds,
+    activeCompanyId: normalizedCompanyIds[0] ?? fallbackCompanyId,
+  };
+}
 
 export function loadAppStorage(): AppStorage {
   if (typeof window === "undefined") {
@@ -32,7 +92,7 @@ export function loadAppStorage(): AppStorage {
     return defaultStorage;
   }
   const parsed: unknown = JSON.parse(raw);
-  return appStorageSchema.catch(defaultStorage).parse(parsed);
+  return normalizeStorage(appStorageSchema.catch(defaultStorage).parse(parsed));
 }
 
 export function saveAppStorage(next: AppStorage): void {
@@ -52,6 +112,15 @@ export function clearAppStorage(): void {
   window.dispatchEvent(new Event(APP_STORAGE_EVENT));
 }
 
+export function hasMeaningfulLocalStorage(storage: AppStorage): boolean {
+  return (
+    storage.profiles.length > 0 ||
+    storage.companies.length > 0 ||
+    storage.history.length > 0 ||
+    Boolean(storage.learning)
+  );
+}
+
 export function upsertProfile(
   storage: AppStorage,
   profile: UserProfile,
@@ -59,7 +128,59 @@ export function upsertProfile(
   const profiles = storage.profiles.some((item) => item.id === profile.id)
     ? storage.profiles.map((item) => (item.id === profile.id ? profile : item))
     : [...storage.profiles, profile];
-  return { ...storage, profiles };
+  const selectedProfileIds = storage.selectedProfileIds.includes(profile.id)
+    ? storage.selectedProfileIds
+    : [...storage.selectedProfileIds, profile.id];
+  return { ...storage, profiles, activeProfileId: profile.id, selectedProfileIds };
+}
+
+export function setActiveProfile(
+  storage: AppStorage,
+  id: string | null,
+): AppStorage {
+  const activeProfileId =
+    id && storage.profiles.some((profile) => profile.id === id) ? id : null;
+  if (!activeProfileId) {
+    return { ...storage, activeProfileId: null, selectedProfileIds: [] };
+  }
+  const selectedProfileIds =
+    !storage.selectedProfileIds.includes(activeProfileId)
+      ? [...storage.selectedProfileIds, activeProfileId]
+      : storage.selectedProfileIds;
+  return { ...storage, activeProfileId, selectedProfileIds };
+}
+
+export function setSelectedProfiles(
+  storage: AppStorage,
+  ids: string[],
+): AppStorage {
+  const selectedProfileIds = ids.filter((id) =>
+    storage.profiles.some((profile) => profile.id === id),
+  );
+  return {
+    ...storage,
+    selectedProfileIds,
+    activeProfileId: selectedProfileIds[0] ?? null,
+  };
+}
+
+export function toggleSelectedProfile(
+  storage: AppStorage,
+  id: string,
+): AppStorage {
+  if (!storage.profiles.some((profile) => profile.id === id)) {
+    return storage;
+  }
+  const selectedProfileIds = storage.selectedProfileIds.includes(id)
+    ? storage.selectedProfileIds.length > 1
+      ? storage.selectedProfileIds.filter((item) => item !== id)
+      : storage.selectedProfileIds
+    : [...storage.selectedProfileIds, id];
+  return {
+    ...storage,
+    selectedProfileIds,
+    activeProfileId: selectedProfileIds[0] ?? null,
+  };
 }
 
 export function upsertCompany(
@@ -70,7 +191,10 @@ export function upsertCompany(
   const companies = exists
     ? storage.companies.map((item) => (item.id === company.id ? company : item))
     : [...storage.companies, company];
-  return { ...storage, companies, activeCompanyId: company.id };
+  const selectedCompanyIds = storage.selectedCompanyIds.includes(company.id)
+    ? storage.selectedCompanyIds
+    : [...storage.selectedCompanyIds, company.id];
+  return { ...storage, companies, activeCompanyId: company.id, selectedCompanyIds };
 }
 
 export function setActiveCompany(
@@ -79,15 +203,91 @@ export function setActiveCompany(
 ): AppStorage {
   const activeCompanyId =
     id && storage.companies.some((company) => company.id === id) ? id : null;
-  return { ...storage, activeCompanyId };
+  const selectedCompanyIds = activeCompanyId ? [activeCompanyId] : [];
+  return { ...storage, activeCompanyId, selectedCompanyIds };
+}
+
+export function setSelectedCompanies(
+  storage: AppStorage,
+  ids: string[],
+): AppStorage {
+  const selectedCompanyIds = ids.filter((id) =>
+    storage.companies.some((company) => company.id === id),
+  );
+  return {
+    ...storage,
+    selectedCompanyIds,
+    activeCompanyId: selectedCompanyIds[0] ?? null,
+  };
+}
+
+export function toggleSelectedCompany(
+  storage: AppStorage,
+  id: string,
+): AppStorage {
+  if (!storage.companies.some((company) => company.id === id)) {
+    return storage;
+  }
+  const selectedCompanyIds = storage.selectedCompanyIds.includes(id)
+    ? storage.selectedCompanyIds.length > 1
+      ? storage.selectedCompanyIds.filter((item) => item !== id)
+      : storage.selectedCompanyIds
+    : [...storage.selectedCompanyIds, id];
+  return {
+    ...storage,
+    selectedCompanyIds,
+    activeCompanyId: selectedCompanyIds[0] ?? null,
+  };
+}
+
+export function getActiveCompanies(storage: AppStorage): CompanyProfile[] {
+  const selected = storage.selectedCompanyIds
+    .map((id) => storage.companies.find((company) => company.id === id))
+    .filter((company): company is CompanyProfile => Boolean(company));
+  if (selected.length > 0) {
+    return selected;
+  }
+  return getActiveCompany(storage) ? [getActiveCompany(storage) as CompanyProfile] : [];
 }
 
 export function getActiveCompany(storage: AppStorage): CompanyProfile | null {
+  const selected = storage.selectedCompanyIds
+    .map((id) => storage.companies.find((company) => company.id === id))
+    .find(Boolean);
+  if (selected) {
+    return selected;
+  }
   return (
     storage.companies.find(
       (company) => company.id === storage.activeCompanyId,
     ) ??
     storage.companies[0] ??
+    null
+  );
+}
+
+export function getActiveProfiles(storage: AppStorage): UserProfile[] {
+  const selected = storage.selectedProfileIds
+    .map((id) => storage.profiles.find((profile) => profile.id === id))
+    .filter((profile): profile is UserProfile => Boolean(profile));
+  if (selected.length > 0) {
+    return selected;
+  }
+  return getActiveProfile(storage) ? [getActiveProfile(storage) as UserProfile] : [];
+}
+
+export function getActiveProfile(storage: AppStorage): UserProfile | null {
+  const selected = storage.selectedProfileIds
+    .map((id) => storage.profiles.find((profile) => profile.id === id))
+    .find(Boolean);
+  if (selected) {
+    return selected;
+  }
+  return (
+    storage.profiles.find(
+      (profile) => profile.id === storage.activeProfileId,
+    ) ??
+    storage.profiles[0] ??
     null
   );
 }

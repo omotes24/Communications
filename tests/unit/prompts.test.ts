@@ -58,4 +58,73 @@ describe("prompts", () => {
     expect(input).toContain("野生動物追跡システム");
     expect(input).toContain("最も意思決定が難しかった場面");
   });
+
+  it("includes answer model mode and self slot notes", () => {
+    const input = buildAnswerInput({
+      question: "日本のカフェ市場規模を推定してください。",
+      category: "case",
+      profile: null,
+      company: null,
+      learningBrief: "",
+      conversationContext: [],
+      answerModelMode: "fermi",
+      selfSlot: "東京、20代、単価は月額ではなく1回あたりで置く",
+      answerLengthTarget: 700,
+      profiles: [
+        {
+          id: "profile-a",
+          label: "研究",
+          nameOrAlias: "",
+          affiliation: "",
+          currentRole: "",
+          careerSummary: "研究で推定モデルを実装",
+          workHistory: "",
+          skills: "",
+          strengths: "",
+          weaknesses: "",
+          achievements: "",
+          metrics: "",
+          successStories: "",
+          failureStories: "",
+          managementExperience: "",
+          careerChangeReason: "",
+          motivationMaterials: "",
+          preferredTone: "",
+          forbiddenInformation: "",
+          createdAt: "",
+          updatedAt: "",
+        },
+      ],
+      companies: [
+        {
+          id: "company-a",
+          label: "応募先A",
+          companyName: "A社",
+          business: "",
+          philosophy: "",
+          targetRole: "事業開発",
+          jobDescription: "",
+          requiredSkills: "",
+          interviewFocus: "",
+          attraction: "",
+          reverseQuestions: "",
+          researchInput: "",
+          researchInstruction: "",
+          researchSummary: "",
+          researchSources: [],
+          fitHypotheses: [],
+          interviewAngles: [],
+          createdAt: "",
+          updatedAt: "",
+        },
+      ],
+    });
+
+    expect(input).toContain("高精度 フェルミ・ケース推論");
+    expect(input).toContain("目標文字数: 700文字程度");
+    expect(input).toContain("自分スロット追加メモ");
+    expect(input).toContain("1回あたり");
+    expect(input).toContain("選択中の自分スロット");
+    expect(input).toContain("選択中の会社スロット");
+  });
 });

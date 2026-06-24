@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Loader2,
+  Plus,
+  Search,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 
 import {
   FormField,
@@ -9,6 +16,11 @@ import {
   textareaClassName,
 } from "@/components/forms/FormField";
 import { PageHeader } from "@/components/layout/PageHeader";
+import {
+  getCompanyInputCopy,
+  getCompanyInputMode,
+  type CompanyInputMode,
+} from "@/lib/company-input-mode";
 import {
   companyProfileSchema,
   createEmptyCompanyProfile,
@@ -26,7 +38,8 @@ const progressRangePercent = 92;
 type CompanyFormDraft = {
   selfInfo: string;
   companyName: string;
-  companyWebsite: string;
+  companyDetails: string;
+  companyWebsite?: string;
   desiredCourse: string;
   additionalNotes: string;
 };
@@ -38,10 +51,7 @@ type ResearchProgress = {
   remainingSeconds: number;
 };
 
-function profileToSelfInfo(profile: UserProfile | null): string {
-  if (!profile) {
-    return "";
-  }
+function profileToSelfInfo(profile: UserProfile): string {
   return [
     profile.nameOrAlias ? `名前: ${profile.nameOrAlias}` : "",
     profile.affiliation ? `所属: ${profile.affiliation}` : "",
@@ -58,6 +68,27 @@ function profileToSelfInfo(profile: UserProfile | null): string {
     .join("\n\n");
 }
 
+function profileSlotName(profile: UserProfile, profiles: UserProfile[]): string {
+  const index = profiles.findIndex((item) => item.id === profile.id);
+  return index >= 0 ? `SLOT ${String.fromCharCode(65 + index)}` : "SLOT";
+}
+
+function profilesToSelfInfo(
+  profiles: UserProfile[],
+  allProfiles: UserProfile[],
+): string {
+  return profiles
+    .map((profile) =>
+      [
+        `${profileSlotName(profile, allProfiles)}: ${profile.label}`,
+        profileToSelfInfo(profile),
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    )
+    .join("\n\n---\n\n");
+}
+
 function readCompanyFormDraft(): CompanyFormDraft | null {
   try {
     const raw = window.localStorage.getItem(COMPANY_FORM_DRAFT_KEY);
@@ -69,8 +100,12 @@ function readCompanyFormDraft(): CompanyFormDraft | null {
       selfInfo: typeof parsed.selfInfo === "string" ? parsed.selfInfo : "",
       companyName:
         typeof parsed.companyName === "string" ? parsed.companyName : "",
-      companyWebsite:
-        typeof parsed.companyWebsite === "string" ? parsed.companyWebsite : "",
+      companyDetails:
+        typeof parsed.companyDetails === "string"
+          ? parsed.companyDetails
+          : typeof parsed.companyWebsite === "string"
+            ? parsed.companyWebsite
+            : "",
       desiredCourse:
         typeof parsed.desiredCourse === "string" ? parsed.desiredCourse : "",
       additionalNotes:
@@ -116,16 +151,54 @@ function formatSeconds(seconds: number): string {
   return `${seconds}秒`;
 }
 
+function extractCompanyInputFromProfile(
+  company: CompanyProfile,
+  mode: CompanyInputMode,
+): string {
+  if (mode === "url") {
+    return (
+      company.researchSources[0] ??
+      company.researchInput
+        .match(
+          /企業Webサイト(?:・採用情報など)?:\s*([\s\S]*?)(?:\n志望コース:|\nその他:|$)/,
+        )?.[1]
+        ?.trim() ??
+      ""
+    );
+  }
+
+  const detailedInput =
+    company.researchInput.match(
+      /社風・採用情報・特筆事項など\(詳細\):\s*([\s\S]*?)(?:\n志望コース:|\nその他:|$)/,
+    )?.[1] ??
+    company.researchInput.match(
+      /企業Webサイト(?:・採用情報など)?:\s*([\s\S]*?)(?:\n志望コース:|\nその他:|$)/,
+    )?.[1] ??
+    "";
+  return (
+    detailedInput.trim() ||
+    company.researchSummary ||
+    company.researchSources.join("\n")
+  );
+}
+
 export function CompanyManager() {
-  const { storage, activeCompany, actions } = useAppStorage();
-  const activeProfile = storage.profiles[0] ?? null;
+  const companyInputMode = getCompanyInputMode();
+  const companyInputCopy = getCompanyInputCopy(companyInputMode);
+  const {
+    storage,
+    activeCompany,
+    activeCompanies,
+    activeProfiles,
+    actions,
+  } = useAppStorage();
   const suggestedSelfInfo = useMemo(
-    () => profileToSelfInfo(activeProfile),
-    [activeProfile],
+    () => profilesToSelfInfo(activeProfiles, storage.profiles),
+    [activeProfiles, storage.profiles],
   );
   const [selfInfo, setSelfInfo] = useState("");
   const [companyName, setCompanyName] = useState("");
-  const [companyWebsite, setCompanyWebsite] = useState("");
+  const [companyDetails, setCompanyDetails] = useState("");
   const [desiredCourse, setDesiredCourse] = useState("");
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [draft, setDraft] = useState<CompanyProfile>(
@@ -146,7 +219,9 @@ export function CompanyManager() {
     (company: CompanyProfile, makeActive = false) => {
       setDraft(company);
       setCompanyName(company.companyName || company.label);
-      setCompanyWebsite(company.researchSources[0] ?? "");
+      setCompanyDetails(
+        extractCompanyInputFromProfile(company, companyInputMode),
+      );
       setDesiredCourse(company.researchInstruction || company.targetRole);
       setAdditionalNotes(company.interviewFocus);
       setStatus(null);
@@ -154,16 +229,15 @@ export function CompanyManager() {
         actions.setActiveCompany(company.id);
       }
     },
-    [actions],
+    [actions, companyInputMode],
   );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const savedDraft = readCompanyFormDraft();
       if (savedDraft) {
-        setSelfInfo(savedDraft.selfInfo);
         setCompanyName(savedDraft.companyName);
-        setCompanyWebsite(savedDraft.companyWebsite);
+        setCompanyDetails(savedDraft.companyDetails);
         setDesiredCourse(savedDraft.desiredCourse);
         setAdditionalNotes(savedDraft.additionalNotes);
       }
@@ -173,14 +247,14 @@ export function CompanyManager() {
   }, []);
 
   useEffect(() => {
-    if (formReady && !selfInfo && suggestedSelfInfo) {
-      const timer = window.setTimeout(() => {
-        setSelfInfo(suggestedSelfInfo);
-      }, 0);
-      return () => window.clearTimeout(timer);
+    if (!formReady) {
+      return undefined;
     }
-    return undefined;
-  }, [formReady, selfInfo, suggestedSelfInfo]);
+    const timer = window.setTimeout(() => {
+      setSelfInfo(suggestedSelfInfo);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [formReady, suggestedSelfInfo]);
 
   useEffect(() => {
     if (!formReady) {
@@ -189,7 +263,7 @@ export function CompanyManager() {
     writeCompanyFormDraft({
       selfInfo,
       companyName,
-      companyWebsite,
+      companyDetails,
       desiredCourse,
       additionalNotes,
     });
@@ -197,7 +271,7 @@ export function CompanyManager() {
     formReady,
     selfInfo,
     companyName,
-    companyWebsite,
+    companyDetails,
     desiredCourse,
     additionalNotes,
   ]);
@@ -265,12 +339,10 @@ export function CompanyManager() {
     if (
       !selfInfo.trim() ||
       !companyName.trim() ||
-      !companyWebsite.trim() ||
+      !companyDetails.trim() ||
       !desiredCourse.trim()
     ) {
-      setStatus(
-        "自分のこと、会社名、企業Webサイト、志望コースを入力してください。",
-      );
+      setStatus(companyInputCopy.missing);
       return;
     }
     setLoading(true);
@@ -283,11 +355,15 @@ export function CompanyManager() {
     try {
       const response = await fetch("/api/research-company", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-operation-id": crypto.randomUUID(),
+          "x-request-id": crypto.randomUUID(),
+        },
         body: JSON.stringify({
           selfInfo,
           companyName,
-          companyWebsite,
+          companyWebsite: companyDetails,
           desiredCourse,
           additionalNotes,
         }),
@@ -324,7 +400,7 @@ export function CompanyManager() {
 
   function reset() {
     setCompanyName("");
-    setCompanyWebsite("");
+    setCompanyDetails("");
     setDesiredCourse("");
     setAdditionalNotes("");
     setDraft(createEmptyCompanyProfile());
@@ -343,18 +419,18 @@ export function CompanyManager() {
     <section>
       <PageHeader
         title="会社スロット"
-        description="自分のこと、会社名、企業Webサイト、志望コース、その他だけで企業研究を作ります。複数社はスロットとして切り替えます。"
+        description={companyInputCopy.description}
       />
 
       <div className="grid gap-5">
         <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
           <div className="flex flex-wrap items-center justify-between gap-3 px-1">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 Company Select
               </p>
               <h2 className="mt-1 text-2xl font-semibold tracking-tight text-[#1d1d1f]">
-                Choose Your Slot
+                会社スロットを選ぶ
               </h2>
             </div>
             <button
@@ -385,11 +461,19 @@ export function CompanyManager() {
                 >
                   <button
                     type="button"
-                    onClick={() => selectCompany(company, true)}
+                    onClick={() => selectCompany(company)}
                     className="block w-full text-left"
                   >
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0071e3]">
-                      SLOT {index + 1}
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+                        SLOT {index + 1}
+                      </span>
+                      {activeCompanies.some((item) => item.id === company.id) ? (
+                        <CheckCircle2
+                          className="h-4 w-4 text-emerald-600"
+                          aria-hidden
+                        />
+                      ) : null}
                     </span>
                     <span className="mt-2 block truncate text-lg font-semibold tracking-tight">
                       {company.companyName || company.label}
@@ -410,15 +494,17 @@ export function CompanyManager() {
                       <span
                         className={cn(
                           "inline-flex items-center gap-1 text-[11px] font-semibold",
-                          draft.id === company.id
+                          activeCompanies.some((item) => item.id === company.id)
                             ? "text-emerald-700"
                             : "text-[#86868b]",
                         )}
                       >
-                        {draft.id === company.id ? (
+                        {activeCompanies.some((item) => item.id === company.id) ? (
                           <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
                         ) : null}
-                        {draft.id === company.id ? "ACTIVE" : "SAVED"}
+                        {activeCompanies.some((item) => item.id === company.id)
+                          ? "使用中"
+                          : "保存済み"}
                       </span>
                       <span
                         className={cn(
@@ -435,19 +521,38 @@ export function CompanyManager() {
                           : "未学習"}
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      aria-label={`${company.companyName || company.label}を削除`}
-                      onClick={() => deleteCompany(company.id)}
-                      className={cn(
-                        "rounded-full p-1.5 transition",
-                        draft.id === company.id
-                          ? "text-red-600 hover:bg-red-50"
-                          : "text-[#86868b] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
-                      )}
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => actions.toggleSelectedCompany(company.id)}
+                        className={cn(
+                          "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition",
+                          activeCompanies.some((item) => item.id === company.id)
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e8e8ed]",
+                        )}
+                      >
+                        {activeCompanies.some((item) => item.id === company.id) ? (
+                          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                        ) : null}
+                        {activeCompanies.some((item) => item.id === company.id)
+                          ? "使用中"
+                          : "使用"}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`${company.companyName || company.label}を削除`}
+                        onClick={() => deleteCompany(company.id)}
+                        className={cn(
+                          "rounded-full p-1.5 transition",
+                          draft.id === company.id
+                            ? "text-red-600 hover:bg-red-50"
+                            : "text-[#86868b] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
+                        )}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -462,12 +567,72 @@ export function CompanyManager() {
                 入力途中の内容はこのブラウザに自動保存されます。別タブへ移動しても、戻ると続きから編集できます。
               </p>
               <div className="md:col-span-2">
-                <FormField label="自分のこと">
+                <FormField label="自分スロット">
+                  <div className="mb-3 rounded-2xl border border-neutral-950/10 bg-white p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6e6e73]">
+                        <UserRound className="h-3.5 w-3.5" aria-hidden />
+                        使用する自分スロット
+                      </span>
+                      <span className="text-xs font-semibold text-[#86868b]">
+                        {activeProfiles.length}件選択中
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs font-medium leading-5 text-[#86868b]">
+                      面接ページの回答チャット内の選択と同期します。
+                    </p>
+                    {storage.profiles.length === 0 ? (
+                      <p className="mt-2 text-xs font-semibold text-[#86868b]">
+                        自分スロット未作成
+                      </p>
+                    ) : (
+                      <div className="mt-3 flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
+                        {storage.profiles.map((profile, index) => {
+                          const selected = activeProfiles.some(
+                            (item) => item.id === profile.id,
+                          );
+                          return (
+                            <button
+                              key={profile.id}
+                              type="button"
+                              onClick={() =>
+                                actions.toggleSelectedProfile(profile.id)
+                              }
+                              aria-pressed={selected}
+                              className={cn(
+                                "inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold transition",
+                                selected
+                                  ? "bg-[#1d1d1f] text-white"
+                                  : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e8e8ed] hover:text-[#1d1d1f]",
+                              )}
+                            >
+                              {selected ? (
+                                <CheckCircle2
+                                  className="h-3.5 w-3.5"
+                                  aria-hidden
+                                />
+                              ) : (
+                                <span
+                                  className="h-3.5 w-3.5 rounded-full ring-1 ring-[#c7c7cc]"
+                                  aria-hidden
+                                />
+                              )}
+                              <span className="truncate">
+                                SLOT {String.fromCharCode(65 + index)}:{" "}
+                                {profile.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                   <textarea
-                    className={textareaClassName}
+                    className={`${textareaClassName} min-h-60`}
                     value={selfInfo}
                     onChange={(event) => setSelfInfo(event.target.value)}
                     placeholder="サークルで部長、システム開発経験、強み、弱みなど"
+                    readOnly={storage.profiles.length > 0}
                   />
                 </FormField>
               </div>
@@ -479,12 +644,12 @@ export function CompanyManager() {
                   placeholder="例: サイバーエージェント"
                 />
               </FormField>
-              <FormField label="企業Webサイト">
+              <FormField label={companyInputCopy.label}>
                 <textarea
-                  className={textareaClassName}
-                  value={companyWebsite}
-                  onChange={(event) => setCompanyWebsite(event.target.value)}
-                  placeholder="企業サイト、採用ページ、募集要項URL"
+                  className={`${textareaClassName} min-h-36`}
+                  value={companyDetails}
+                  onChange={(event) => setCompanyDetails(event.target.value)}
+                  placeholder={companyInputCopy.placeholder}
                 />
               </FormField>
               <FormField label="志望コース">
@@ -511,13 +676,13 @@ export function CompanyManager() {
                 onClick={() => setSelfInfo(suggestedSelfInfo)}
                 className="h-11 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
               >
-                自分のことを反映
+                同期し直す
               </button>
               <button
                 type="button"
                 onClick={researchAndSave}
                 disabled={loading}
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-[#0071e3] px-5 text-sm font-semibold text-white transition hover:bg-[#147ce5] disabled:cursor-not-allowed disabled:bg-[#86868b]"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:bg-[#86868b]"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -530,7 +695,7 @@ export function CompanyManager() {
 
             {researchProgress ? (
               <div
-                className="mt-4 rounded-2xl bg-[#e8f2ff] p-4"
+                className="mt-4 rounded-2xl bg-[var(--accent-soft)] p-4"
                 role="status"
                 aria-live="polite"
               >
@@ -546,12 +711,12 @@ export function CompanyManager() {
                 </div>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
                   <div
-                    className="h-full rounded-full bg-[#0071e3] transition-[width] duration-500"
+                    className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-500"
                     style={{ width: `${researchProgress.percent}%` }}
                   />
                 </div>
                 <p className="mt-3 text-xs font-medium leading-5 text-neutral-600">
-                  Webサイトと採用情報を確認し、自己情報に合わせた会社スロットへ整理しています。予測は約3.5分を基準にした経過時間からの推定です。
+                  {companyInputCopy.progress}
                 </p>
               </div>
             ) : null}
@@ -564,7 +729,7 @@ export function CompanyManager() {
           </form>
 
           <aside className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
               Selected
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight">

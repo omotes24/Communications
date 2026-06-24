@@ -17,6 +17,7 @@ const serverEnvSchema = z.object({
   GROQ_API_KEY: z.string().trim().min(1).optional(),
   GROQ_TRANSCRIPTION_MODEL: z.string().default("whisper-large-v3-turbo"),
   GROQ_STRUCTURED_MODEL: z.string().default("openai/gpt-oss-20b"),
+  GROQ_FAST_ANSWER_MODEL: z.string().default("openai/gpt-oss-20b"),
   GROQ_ANSWER_MODEL: z.string().default("openai/gpt-oss-120b"),
   GROQ_RESEARCH_MODEL: z.string().default("groq/compound"),
 });
@@ -26,6 +27,7 @@ type RawServerEnv = z.infer<typeof serverEnvSchema>;
 export type ServerEnv = RawServerEnv & {
   TRANSCRIPTION_MODEL: string;
   CLASSIFIER_MODEL: string;
+  FAST_ANSWER_MODEL: string;
   ANSWER_MODEL: string;
   RESEARCH_MODEL: string;
 };
@@ -45,6 +47,7 @@ export function getServerEnv(): ServerEnv {
     GROQ_API_KEY: process.env.GROQ_API_KEY,
     GROQ_TRANSCRIPTION_MODEL: process.env.GROQ_TRANSCRIPTION_MODEL,
     GROQ_STRUCTURED_MODEL: process.env.GROQ_STRUCTURED_MODEL,
+    GROQ_FAST_ANSWER_MODEL: process.env.GROQ_FAST_ANSWER_MODEL,
     GROQ_ANSWER_MODEL: process.env.GROQ_ANSWER_MODEL,
     GROQ_RESEARCH_MODEL: process.env.GROQ_RESEARCH_MODEL,
   });
@@ -59,6 +62,10 @@ export function getServerEnv(): ServerEnv {
       parsed.AI_PROVIDER === "groq"
         ? parsed.GROQ_STRUCTURED_MODEL
         : parsed.OPENAI_CLASSIFIER_MODEL,
+    FAST_ANSWER_MODEL:
+      parsed.AI_PROVIDER === "groq"
+        ? parsed.GROQ_FAST_ANSWER_MODEL
+        : parsed.OPENAI_ANSWER_MODEL,
     ANSWER_MODEL:
       parsed.AI_PROVIDER === "groq"
         ? parsed.GROQ_ANSWER_MODEL
@@ -85,4 +92,8 @@ export function assertProviderKey(env: ServerEnv): string {
 
 export function assertOpenAIKey(env: ServerEnv): string {
   return assertProviderKey(env);
+}
+
+export function structuredOutputModel(env: ServerEnv): string {
+  return env.AI_PROVIDER === "groq" ? env.ANSWER_MODEL : env.RESEARCH_MODEL;
 }

@@ -9,10 +9,53 @@ import {
   createEmptyCompanyProfile,
   createEmptyUserProfile,
 } from "@/lib/schemas/interview";
+import { resetTestTokenState } from "@/lib/tokens/service";
+
+const testUserId = "00000000-0000-4000-8000-000000000001";
 
 describe("API routes in mock mode", () => {
   beforeEach(() => {
     process.env.AI_MOCK_MODE = "true";
+    process.env.TEST_AUTH_USER_ID = testUserId;
+    process.env.TOKEN_TEST_MODE = "true";
+    resetTestTokenState(testUserId, 100000);
+  });
+
+  it("rejects unauthenticated protected API calls", async () => {
+    delete process.env.TEST_AUTH_USER_ID;
+
+    const response = await classifyQuestion(
+      new Request("http://localhost/api/classify-question", {
+        method: "POST",
+        body: JSON.stringify({
+          transcript: "これまでの経験について教えてください",
+          speaker: "remote",
+          source: "remote-audio",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(401);
+  });
+
+  it("does not run AI work when app token balance is insufficient", async () => {
+    resetTestTokenState(testUserId, 0);
+
+    const response = await classifyQuestion(
+      new Request("http://localhost/api/classify-question", {
+        method: "POST",
+        body: JSON.stringify({
+          transcript: "これまでの経験について教えてください",
+          speaker: "remote",
+          source: "remote-audio",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(402);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "トークン残高が不足しています。現在の残高をご確認ください。",
+    });
   });
 
   it("classifies a simulated transcript", async () => {
@@ -73,7 +116,8 @@ describe("API routes in mock mode", () => {
         body: JSON.stringify({
           selfInfo: "SatoFCで野生動物追跡システムを実装した",
           companyName: "サンプル株式会社",
-          companyWebsite: "https://example.com/recruit",
+          companyDetails:
+            "社風: 現場課題に深く入り、顧客の業務改善を重視する。\n採用情報: プロダクト職で課題設定力を重視。\nhttps://example.com/recruit",
           desiredCourse: "A職 Bコース",
           additionalNotes: "現場実装経験を接続したい",
         }),
