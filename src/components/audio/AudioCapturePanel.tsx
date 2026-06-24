@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Mic, MonitorUp, Square, Wand2 } from "lucide-react";
+import { Mic, MonitorUp, Square } from "lucide-react";
 
 import {
   useRealtimeTranscription,
   type TranscriptItem,
 } from "@/components/audio/use-realtime-transcription";
-import { mergeTranscriptItemsForReading } from "@/components/audio/transcript-items";
+import {
+  formatTranscriptItemsForReading,
+  mergeTranscriptItemsForReading,
+} from "@/components/audio/transcript-items";
 import {
   createTranscriptSubmitKey,
   extractLikelyInterviewQuestion,
@@ -82,13 +85,17 @@ export function AudioCapturePanel({
     () => mergeTranscriptItemsForReading(transcription.items),
     [transcription.items],
   );
+  const transcriptTextForDisplay = useMemo(
+    () => formatTranscriptItemsForReading(transcription.items),
+    [transcription.items],
+  );
 
   useEffect(() => {
     const scrollContainer = transcriptScrollRef.current;
     if (scrollContainer && transcriptStickToBottomRef.current) {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
-  }, [transcriptItemsForReading]);
+  }, [transcriptTextForDisplay]);
 
   function updateTranscriptScrollMode() {
     const scrollContainer = transcriptScrollRef.current;
@@ -120,8 +127,8 @@ export function AudioCapturePanel({
   }, [transcriptItemsForReading]);
 
   useEffect(() => {
-    onTranscriptItemsChange?.(transcriptItemsForReading);
-  }, [onTranscriptItemsChange, transcriptItemsForReading]);
+    onTranscriptItemsChange?.(transcription.items);
+  }, [onTranscriptItemsChange, transcription.items]);
 
   const getTextAfterResumeBaseline = useCallback((text: string): string => {
     const normalizedText = normalizeTranscriptForSubmit(text);
@@ -460,7 +467,7 @@ export function AudioCapturePanel({
               isDark ? "bg-neutral-900" : "bg-neutral-50",
             )}
           >
-            {transcriptItemsForReading.length === 0 ? (
+            {!transcriptTextForDisplay ? (
               <p
                 className={cn(
                   "mt-auto p-4 text-sm font-medium",
@@ -470,68 +477,14 @@ export function AudioCapturePanel({
                 まだ文字起こしはありません。
               </p>
             ) : (
-              transcriptItemsForReading.map((item) => {
-                const canConfirmQuestion =
-                  item.source === "remote" &&
-                  isSubmittableTranscript(item.text) &&
-                  Boolean(onRemoteTranscript);
-
-                return (
-                  <div
-                    key={`${item.id}-${item.createdAt}`}
-                    className={cn(
-                      "border-b p-3 last:border-b-0",
-                      isDark ? "border-white/10" : "border-neutral-950/10",
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "mb-1 flex items-center justify-between gap-2 text-xs font-semibold",
-                        isDark ? "text-white/45" : "text-neutral-500",
-                      )}
-                    >
-                      <span>
-                        {item.source === "remote" ? "相手側" : "自分側"}
-                      </span>
-                      <span>{item.final ? "確定" : "入力中"}</span>
-                    </div>
-                    <p
-                      className={cn(
-                        "whitespace-pre-wrap text-sm leading-6",
-                        isDark ? "text-white/80" : "text-neutral-800",
-                      )}
-                    >
-                      {item.text}
-                    </p>
-                    {canConfirmQuestion ? (
-                      <button
-                        type="button"
-                        disabled={questionLocked}
-                        onClick={() => {
-                          const normalizedCandidate =
-                            getTextAfterResumeBaseline(item.text);
-                          const questionCandidate =
-                            extractLikelyInterviewQuestion(
-                              normalizedCandidate,
-                            ) || normalizedCandidate;
-                          if (isSubmittableTranscript(questionCandidate)) {
-                            onRemoteTranscript?.(questionCandidate);
-                          }
-                        }}
-                        className={cn(
-                          "mt-2 inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:text-neutral-400",
-                          isDark
-                            ? "border-white/10 bg-neutral-950 text-white hover:border-white/30"
-                            : "border-neutral-950/15 bg-white hover:border-neutral-950",
-                        )}
-                      >
-                        <Wand2 className="h-3.5 w-3.5" aria-hidden />
-                        {questionLocked ? "質問確定済み" : "質問を確定"}
-                      </button>
-                    ) : null}
-                  </div>
-                );
-              })
+              <pre
+                className={cn(
+                  "whitespace-pre-wrap p-4 text-sm font-medium leading-6",
+                  isDark ? "text-white/80" : "text-neutral-800",
+                )}
+              >
+                {transcriptTextForDisplay}
+              </pre>
             )}
           </div>
         </div>

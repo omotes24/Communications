@@ -6,7 +6,10 @@ import { Wand2 } from "lucide-react";
 import { AnswerWorkbench } from "@/components/answer/AnswerWorkbench";
 import { PreInterviewLearningPanel } from "@/components/answer/PreInterviewLearningPanel";
 import { AudioCapturePanel } from "@/components/audio/AudioCapturePanel";
-import { mergeTranscriptItemsForReading } from "@/components/audio/transcript-items";
+import {
+  formatTranscriptItemsForReading,
+  mergeTranscriptItemsForReading,
+} from "@/components/audio/transcript-items";
 import type { TranscriptItem } from "@/components/audio/use-realtime-transcription";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
@@ -30,6 +33,22 @@ function RealtimeTranscriptPanel({
 }: RealtimeTranscriptPanelProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const stickToBottomRef = useRef(true);
+  const transcriptText = useMemo(
+    () => formatTranscriptItemsForReading(items),
+    [items],
+  );
+  const latestQuestionCandidate = useMemo(() => {
+    const latestRemoteItem = mergeTranscriptItemsForReading(items)
+      .slice()
+      .reverse()
+      .find((item) => item.source === "remote" && item.text.trim());
+    if (!latestRemoteItem) {
+      return "";
+    }
+    const normalizedText = normalizeTranscriptForSubmit(latestRemoteItem.text);
+    return extractLikelyInterviewQuestion(normalizedText) || normalizedText;
+  }, [items]);
+  const canConfirm = isSubmittableTranscript(latestQuestionCandidate);
   const visibleItems = useMemo(
     () => mergeTranscriptItemsForReading(items),
     [items],
@@ -55,15 +74,6 @@ function RealtimeTranscriptPanel({
     stickToBottomRef.current = distanceFromBottom < 32;
   }
 
-  function confirmItem(item: TranscriptItem) {
-    const normalizedText = normalizeTranscriptForSubmit(item.text);
-    const questionCandidate =
-      extractLikelyInterviewQuestion(normalizedText) || normalizedText;
-    if (isSubmittableTranscript(questionCandidate)) {
-      onConfirm(questionCandidate);
-    }
-  }
-
   return (
     <section
       className={cn(
@@ -82,6 +92,21 @@ function RealtimeTranscriptPanel({
             リアルタイム文字起こし
           </h2>
         </div>
+        {canConfirm ? (
+          <button
+            type="button"
+            onClick={() => onConfirm(latestQuestionCandidate)}
+            className={cn(
+              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition",
+              isDark
+                ? "border-white/10 bg-neutral-900 text-white hover:border-white/30"
+                : "border-neutral-950/15 bg-white hover:border-neutral-950",
+            )}
+          >
+            <Wand2 className="h-3.5 w-3.5" aria-hidden />
+            回答へ
+          </button>
+        ) : null}
       </div>
 
       <div
@@ -94,7 +119,7 @@ function RealtimeTranscriptPanel({
             : "border-neutral-950/10 bg-[#f5f5f7]",
         )}
       >
-        {visibleItems.length === 0 ? (
+        {visibleItems.length === 0 || !transcriptText ? (
           <p
             className={cn(
               "mt-auto p-4 text-sm font-medium",
@@ -104,53 +129,14 @@ function RealtimeTranscriptPanel({
             まだ文字起こしはありません。
           </p>
         ) : (
-          visibleItems.map((item) => {
-            const canConfirm =
-              item.source === "remote" && isSubmittableTranscript(item.text);
-
-            return (
-              <div
-                key={`${item.id}-${item.createdAt}`}
-                className={cn(
-                  "border-b p-3 last:border-b-0",
-                  isDark ? "border-white/10" : "border-neutral-950/10",
-                )}
-              >
-                <div
-                  className={cn(
-                    "mb-1 flex items-center justify-between gap-2 text-[11px] font-semibold",
-                    isDark ? "text-white/45" : "text-[#6e6e73]",
-                  )}
-                >
-                  <span>{item.source === "remote" ? "相手側" : "自分側"}</span>
-                  <span>{item.final ? "確定" : "入力中"}</span>
-                </div>
-                <p
-                  className={cn(
-                    "whitespace-pre-wrap text-[13px] font-medium leading-6",
-                    isDark ? "text-white/80" : "text-[#1d1d1f]",
-                  )}
-                >
-                  {item.text}
-                </p>
-                {canConfirm ? (
-                  <button
-                    type="button"
-                    onClick={() => confirmItem(item)}
-                    className={cn(
-                      "mt-2 inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition",
-                      isDark
-                        ? "border-white/10 bg-neutral-950 text-white hover:border-white/30"
-                        : "border-neutral-950/15 bg-white hover:border-neutral-950",
-                    )}
-                  >
-                    <Wand2 className="h-3.5 w-3.5" aria-hidden />
-                    質問を確定
-                  </button>
-                ) : null}
-              </div>
-            );
-          })
+          <pre
+            className={cn(
+              "whitespace-pre-wrap p-4 text-[13px] font-medium leading-6",
+              isDark ? "text-white/80" : "text-[#1d1d1f]",
+            )}
+          >
+            {transcriptText}
+          </pre>
         )}
       </div>
     </section>

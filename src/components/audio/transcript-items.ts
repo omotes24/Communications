@@ -1,7 +1,10 @@
 import type { TranscriptItem } from "@/components/audio/use-realtime-transcription";
-import { normalizeTranscriptForSubmit } from "@/components/audio/transcript-auto-submit";
+import {
+  normalizeCommonTranscriptErrors,
+  normalizeTranscriptForSubmit,
+} from "@/components/audio/transcript-auto-submit";
 
-const mergeWindowMs = 12_000;
+const mergeWindowMs = 45_000;
 const sentenceEndPattern = /[。！？?？.!]$/;
 const repeatedJapanesePhrasePattern =
   /([\u3040-\u30ff\u3400-\u9fff]{2,6})\1/g;
@@ -11,24 +14,31 @@ function endsWithSentenceBoundary(text: string): boolean {
 }
 
 function normalizeMergedTranscript(text: string): string {
-  return normalizeTranscriptForSubmit(
+  return normalizeCommonTranscriptErrors(
     text.replace(repeatedJapanesePhrasePattern, "$1"),
-  );
+  )
+    .split("\n")
+    .map((line) => normalizeTranscriptForSubmit(line))
+    .filter(Boolean)
+    .join("\n");
 }
 
 function joinTranscriptText(previous: string, next: string): string {
-  const previousText = normalizeTranscriptForSubmit(previous);
+  const previousText = normalizeMergedTranscript(previous);
+  const previousCompactText = normalizeTranscriptForSubmit(previous);
   const nextText = normalizeTranscriptForSubmit(next);
-  const maxOverlap = Math.min(previousText.length, nextText.length, 16);
+  const maxOverlap = Math.min(previousCompactText.length, nextText.length, 16);
   let overlap = 0;
   for (let length = maxOverlap; length >= 2; length -= 1) {
-    if (previousText.endsWith(nextText.slice(0, length))) {
+    if (previousCompactText.endsWith(nextText.slice(0, length))) {
       overlap = length;
       break;
     }
   }
+  const separator =
+    overlap > 0 ? "" : endsWithSentenceBoundary(previousText) ? "\n" : " ";
   return normalizeMergedTranscript(
-    `${previousText}${overlap > 0 ? "" : " "}${nextText.slice(overlap)}`,
+    `${previousText}${separator}${nextText.slice(overlap)}`,
   );
 }
 
@@ -48,7 +58,7 @@ function shouldMergeTranscriptItems(
   if (next.createdAt - previous.createdAt > mergeWindowMs) {
     return false;
   }
-  return !endsWithSentenceBoundary(previous.text);
+  return true;
 }
 
 export function mergeTranscriptItemsForReading(
@@ -74,4 +84,14 @@ export function mergeTranscriptItemsForReading(
   }
 
   return mergedItems;
+}
+
+export function formatTranscriptItemsForReading(items: TranscriptItem[]): string {
+  return mergeTranscriptItemsForReading(items)
+    .map((item) => {
+      const speaker = item.source === "remote" ? "相手側" : "自分側";
+      return `${speaker}\n${item.text}`;
+    })
+    .join("\n\n")
+    .trim();
 }
