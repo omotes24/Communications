@@ -1,7 +1,6 @@
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { requireApiUser } from "@/lib/auth/server";
-import { checkRateLimit, rateLimitResponse } from "@/lib/api/rate-limit";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv, structuredOutputModel } from "@/lib/openai/env";
 import {
@@ -35,14 +34,6 @@ export async function POST(request: Request): Promise<Response> {
     const body = learnInterviewContextRequestSchema.parse(await request.json());
     const env = getServerEnv();
     const model = structuredOutputModel(env);
-    const rateLimit = checkRateLimit({
-      key: `${auth.user.id}:learn-interview-context`,
-      limit: 20,
-      windowMs: 60_000,
-    });
-    if (!rateLimit.ok) {
-      return rateLimitResponse(rateLimit.retryAfterSeconds);
-    }
     const { requestId, operationId } = createRequestIds(request);
     const reservation = await reserveAiTokens({
       userId: auth.user.id,

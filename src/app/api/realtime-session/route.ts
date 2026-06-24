@@ -1,5 +1,4 @@
 import { requireApiUser } from "@/lib/auth/server";
-import { checkRateLimit, rateLimitResponse } from "@/lib/api/rate-limit";
 import { getServerEnv, assertOpenAIKey } from "@/lib/openai/env";
 import { jsonError, toPublicError } from "@/lib/privacy/logging";
 import { estimateRealtimeSessionTokens } from "@/lib/tokens/ai-estimates";
@@ -21,14 +20,6 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const env = getServerEnv();
-    const rateLimit = checkRateLimit({
-      key: `${auth.user.id}:realtime-session`,
-      limit: 10,
-      windowMs: 60_000,
-    });
-    if (!rateLimit.ok) {
-      return rateLimitResponse(rateLimit.retryAfterSeconds);
-    }
     const reservedSeconds = Number(
       process.env.APP_REALTIME_SESSION_RESERVATION_SECONDS ?? 180,
     );

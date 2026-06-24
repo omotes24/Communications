@@ -78,6 +78,26 @@ describe("API routes in mock mode", () => {
     });
   });
 
+  it("does not rate limit repeated interview AI requests", async () => {
+    const responses = await Promise.all(
+      Array.from({ length: 75 }, (_, index) =>
+        classifyQuestion(
+          new Request("http://localhost/api/classify-question", {
+            method: "POST",
+            body: JSON.stringify({
+              transcript: `これは動作確認です ${index}`,
+              speaker: "local",
+              source: "manual",
+            }),
+          }),
+        ),
+      ),
+    );
+
+    expect(responses.every((response) => response.status !== 429)).toBe(true);
+    expect(responses.every((response) => response.ok)).toBe(true);
+  });
+
   it("streams a structured answer", async () => {
     const profile = {
       ...createEmptyUserProfile(),

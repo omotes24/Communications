@@ -36,8 +36,7 @@ export function checkRateLimit({
 export function rateLimitResponse(retryAfterSeconds: number): Response {
   return Response.json(
     {
-      error:
-        "短時間にリクエストが集中しています。少し時間をおいて再試行してください。",
+      error: "送信回数が上限に達しました。時間をおいて再送してください。",
     },
     {
       status: 429,

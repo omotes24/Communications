@@ -1,5 +1,4 @@
 import { requireApiUser } from "@/lib/auth/server";
-import { checkRateLimit, rateLimitResponse } from "@/lib/api/rate-limit";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
 import { jsonError, toPublicError } from "@/lib/privacy/logging";
@@ -22,14 +21,6 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const env = getServerEnv();
-    const rateLimit = checkRateLimit({
-      key: `${auth.user.id}:transcribe-audio`,
-      limit: 30,
-      windowMs: 60_000,
-    });
-    if (!rateLimit.ok) {
-      return rateLimitResponse(rateLimit.retryAfterSeconds);
-    }
     const formData = await request.formData();
     const audio = formData.get("audio");
     if (!(audio instanceof File)) {

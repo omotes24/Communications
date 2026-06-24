@@ -1,7 +1,6 @@
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { requireApiUser } from "@/lib/auth/server";
-import { checkRateLimit, rateLimitResponse } from "@/lib/api/rate-limit";
 import {
   getCompanyInputCopy,
   getCompanyInputMode,
@@ -128,14 +127,6 @@ export async function POST(request: Request): Promise<Response> {
     const body = researchCompanyRequestSchema.parse(await request.json());
     const env = getServerEnv();
     const model = env.RESEARCH_MODEL;
-    const rateLimit = checkRateLimit({
-      key: `${auth.user.id}:research-company`,
-      limit: 12,
-      windowMs: 60_000,
-    });
-    if (!rateLimit.ok) {
-      return rateLimitResponse(rateLimit.retryAfterSeconds);
-    }
     const { requestId, operationId } = createRequestIds(request);
     const reservation = await reserveAiTokens({
       userId: auth.user.id,

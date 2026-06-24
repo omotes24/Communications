@@ -14,7 +14,7 @@ export function translateAuthError(message: string): string {
     return "パスワードの条件を確認してください。";
   }
   if (normalized.includes("rate limit")) {
-    return "短時間に操作が集中しています。少し時間をおいて再試行してください。";
+    return "認証処理を受け付けられませんでした。時間をおいて再度お試しください。";
   }
 
   return "認証処理に失敗しました。入力内容を確認してください。";
