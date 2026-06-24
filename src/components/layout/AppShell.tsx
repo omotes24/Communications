@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -39,6 +40,15 @@ export function AppShell({
   const displayedPathname =
     optimisticPathname?.from === pathname ? optimisticPathname.to : pathname;
   const isDark = variant === "dark";
+
+  function markNavigationIntent(href: string) {
+    if (href === displayedPathname) {
+      return;
+    }
+    flushSync(() => {
+      setOptimisticPathname({ from: pathname, to: href });
+    });
+  }
 
   return (
     <div
@@ -105,14 +115,10 @@ export function AppShell({
                 <Link
                   key={item.href}
                   href={item.href}
-                  onPointerDown={() =>
-                    setOptimisticPathname({ from: pathname, to: item.href })
-                  }
-                  onClick={() =>
-                    setOptimisticPathname({ from: pathname, to: item.href })
-                  }
+                  onPointerDown={() => markNavigationIntent(item.href)}
+                  onClick={() => markNavigationIntent(item.href)}
                   className={cn(
-                    "flex h-10 items-center justify-center gap-2 rounded-full px-2 text-sm font-semibold tracking-tight transition-colors duration-75",
+                    "flex h-10 items-center justify-center gap-2 rounded-full px-2 text-sm font-semibold tracking-tight",
                     active
                       ? isDark
                         ? "bg-white text-neutral-950 shadow-sm"
