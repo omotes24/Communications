@@ -6,7 +6,12 @@ import { Brain, Building2, CheckCircle2, Loader2, X } from "lucide-react";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 
 export function PreInterviewLearningPanel() {
-  const { storage, activeCompany: company, actions } = useAppStorage();
+  const {
+    storage,
+    activeCompany: company,
+    activeProfile: profile,
+    actions,
+  } = useAppStorage();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const companyName = company?.companyName || company?.label || "";
@@ -18,10 +23,13 @@ export function PreInterviewLearningPanel() {
     setLoading(true);
     setStatus(null);
     try {
-      const profile = storage.profiles[0] ?? null;
       const response = await fetch("/api/learn-interview-context", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-operation-id": crypto.randomUUID(),
+          "x-request-id": crypto.randomUUID(),
+        },
         body: JSON.stringify({
           profile,
           company,
@@ -58,19 +66,19 @@ export function PreInterviewLearningPanel() {
     <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
             Pre Interview
           </p>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight">
             面接前に学習
           </h2>
-          <p className="mt-2 text-sm font-medium leading-6 text-neutral-600">
-            {learningMatchesCompany
-              ? "この会社の理解メモを回答案に使います。"
-              : companyName
-                ? "まだこの会社の面接前学習は完了していません。学習開始を押してください。"
-                : "会社スロットを作成すると、会社名に合わせて面接前学習を始められます。"}
-          </p>
+          {learningMatchesCompany || companyName ? (
+            <p className="mt-2 text-sm font-medium leading-6 text-neutral-600">
+              {learningMatchesCompany
+                ? "この会社の理解メモを回答案に使います。"
+                : "まだこの会社の面接前学習は完了していません。学習開始を押してください。"}
+            </p>
+          ) : null}
         </div>
         <span
           className={[
@@ -106,7 +114,7 @@ export function PreInterviewLearningPanel() {
           type="button"
           onClick={learn}
           disabled={loading}
-          className="inline-flex min-h-16 items-center justify-center gap-3 rounded-3xl bg-[#0071e3] px-6 text-base font-semibold text-white shadow-sm transition hover:bg-[#147ce5] disabled:cursor-not-allowed disabled:bg-[#86868b]"
+          className="inline-flex min-h-16 items-center justify-center gap-3 rounded-3xl bg-[var(--accent)] px-6 text-base font-semibold text-white shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:bg-[#86868b]"
         >
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden />

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { getCompanyInputCopy } from "@/lib/company-input-mode";
+
 export const questionCategorySchema = z.enum([
   "introduction",
   "motivation",
@@ -71,13 +73,32 @@ export const companyProfileSchema = z.object({
 
 export type CompanyProfile = z.infer<typeof companyProfileSchema>;
 
-export const researchCompanyRequestSchema = z.object({
-  selfInfo: z.string().trim().min(1, "自分のことを入力してください"),
-  companyName: z.string().trim().min(1, "会社名を入力してください"),
-  companyWebsite: z.string().trim().min(1, "企業Webサイトを入力してください"),
-  desiredCourse: z.string().trim().min(1, "志望コースを入力してください"),
-  additionalNotes: z.string().default(""),
-});
+const companyInputCopy = getCompanyInputCopy();
+
+export const researchCompanyRequestSchema = z.preprocess(
+  (value) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const record = value as Record<string, unknown>;
+      if (
+        typeof record.companyWebsite !== "string" &&
+        typeof record.companyDetails === "string"
+      ) {
+        return { ...record, companyWebsite: record.companyDetails };
+      }
+    }
+    return value;
+  },
+  z.object({
+    selfInfo: z.string().trim().min(1, "自分スロットを入力してください"),
+    companyName: z.string().trim().min(1, "会社名を入力してください"),
+    companyWebsite: z
+      .string()
+      .trim()
+      .min(1, companyInputCopy.schemaMissing),
+    desiredCourse: z.string().trim().min(1, "志望コースを入力してください"),
+    additionalNotes: z.string().default(""),
+  }),
+);
 
 export type ResearchCompanyRequest = z.infer<
   typeof researchCompanyRequestSchema
@@ -202,6 +223,10 @@ export type AnswerConversationTurn = z.infer<
   typeof answerConversationTurnSchema
 >;
 
+export const answerModelModeSchema = z.enum(["standard", "fermi"]);
+
+export type AnswerModelMode = z.infer<typeof answerModelModeSchema>;
+
 export const classifyQuestionRequestSchema = z.object({
   transcript: z.string().trim().min(1, "文字起こしが空です"),
   speaker: speakerSchema,
@@ -217,8 +242,14 @@ export const generateAnswerRequestSchema = z.object({
   category: questionCategorySchema.default("other"),
   profile: userProfileSchema.nullable(),
   company: companyProfileSchema.nullable(),
+  profiles: z.array(userProfileSchema).max(8).optional(),
+  companies: z.array(companyProfileSchema).max(8).optional(),
   learningBrief: z.string().default(""),
   conversationContext: z.array(answerConversationTurnSchema).max(8).default([]),
+  answerModelMode: answerModelModeSchema.optional(),
+  fermiEstimationMode: z.boolean().optional(),
+  selfSlot: z.string().trim().max(2000).optional(),
+  answerLengthTarget: z.number().int().min(300).max(900).optional(),
 });
 
 export type GenerateAnswerRequest = z.infer<typeof generateAnswerRequestSchema>;
@@ -238,7 +269,10 @@ export type SessionRecord = z.infer<typeof sessionRecordSchema>;
 export const appStorageSchema = z.object({
   profiles: z.array(userProfileSchema),
   companies: z.array(companyProfileSchema),
+  activeProfileId: z.string().nullable().default(null),
   activeCompanyId: z.string().nullable().default(null),
+  selectedProfileIds: z.array(z.string()).default([]),
+  selectedCompanyIds: z.array(z.string()).default([]),
   history: z.array(sessionRecordSchema),
   learning: preInterviewLearningSchema.nullable().default(null),
   privacy: z.object({
@@ -301,13 +335,23 @@ export function createEmptyCompanyProfile(): CompanyProfile {
 }
 
 export function countJapaneseCharacters(value: string): number {
-  return Array.from(value.replace(/\s/g, "")).length;
+  return Array.from(value.replace(/\*\*/g, "").replace(/\s/g, "")).length;
 }
 
-export function validateAnswerLength(answer: string): {
+export function validateAnswerLength(
+  answer: string,
+  target?: number,
+): {
   count: number;
   inRange: boolean;
 } {
   const count = countJapaneseCharacters(answer);
+  if (target) {
+    const tolerance = Math.max(60, Math.round(target * 0.18));
+    return {
+      count,
+      inRange: count >= target - tolerance && count <= target + tolerance,
+    };
+  }
   return { count, inRange: count >= 250 && count <= 350 };
 }

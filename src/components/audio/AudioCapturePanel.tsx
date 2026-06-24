@@ -252,14 +252,15 @@ export function AudioCapturePanel({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
             Audio
           </p>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight">
             音声入力
           </h2>
           <p className="mt-2 text-sm font-medium leading-6 text-neutral-600">
-            Chrome/EdgeでZoomやMeetのブラウザタブを選び、タブ音声を共有すると相手の質問を文字起こしできます。
+            <span className="underline underline-offset-2">Chrome/Edge</span>
+            でZoomやMeetのブラウザタブを選び、タブ音声を共有すると相手の質問を文字起こしできます。
           </p>
         </div>
         <span
@@ -335,7 +336,7 @@ export function AudioCapturePanel({
               "inline-flex min-h-16 items-center justify-center gap-3 rounded-3xl px-5 text-base font-semibold shadow-sm transition disabled:cursor-not-allowed",
               isRecording && activeSource === "remote"
                 ? "bg-red-600 text-white"
-                : "bg-[#0071e3] text-white hover:bg-[#147ce5] disabled:bg-[#86868b]",
+                : "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] disabled:bg-[#86868b]",
             )}
           >
             <MonitorUp className="h-5 w-5" aria-hidden />

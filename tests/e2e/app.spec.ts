@@ -10,7 +10,7 @@ test("manual question flow with mock AI", async ({ page }) => {
     .getByLabel("在籍している大学・学年・学部・研究室など")
     .fill("慶應義塾大学 理工学部 4年 中澤・大越研究室");
   await page
-    .getByLabel("自分のこと")
+    .getByLabel("自分スロット")
     .fill(
       "強み: 顧客課題を構造化してチームを前進させる力\n実績: オンボーディング改善で解約率を下げた",
     );
@@ -18,19 +18,23 @@ test("manual question flow with mock AI", async ({ page }) => {
   await expect(page.getByText("メインプロフィール")).toBeVisible();
 
   await page.goto("/company");
-  await page.getByRole("button", { name: "自分のことを反映" }).click();
+  await page.getByRole("button", { name: "自分スロットを反映" }).click();
   await page.getByLabel("会社名").fill("サンプル株式会社");
   await page
-    .getByLabel("企業Webサイト")
-    .fill("https://sample.example.com/recruit");
+    .getByLabel("社風・採用情報・特筆事項など(詳細)")
+    .fill(
+      "社風: 顧客の現場課題を深く理解して改善する。\n採用情報: プロダクト職では課題設定力と実装推進力を重視。\nhttps://sample.example.com/recruit",
+    );
   await page.getByLabel("志望コース").fill("プロダクト職 現場課題解決コース");
   await page.getByLabel("その他").fill("SatoFCの経験を中心に話したい");
 
   await page.goto("/support");
   await page.goto("/company");
   await expect(page.getByLabel("会社名")).toHaveValue("サンプル株式会社");
-  await expect(page.getByLabel("企業Webサイト")).toHaveValue(
-    "https://sample.example.com/recruit",
+  await expect(
+    page.getByLabel("社風・採用情報・特筆事項など(詳細)"),
+  ).toHaveValue(
+    "社風: 顧客の現場課題を深く理解して改善する。\n採用情報: プロダクト職では課題設定力と実装推進力を重視。\nhttps://sample.example.com/recruit",
   );
   await expect(page.getByLabel("志望コース")).toHaveValue(
     "プロダクト職 現場課題解決コース",

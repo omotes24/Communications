@@ -13,13 +13,7 @@ import {
 
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
-
-const systemFlow = [
-  "プロフィールと会社スロットをブラウザに保存",
-  "会社Webサイトと志望コースをもとに面接前メモを作成",
-  "Meet/Zoomのタブ音声を文字起こしして質問候補を検知",
-  "検知した質問を回答チャットへ自動送信し、回答案を生成",
-];
+import { getCompanyInputCopy } from "@/lib/company-input-mode";
 
 const apiRoutes = [
   "/api/research-company",
@@ -30,22 +24,62 @@ const apiRoutes = [
 ];
 
 export default function SetupPage() {
+  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You";
+  const companyInputCopy = getCompanyInputCopy();
+  const aiProvider = process.env.AI_PROVIDER === "groq" ? "groq" : "openai";
+  const providerName = aiProvider === "groq" ? "Groq" : "OpenAI API";
+  const providerStatus =
+    aiProvider === "groq" ? "Groqで動作" : "OpenAI APIで動作";
+  const modelRoleText =
+    aiProvider === "groq"
+      ? "Groqを使う設定では、音声はWhisper系モデル、質問判定は軽量構造化モデル、回答生成は回答用モデル、企業理解はリサーチ用モデルに分けています。"
+      : "OpenAI APIを使う設定では、音声文字起こし、質問判定、回答生成、企業理解を用途別のOpenAIモデルに分けています。企業理解では必要に応じてweb_searchを使います。";
+  const envExample =
+    aiProvider === "groq"
+      ? `AI_PROVIDER=groq
+NEXT_PUBLIC_AI_PROVIDER=groq
+GROQ_API_KEY=新しいAPIキー
+
+GROQ_TRANSCRIPTION_MODEL=whisper-large-v3-turbo
+GROQ_STRUCTURED_MODEL=openai/gpt-oss-20b
+GROQ_FAST_ANSWER_MODEL=openai/gpt-oss-20b
+GROQ_ANSWER_MODEL=openai/gpt-oss-120b
+GROQ_RESEARCH_MODEL=groq/compound
+
+AI_MOCK_MODE=false`
+      : `AI_PROVIDER=openai
+NEXT_PUBLIC_AI_PROVIDER=openai
+OPENAI_API_KEY=新しいAPIキー
+
+OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
+OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
+OPENAI_ANSWER_MODEL=gpt-5.4-mini
+OPENAI_RESEARCH_MODEL=gpt-5.5
+
+AI_MOCK_MODE=false`;
+  const systemFlow = [
+    "プロフィールと会社スロットをブラウザに保存",
+    companyInputCopy.setupFlow,
+    "Meet/Zoomのタブ音声を文字起こしして質問候補を検知",
+    "検知した質問を回答チャットへ自動送信し、回答案を生成",
+  ];
+
   return (
     <AppShell>
       <PageHeader
         title="Settings"
-        description="QuestionTurboのフロントエンド、バックエンド、AI連携、音声処理の動作を確認できます。"
+        description={`${appName}のフロントエンド、バックエンド、AI連携、音声処理の動作を確認できます。`}
       />
 
       <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-5">
           <section className="rounded-[30px] bg-white p-6 shadow-sm ring-1 ring-black/[0.06]">
             <div className="flex items-start gap-4">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e8f2ff] text-[#0071e3]">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
                 <Workflow className="h-5 w-5" aria-hidden />
               </span>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                   System
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight">
@@ -63,7 +97,7 @@ export default function SetupPage() {
                   key={item}
                   className="rounded-2xl bg-[#f5f5f7] p-4 text-sm font-semibold leading-6 text-[#1d1d1f]"
                 >
-                  <span className="mb-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs text-[#0071e3] shadow-sm ring-1 ring-black/[0.06]">
+                  <span className="mb-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs text-[var(--accent)] shadow-sm ring-1 ring-black/[0.06]">
                     {index + 1}
                   </span>
                   <p>{item}</p>
@@ -125,7 +159,7 @@ export default function SetupPage() {
                 AIモデルの役割
               </h2>
               <p className="mt-3 text-sm font-medium leading-7 text-[#6e6e73]">
-                Groqを使う設定では、音声はWhisper系モデル、質問判定は軽量構造化モデル、回答生成は回答用モデル、企業理解はリサーチ用モデルに分けています。
+                {modelRoleText}
               </p>
             </div>
 
@@ -165,15 +199,7 @@ export default function SetupPage() {
                 環境変数を見る
               </summary>
               <pre className="mt-4 overflow-x-auto rounded-2xl bg-[#1d1d1f] p-4 text-xs leading-6 text-white">
-                {`AI_PROVIDER=groq
-GROQ_API_KEY=新しいAPIキー
-
-GROQ_TRANSCRIPTION_MODEL=whisper-large-v3-turbo
-GROQ_STRUCTURED_MODEL=openai/gpt-oss-20b
-GROQ_ANSWER_MODEL=openai/gpt-oss-120b
-GROQ_RESEARCH_MODEL=groq/compound
-
-AI_MOCK_MODE=false`}
+                {envExample}
               </pre>
             </details>
           </section>
@@ -185,11 +211,14 @@ AI_MOCK_MODE=false`}
               Status
             </p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight">
-              Groqで動作
+              {providerStatus}
             </h2>
             <div className="mt-5 grid gap-2 text-sm font-semibold">
               <div className="rounded-2xl bg-white/10 px-4 py-3">
-                AI_PROVIDER: groq
+                AI_PROVIDER: {aiProvider}
+              </div>
+              <div className="rounded-2xl bg-white/10 px-4 py-3">
+                Provider: {providerName}
               </div>
               <div className="rounded-2xl bg-white/10 px-4 py-3">
                 AI_MOCK_MODE: false
@@ -222,7 +251,7 @@ AI_MOCK_MODE=false`}
           </div>
 
           <div className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
               Next
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight">

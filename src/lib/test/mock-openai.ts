@@ -62,8 +62,8 @@ export function mockClassifyQuestion(
 export function mockGenerateAnswer(
   request: GenerateAnswerRequest,
 ): AnswerDraft {
-  const profile = request.profile;
-  const company = request.company;
+  const profile = request.profiles?.[0] ?? request.profile;
+  const company = request.companies?.[0] ?? request.company;
   const role = profile?.currentRole || profile?.affiliation || "所属・役割";
   const strength = profile?.strengths || profile?.skills || "登録済みの強み";
   const achievement =
@@ -74,6 +74,14 @@ export function mockGenerateAnswer(
   const conversationLead = previousTurn
     ? `先ほどの回答を踏まえると、`
     : "結論から言うと、";
+  const selfSlotLead = request.selfSlot?.trim()
+    ? `今回は${request.selfSlot.trim()}を前提に、`
+    : conversationLead;
+  const isFermiMode =
+    request.answerModelMode === "fermi" || request.category === "case";
+  const targetText = request.answerLengthTarget
+    ? `${request.answerLengthTarget}文字程度で、`
+    : "";
 
   return {
     question: request.question,
@@ -82,7 +90,9 @@ export function mockGenerateAnswer(
       `${strength}を応募先の期待に接続する`,
       `${achievement}を根拠として簡潔に話す`,
     ],
-    answer: `${conversationLead}私は${role}として培ってきた経験を、${companyName}で再現性のある成果につなげたいと考えています。特に${strength}を活かし、これまで${achievement}に取り組んできました。御社については${attraction}に魅力を感じており、入社後はまず現場理解を深めながら、求められる役割に対して具体的な改善提案と実行で貢献したいです。`,
+    answer: isFermiMode
+      ? `${selfSlotLead}${targetText}**前提を置く力**を見せるため、対象人数、利用頻度、単価の3点に分けて概算します。まず市場規模を人数×頻度×単価で粗く出し、その後に${companyName}で取りに行ける割合を置きます。最後は**前提の感度**が大きい点を補足し、面接では計算過程の妥当性を確認しながら話します。`
+      : `${conversationLead}私は${role}として培ってきた経験を、${companyName}で再現性のある成果につなげたいと考えています。特に**${strength}**を活かし、これまで${achievement}に取り組んできました。御社については${attraction}に魅力を感じており、入社後はまず現場理解を深めながら、求められる役割に対して**具体的な改善提案と実行**で貢献したいです。`,
     evidenceUsed: [
       profile?.currentRole ? `現在の職種: ${profile.currentRole}` : "",
       profile?.affiliation ? `所属: ${profile.affiliation}` : "",

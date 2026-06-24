@@ -29,8 +29,15 @@ const questionStartPatterns = [
 const leadingFillerPattern =
   /^(?:(?:はい|では|それでは|じゃあ|次に|続いて|まず|最初に|最後に|ありがとうございます|承知しました|ちなみに)[、,\s。]*)+/;
 
+export function normalizeCommonTranscriptErrors(text: string): string {
+  return text
+    .replace(/死亡(?=(?:理由|動機))/g, "志望")
+    .replace(/死望(?=(?:理由|動機))/g, "志望")
+    .replace(/志亡(?=(?:理由|動機))/g, "志望");
+}
+
 export function normalizeTranscriptForSubmit(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
+  return normalizeCommonTranscriptErrors(text).replace(/\s+/g, " ").trim();
 }
 
 export function isSubmittableTranscript(text: string): boolean {

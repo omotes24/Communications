@@ -27,7 +27,7 @@ function RealtimeTranscriptPanel({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const latestTextRef = useRef<HTMLParagraphElement | null>(null);
   const latestItemId = items[0]?.id;
-  const visibleItems = useMemo(() => items.slice(0, 4).reverse(), [items]);
+  const visibleItems = useMemo(() => items.slice(0, 8).reverse(), [items]);
 
   useEffect(() => {
     const scrollContainer = scrollRef.current;
@@ -51,24 +51,21 @@ function RealtimeTranscriptPanel({
   }
 
   return (
-    <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
+    <section className="rounded-[30px] bg-white p-4 shadow-sm ring-1 ring-black/[0.06]">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
             Live Transcript
           </p>
           <h2 className="mt-1 text-xl font-semibold tracking-tight">
             リアルタイム文字起こし
           </h2>
         </div>
-        <span className="rounded-full bg-[#f5f5f7] px-3 py-1.5 text-xs font-semibold text-[#6e6e73]">
-          最大4行
-        </span>
       </div>
 
       <div
         ref={scrollRef}
-        className="mt-4 flex max-h-56 min-h-44 flex-col overflow-y-auto rounded-2xl border border-neutral-950/10 bg-[#f5f5f7]"
+        className="mt-3 flex max-h-72 min-h-40 flex-col overflow-y-auto rounded-2xl border border-neutral-950/10 bg-[#f5f5f7] xl:max-h-[620px]"
       >
         {visibleItems.length === 0 ? (
           <p className="mt-auto p-4 text-sm font-medium text-[#86868b]">
@@ -133,20 +130,17 @@ export function SupportScreen() {
 
   return (
     <section>
-      <PageHeader
-        title="面接"
-        description="面接前に学習し、質問を入力または録音して回答案を作ります。"
-      />
-      <div className="mb-4 rounded-[30px] bg-white p-6 shadow-sm ring-1 ring-black/[0.06]">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0071e3]">
-          Current Company
-        </p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#1d1d1f]">
-          {activeCompanyName
-            ? `${activeCompanyName}の面接を始めましょう！`
-            : "会社スロットを作成して面接を始めましょう。"}
-        </h2>
-      </div>
+      <PageHeader title="面接" />
+      {activeCompanyName ? (
+        <div className="mb-4 rounded-[30px] bg-white p-6 shadow-sm ring-1 ring-black/[0.06]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
+            Current Company
+          </p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#1d1d1f]">
+            {activeCompanyName}の面接を始めましょう！
+          </h2>
+        </div>
+      ) : null}
       <div className="grid gap-4">
         <PreInterviewLearningPanel />
         <AudioCapturePanel

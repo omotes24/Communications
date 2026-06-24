@@ -5,9 +5,15 @@ import {
   clearAppStorage,
   defaultStorage,
   saveAppStorage,
+  toggleSelectedCompany,
+  toggleSelectedProfile,
   upsertCompany,
+  upsertProfile,
 } from "@/lib/storage/browser-store";
-import { createEmptyCompanyProfile } from "@/lib/schemas/interview";
+import {
+  createEmptyCompanyProfile,
+  createEmptyUserProfile,
+} from "@/lib/schemas/interview";
 
 describe("browser storage helpers", () => {
   beforeEach(() => {
@@ -44,6 +50,41 @@ describe("browser storage helpers", () => {
     ]);
     expect(next.companies[1].targetRole).toBe("更新済みコース");
     expect(next.activeCompanyId).toBe("company-b");
+  });
+
+  it("keeps multiple selected profile and company slots", () => {
+    const profileA = { ...createEmptyUserProfile(), id: "profile-a" };
+    const profileB = { ...createEmptyUserProfile(), id: "profile-b" };
+    const companyA = { ...createEmptyCompanyProfile(), id: "company-a" };
+    const companyB = { ...createEmptyCompanyProfile(), id: "company-b" };
+
+    const withProfiles = upsertProfile(
+      upsertProfile(defaultStorage, profileA),
+      profileB,
+    );
+    expect(withProfiles.selectedProfileIds).toEqual([
+      "profile-a",
+      "profile-b",
+    ]);
+    const stillHasOneProfile = toggleSelectedProfile(
+      toggleSelectedProfile(withProfiles, "profile-a"),
+      "profile-b",
+    );
+    expect(stillHasOneProfile.selectedProfileIds).toEqual(["profile-b"]);
+
+    const withCompanies = upsertCompany(
+      upsertCompany(defaultStorage, companyA),
+      companyB,
+    );
+    expect(withCompanies.selectedCompanyIds).toEqual([
+      "company-a",
+      "company-b",
+    ]);
+    const stillHasOneCompany = toggleSelectedCompany(
+      toggleSelectedCompany(withCompanies, "company-a"),
+      "company-b",
+    );
+    expect(stillHasOneCompany.selectedCompanyIds).toEqual(["company-b"]);
   });
 
   it("notifies same-tab subscribers when storage changes", () => {

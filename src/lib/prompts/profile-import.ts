@@ -24,7 +24,7 @@ export function buildProfileImportInput(
           `プロフィール名: ${request.currentProfile.label}`,
           `名前: ${request.currentProfile.nameOrAlias || "未入力"}`,
           `所属: ${request.currentProfile.affiliation || "未入力"}`,
-          `自分のこと: ${request.currentProfile.careerSummary || "未入力"}`,
+          `自分スロット: ${request.currentProfile.careerSummary || "未入力"}`,
           `使わない情報: ${
             request.currentProfile.forbiddenInformation || "未入力"
           }`,
