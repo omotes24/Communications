@@ -30,13 +30,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<staging anon key>
 NEXT_PUBLIC_APP_NAME=Yell for You 1.1
 SUPABASE_SERVICE_ROLE_KEY=<staging service role key>
 SUPABASE_STORAGE_BUCKETS=
-APP_SIGNUP_GRANT_TOKENS=100000
+APP_SIGNUP_GRANT_TOKENS=300000
 APP_REALTIME_SESSION_RESERVATION_SECONDS=180
 CRON_SECRET=<preview manual admin secret>
 STRIPE_SECRET_KEY=<stripe test secret key>
 STRIPE_WEBHOOK_SECRET=<stripe preview webhook secret>
-AI_PROVIDER=groq
-GROQ_API_KEY=<staging/test key>
+AI_PROVIDER=openai
+OPENAI_API_KEY=<staging/test key>
+OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
+OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
+OPENAI_ANSWER_MODEL=gpt-5.4-mini
+OPENAI_RESEARCH_MODEL=gpt-5.5
 AI_MOCK_MODE=false
 ```
 
@@ -53,8 +57,12 @@ APP_REALTIME_SESSION_RESERVATION_SECONDS=180
 CRON_SECRET=<production cron secret>
 STRIPE_SECRET_KEY=<stripe live secret key>
 STRIPE_WEBHOOK_SECRET=<stripe production webhook secret>
-AI_PROVIDER=groq
-GROQ_API_KEY=<production key>
+AI_PROVIDER=openai
+OPENAI_API_KEY=<production key>
+OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
+OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
+OPENAI_ANSWER_MODEL=gpt-5.4-mini
+OPENAI_RESEARCH_MODEL=gpt-5.5
 AI_MOCK_MODE=false
 ```
 
@@ -81,7 +89,7 @@ supabase db push
 
 ## 初期rate card投入
 
-`supabase/migrations/202606240001_multi_user_tokens.sql` に `default-v1` の初期rate card投入が含まれます。係数変更は `token_rate_cards` に新versionを追加し、既存行を上書きしないでください。
+`supabase/migrations/202606240001_multi_user_tokens.sql` に `default-v1` の初期rate card投入が含まれます。`supabase/migrations/202606240004_openai_pricing_rate_card.sql` でOpenAI API向けの `default-v2` を有効化します。係数変更は `token_rate_cards` に新versionを追加し、既存行を上書きしないでください。
 
 ## Stripe決済とPayout設定
 
@@ -109,7 +117,7 @@ RLS_USER_B_PASSWORD=
 ```bash
 SUPABASE_URL=<staging url> \
 SUPABASE_SERVICE_ROLE_KEY=<staging service key> \
-npm run tokens:grant-test -- --user <auth-user-uuid> --amount 100000
+npm run tokens:grant-test -- --user <auth-user-uuid> --amount 300000
 ```
 
 ## expired reservation解放

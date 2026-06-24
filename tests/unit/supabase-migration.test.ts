@@ -30,7 +30,16 @@ const billingMigration = readFileSync(
   ),
   "utf8",
 );
-const allMigrations = `${migration}\n${hardeningMigration}\n${billingMigration}`;
+const pricingMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202606240004_openai_pricing_rate_card.sql",
+  ),
+  "utf8",
+);
+const allMigrations = `${migration}\n${hardeningMigration}\n${billingMigration}\n${pricingMigration}`;
 
 describe("Supabase migration", () => {
   it("enables RLS for user data tables and defines token functions", () => {
@@ -94,5 +103,16 @@ describe("Supabase migration", () => {
     expect(billingMigration).toContain(
       "grant execute on function public.grant_purchased_tokens",
     );
+  });
+
+  it("adds the OpenAI pricing rate card", () => {
+    expect(pricingMigration).toContain("'default-v2'");
+    expect(pricingMigration).toContain(
+      "('default-v2', '*', 'research-company', 1, 0.25, 4, 4, 0, 500, true)",
+    );
+    expect(pricingMigration).toContain(
+      "('default-v2', '*', 'transcribe-audio', 0, 0, 0, 0, 40, 0, true)",
+    );
+    expect(pricingMigration).toContain("set active = false");
   });
 });

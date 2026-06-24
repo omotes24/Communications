@@ -7,10 +7,10 @@ import {
 } from "@/lib/billing/plans";
 
 describe("billing plans", () => {
-  it("grants three app tokens per yen", () => {
-    expect(TOKEN_MULTIPLIER_PER_JPY).toBe(3);
+  it("grants 300 app tokens per yen", () => {
+    expect(TOKEN_MULTIPLIER_PER_JPY).toBe(300);
     for (const plan of billingPlans) {
-      expect(plan.tokenAmount).toBe(plan.amountJpy * 3);
+      expect(plan.tokenAmount).toBe(plan.amountJpy * 300);
     }
   });
 
@@ -18,7 +18,7 @@ describe("billing plans", () => {
     expect(getBillingPlan("standard")).toMatchObject({
       id: "standard",
       amountJpy: 3000,
-      tokenAmount: 9000,
+      tokenAmount: 900000,
     });
     expect(getBillingPlan("missing")).toBeNull();
   });

@@ -487,7 +487,11 @@ async function getRateCard(
     ),
     outputTokenMultiplier: Number(card.output_token_multiplier ?? 4),
     reasoningTokenMultiplier: Number(card.reasoning_token_multiplier ?? 4),
-    audioSecondMultiplier: Number(card.audio_second_multiplier ?? 20),
-    webSearchMultiplier: Number(card.web_search_multiplier ?? 250),
+    audioSecondMultiplier: Number(
+      card.audio_second_multiplier ?? fallbackRateCard.audioSecondMultiplier,
+    ),
+    webSearchMultiplier: Number(
+      card.web_search_multiplier ?? fallbackRateCard.webSearchMultiplier,
+    ),
   };
 }

@@ -7,7 +7,7 @@ import {
   getCompanyInputMode,
 } from "@/lib/company-input-mode";
 import { createOpenAIClient } from "@/lib/openai/client";
-import { getServerEnv, structuredOutputModel } from "@/lib/openai/env";
+import { getServerEnv } from "@/lib/openai/env";
 import {
   buildCompanyResearchInput,
   COMPANY_RESEARCH_INSTRUCTIONS,
@@ -77,7 +77,9 @@ function mockResearchCompany(request: ResearchCompanyRequest): CompanyProfile {
     researchSummary:
       companyInputMode === "url"
         ? "モックモードの調査結果です。実APIではResponses APIのweb_searchで企業サイトや採用情報を確認し、ユーザーの自己情報に合わせて要約します。"
-        : "モックモードの調査結果です。実APIでは入力された社風・採用情報・特筆事項を読み、ユーザーの自己情報に合わせて要約します。",
+        : researchSources.length > 0
+          ? "モックモードの調査結果です。実APIでは入力欄のURLや採用情報を確認し、ユーザーの自己情報に合わせて要約します。"
+          : "モックモードの調査結果です。実APIでは入力された社風・採用情報・特筆事項を読み、ユーザーの自己情報に合わせて要約します。",
     researchSources,
     fitHypotheses: [
       "SatoFCでの現場課題ヒアリングから開発・運用改善までの経験を、応募先の課題解決業務に接続できる。",
@@ -125,7 +127,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const body = researchCompanyRequestSchema.parse(await request.json());
     const env = getServerEnv();
-    const model = structuredOutputModel(env);
+    const model = env.RESEARCH_MODEL;
     const rateLimit = checkRateLimit({
       key: `${auth.user.id}:research-company`,
       limit: 12,

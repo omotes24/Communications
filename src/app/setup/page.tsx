@@ -26,28 +26,12 @@ const apiRoutes = [
 export default function SetupPage() {
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.1";
   const companyInputCopy = getCompanyInputCopy();
-  const aiProvider = process.env.AI_PROVIDER === "groq" ? "groq" : "openai";
-  const providerName = aiProvider === "groq" ? "Groq" : "OpenAI API";
-  const providerStatus =
-    aiProvider === "groq" ? "Groqで動作" : "OpenAI APIで動作";
+  const aiProvider = "openai";
+  const providerName = "OpenAI API";
+  const providerStatus = "OpenAI APIで動作";
   const modelRoleText =
-    aiProvider === "groq"
-      ? "Groqを使う設定では、音声はWhisper系モデル、質問判定は軽量構造化モデル、回答生成は回答用モデル、企業理解はリサーチ用モデルに分けています。"
-      : "OpenAI APIを使う設定では、音声文字起こし、質問判定、回答生成、企業理解を用途別のOpenAIモデルに分けています。企業理解では必要に応じてweb_searchを使います。";
-  const envExample =
-    aiProvider === "groq"
-      ? `AI_PROVIDER=groq
-NEXT_PUBLIC_AI_PROVIDER=groq
-GROQ_API_KEY=新しいAPIキー
-
-GROQ_TRANSCRIPTION_MODEL=whisper-large-v3-turbo
-GROQ_STRUCTURED_MODEL=openai/gpt-oss-20b
-GROQ_FAST_ANSWER_MODEL=openai/gpt-oss-20b
-GROQ_ANSWER_MODEL=openai/gpt-oss-120b
-GROQ_RESEARCH_MODEL=groq/compound
-
-AI_MOCK_MODE=false`
-      : `AI_PROVIDER=openai
+    "OpenAI APIを使う設定では、音声文字起こし、質問判定、回答生成、企業理解を用途別のOpenAIモデルに分けています。企業理解では必要に応じてweb_searchを使います。";
+  const envExample = `AI_PROVIDER=openai
 NEXT_PUBLIC_AI_PROVIDER=openai
 OPENAI_API_KEY=新しいAPIキー
 

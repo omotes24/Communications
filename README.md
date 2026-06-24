@@ -9,7 +9,7 @@
 - Supabase Authによるログイン
 - プロフィール、企業情報、面接ログ、設定のクラウド保存
 - localStorageからクラウド保存への移行
-- OpenAIまたはGroqを使ったAI処理
+- OpenAI APIを使ったAI処理
 - アプリ内トークン残高、予約、消費履歴
 - Stripe Checkoutによるトークン購入
 - Stripe webhook検証後のトークン付与
@@ -30,14 +30,14 @@ npm run dev
 `.env.local` に設定します。秘密鍵はサーバー側Route Handlerだけで参照し、クライアントJavaScript、localStorage、ログへ出しません。
 
 ```env
-AI_PROVIDER=groq
+AI_PROVIDER=openai
 NEXT_PUBLIC_APP_NAME=Yell for You 1.1
-GROQ_API_KEY=
+OPENAI_API_KEY=
 
-GROQ_TRANSCRIPTION_MODEL=whisper-large-v3-turbo
-GROQ_STRUCTURED_MODEL=openai/gpt-oss-20b
-GROQ_ANSWER_MODEL=openai/gpt-oss-120b
-GROQ_RESEARCH_MODEL=groq/compound
+OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
+OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
+OPENAI_ANSWER_MODEL=gpt-5.4-mini
+OPENAI_RESEARCH_MODEL=gpt-5.5
 
 AI_MOCK_MODE=false
 
@@ -86,7 +86,7 @@ supabase db push
 Web決済はStripe Checkoutで処理します。アプリはカード番号や銀行口座番号を保存しません。
 
 - 料金ページ: `/pricing`
-- token設定: `1円 = 3 app tokens`
+- token設定: `1円 = 300 app tokens`
 - Checkout作成API: `/api/billing/checkout`
 - Webhook: `/api/stripe/webhook`
 - Webhook対象event:
