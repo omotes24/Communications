@@ -39,7 +39,16 @@ const pricingMigration = readFileSync(
   ),
   "utf8",
 );
-const allMigrations = `${migration}\n${hardeningMigration}\n${billingMigration}\n${pricingMigration}`;
+const serviceRoleGrantsMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202606250001_service_role_table_grants.sql",
+  ),
+  "utf8",
+);
+const allMigrations = `${migration}\n${hardeningMigration}\n${billingMigration}\n${pricingMigration}\n${serviceRoleGrantsMigration}`;
 
 describe("Supabase migration", () => {
   it("enables RLS for user data tables and defines token functions", () => {
@@ -114,5 +123,29 @@ describe("Supabase migration", () => {
       "('default-v2', '*', 'transcribe-audio', 0, 0, 0, 0, 40, 0, true)",
     );
     expect(pricingMigration).toContain("set active = false");
+  });
+
+  it("grants service role access to server-managed tables", () => {
+    expect(serviceRoleGrantsMigration).toContain(
+      "grant usage on schema public to service_role",
+    );
+    for (const table of [
+      "profiles",
+      "personal_slots",
+      "company_slots",
+      "interview_sessions",
+      "interview_messages",
+      "user_settings",
+      "local_storage_imports",
+      "token_wallets",
+      "token_ledger",
+      "token_reservations",
+      "ai_usage_events",
+      "token_rate_cards",
+      "stripe_checkout_grants",
+    ]) {
+      expect(serviceRoleGrantsMigration).toContain(`public.${table}`);
+    }
+    expect(serviceRoleGrantsMigration).toContain("to service_role");
   });
 });
