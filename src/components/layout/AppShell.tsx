@@ -76,7 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="min-w-0">{children}</main>
         <footer className="mt-12 flex flex-wrap items-center gap-5 border-t border-black/[0.08] pt-5 text-xs font-medium text-[#6e6e73]">
           <Link href="/history" className="hover:text-[#1d1d1f]">
-            History
+            履歴
           </Link>
           <Link href="/pricing" className="hover:text-[#1d1d1f]">
             課金
