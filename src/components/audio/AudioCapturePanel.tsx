@@ -463,7 +463,7 @@ export function AudioCapturePanel({
             ref={transcriptScrollRef}
             onScroll={updateTranscriptScrollMode}
             className={cn(
-              "flex h-[calc(var(--transcript-lines)*1.5rem+3rem)] [--transcript-lines:4] flex-col overflow-y-auto overscroll-contain rounded-2xl sm:[--transcript-lines:6] lg:[--transcript-lines:8]",
+              "flex h-[calc(var(--transcript-lines)*1.5rem+3rem)] [--transcript-lines:4] flex-col overflow-y-auto rounded-2xl sm:[--transcript-lines:6] lg:[--transcript-lines:8]",
               isDark ? "bg-neutral-900" : "bg-neutral-50",
             )}
           >

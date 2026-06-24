@@ -73,7 +73,7 @@ function RealtimeTranscriptPanel({
         ref={scrollRef}
         onScroll={updateScrollMode}
         className={cn(
-          "mt-3 flex h-[calc(var(--transcript-lines)*1.5rem+3rem)] [--transcript-lines:4] flex-col overflow-y-auto overscroll-contain rounded-2xl border sm:[--transcript-lines:6] lg:[--transcript-lines:8]",
+          "mt-3 flex h-[calc(var(--transcript-lines)*1.5rem+3rem)] [--transcript-lines:4] flex-col overflow-y-auto rounded-2xl border sm:[--transcript-lines:6] lg:[--transcript-lines:8]",
           isDark
             ? "border-white/10 bg-neutral-900"
             : "border-neutral-950/10 bg-[#f5f5f7]",
