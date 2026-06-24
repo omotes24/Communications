@@ -1,56 +1,31 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Wand2 } from "lucide-react";
 
 import { AnswerWorkbench } from "@/components/answer/AnswerWorkbench";
 import { PreInterviewLearningPanel } from "@/components/answer/PreInterviewLearningPanel";
 import { AudioCapturePanel } from "@/components/audio/AudioCapturePanel";
 import {
   formatTranscriptItemsForReading,
-  mergeTranscriptItemsForReading,
 } from "@/components/audio/transcript-items";
 import type { TranscriptItem } from "@/components/audio/use-realtime-transcription";
 import { PageHeader } from "@/components/layout/PageHeader";
-import {
-  extractLikelyInterviewQuestion,
-  isSubmittableTranscript,
-  normalizeTranscriptForSubmit,
-} from "@/components/audio/transcript-auto-submit";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 import { cn } from "@/lib/utils";
 
 type RealtimeTranscriptPanelProps = {
   items: TranscriptItem[];
-  onConfirm: (text: string) => void;
   tone?: "light" | "dark";
 };
 
 function RealtimeTranscriptPanel({
   items,
-  onConfirm,
   tone = "light",
 }: RealtimeTranscriptPanelProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const stickToBottomRef = useRef(true);
   const transcriptText = useMemo(
     () => formatTranscriptItemsForReading(items),
-    [items],
-  );
-  const latestQuestionCandidate = useMemo(() => {
-    const latestRemoteItem = mergeTranscriptItemsForReading(items)
-      .slice()
-      .reverse()
-      .find((item) => item.source === "remote" && item.text.trim());
-    if (!latestRemoteItem) {
-      return "";
-    }
-    const normalizedText = normalizeTranscriptForSubmit(latestRemoteItem.text);
-    return extractLikelyInterviewQuestion(normalizedText) || normalizedText;
-  }, [items]);
-  const canConfirm = isSubmittableTranscript(latestQuestionCandidate);
-  const visibleItems = useMemo(
-    () => mergeTranscriptItemsForReading(items),
     [items],
   );
   const isDark = tone === "dark";
@@ -92,21 +67,6 @@ function RealtimeTranscriptPanel({
             リアルタイム文字起こし
           </h2>
         </div>
-        {canConfirm ? (
-          <button
-            type="button"
-            onClick={() => onConfirm(latestQuestionCandidate)}
-            className={cn(
-              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition",
-              isDark
-                ? "border-white/10 bg-neutral-900 text-white hover:border-white/30"
-                : "border-neutral-950/15 bg-white hover:border-neutral-950",
-            )}
-          >
-            <Wand2 className="h-3.5 w-3.5" aria-hidden />
-            回答へ
-          </button>
-        ) : null}
       </div>
 
       <div
@@ -119,7 +79,7 @@ function RealtimeTranscriptPanel({
             : "border-neutral-950/10 bg-[#f5f5f7]",
         )}
       >
-        {visibleItems.length === 0 || !transcriptText ? (
+        {!transcriptText ? (
           <p
             className={cn(
               "mt-auto p-4 text-sm font-medium",
@@ -206,7 +166,6 @@ export function SupportScreen({
           transcriptPanel={
             <RealtimeTranscriptPanel
               items={transcriptItems}
-              onConfirm={confirmQuestion}
               tone={tone}
             />
           }

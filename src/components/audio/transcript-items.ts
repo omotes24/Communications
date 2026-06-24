@@ -5,22 +5,15 @@ import {
 } from "@/components/audio/transcript-auto-submit";
 
 const mergeWindowMs = 45_000;
-const sentenceEndPattern = /[。！？?？.!]$/;
 const repeatedJapanesePhrasePattern =
   /([\u3040-\u30ff\u3400-\u9fff]{2,6})\1/g;
 
-function endsWithSentenceBoundary(text: string): boolean {
-  return sentenceEndPattern.test(normalizeTranscriptForSubmit(text));
-}
-
 function normalizeMergedTranscript(text: string): string {
-  return normalizeCommonTranscriptErrors(
-    text.replace(repeatedJapanesePhrasePattern, "$1"),
-  )
-    .split("\n")
-    .map((line) => normalizeTranscriptForSubmit(line))
-    .filter(Boolean)
-    .join("\n");
+  return normalizeTranscriptForSubmit(
+    normalizeCommonTranscriptErrors(
+      text.replace(repeatedJapanesePhrasePattern, "$1"),
+    ),
+  );
 }
 
 function joinTranscriptText(previous: string, next: string): string {
@@ -35,8 +28,7 @@ function joinTranscriptText(previous: string, next: string): string {
       break;
     }
   }
-  const separator =
-    overlap > 0 ? "" : endsWithSentenceBoundary(previousText) ? "\n" : " ";
+  const separator = overlap > 0 ? "" : " ";
   return normalizeMergedTranscript(
     `${previousText}${separator}${nextText.slice(overlap)}`,
   );
@@ -88,10 +80,8 @@ export function mergeTranscriptItemsForReading(
 
 export function formatTranscriptItemsForReading(items: TranscriptItem[]): string {
   return mergeTranscriptItemsForReading(items)
-    .map((item) => {
-      const speaker = item.source === "remote" ? "相手側" : "自分側";
-      return `${speaker}\n${item.text}`;
-    })
-    .join("\n\n")
+    .map((item) => item.text)
+    .join(" ")
+    .replace(/\s+/g, " ")
     .trim();
 }

@@ -103,13 +103,13 @@ describe("transcript auto submit helpers", () => {
     ]);
 
     expect(merged.map((item) => item.text)).toEqual([
-      "面白いですね。\nあなたの 弱みを教えてください。",
+      "面白いですね。 あなたの 弱みを教えてください。",
     ]);
     expect(extractLikelyInterviewQuestion(merged[0]?.text ?? "")).toBe(
       "あなたの 弱みを教えてください。",
     );
     expect(formatTranscriptItemsForReading(merged)).toBe(
-      "相手側\n面白いですね。\nあなたの 弱みを教えてください。",
+      "面白いですね。 あなたの 弱みを教えてください。",
     );
   });
 });
