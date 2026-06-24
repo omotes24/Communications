@@ -6,7 +6,7 @@ export default function TermsPage() {
     <AppShell>
       <PageHeader
         title="Terms"
-        description="Yell for Youの利用規約ドラフトです。"
+        description="Yell for You 1.1の利用規約ドラフトです。"
       />
       <article className="grid gap-5 rounded-[28px] bg-white p-6 text-sm font-medium leading-7 text-[#424245] shadow-sm ring-1 ring-black/[0.06]">
         <section>
@@ -24,7 +24,13 @@ export default function TermsPage() {
         <section>
           <h2 className="text-xl font-semibold text-[#1d1d1f]">アプリ内トークン</h2>
           <p className="mt-2">
-            AI処理にはアプリ内トークンを使用します。料金・購入機能は現時点では準備中です。トークンの付与量、消費係数、対象機能は運用上変更される場合があります。
+            AI処理にはアプリ内トークンを使用します。購入はStripe Checkoutで処理され、支払い完了後にStripe webhookを検証してトークンを付与します。トークンの付与量、消費係数、対象機能は運用上変更される場合があります。
+          </p>
+        </section>
+        <section>
+          <h2 className="text-xl font-semibold text-[#1d1d1f]">決済</h2>
+          <p className="mt-2">
+            決済情報はStripeが処理します。本アプリはカード番号や銀行口座番号を保存しません。返金、領収書、消費税、特定商取引法に基づく表示、正式な販売者情報は本番公開前に確定が必要です。
           </p>
         </section>
         <section>

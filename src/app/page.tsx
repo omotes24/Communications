@@ -6,7 +6,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { getCompanyInputCopy } from "@/lib/company-input-mode";
 
 export default function Home() {
-  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You";
+  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.1";
   const companyInputCopy = getCompanyInputCopy();
   const steps = [
     {

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { requireCurrentUser } from "@/lib/auth/server";
@@ -38,10 +40,13 @@ export default async function UsagePage() {
           </p>
         </div>
         <div className="rounded-[26px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
-          <p className="text-xs font-semibold text-[#6e6e73]">追加機能</p>
-          <p className="mt-3 text-sm font-semibold leading-7 text-[#1d1d1f]">
-            トークン追加機能は準備中
-          </p>
+          <p className="text-xs font-semibold text-[#6e6e73]">購入</p>
+          <Link
+            href="/pricing"
+            className="mt-3 inline-flex h-10 items-center rounded-full bg-[#1d1d1f] px-4 text-sm font-semibold text-white"
+          >
+            トークンを追加
+          </Link>
         </div>
       </section>
 

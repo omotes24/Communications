@@ -6,7 +6,7 @@ export default function PrivacyPage() {
     <AppShell>
       <PageHeader
         title="Privacy Policy"
-        description="Yell for Youのデータ処理に関する公開プライバシーポリシーです。"
+        description="Yell for You 1.1のデータ処理に関する公開プライバシーポリシーです。"
       />
       <article className="grid gap-5 rounded-[28px] bg-white p-6 text-sm font-medium leading-7 text-[#424245] shadow-sm ring-1 ring-black/[0.06]">
         <section>
@@ -24,7 +24,13 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-xl font-semibold text-[#1d1d1f]">外部送信先</h2>
           <p className="mt-2">
-            認証・DB保存にはSupabase、ホスティングにはVercel、AI処理にはOpenAIまたはGroq、認証メールには設定済みのメール配信事業者を利用します。メール配信事業者はStaging/Production設定時にResend、Postmark、Amazon SES等から確定します。
+            認証・DB保存にはSupabase、ホスティングにはVercel、AI処理にはOpenAIまたはGroq、決済にはStripe、認証メールには設定済みのメール配信事業者を利用します。メール配信事業者はStaging/Production設定時にResend、Postmark、Amazon SES等から確定します。
+          </p>
+        </section>
+        <section>
+          <h2 className="text-xl font-semibold text-[#1d1d1f]">決済データ</h2>
+          <p className="mt-2">
+            購入時はStripe Checkoutへ遷移します。本アプリはカード番号や銀行口座番号を保存しません。支払い完了後、Stripe Checkout Session ID、購入プラン、付与トークン数、支払額、Stripe customer/payment IDの参照値をSupabaseに保存します。
           </p>
         </section>
         <section>

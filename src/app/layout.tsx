@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You",
+  title: process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.1",
   description: "日本語面接の準備と回答案作成を支援するアプリケーション",
 };
 

@@ -21,7 +21,16 @@ const hardeningMigration = readFileSync(
   ),
   "utf8",
 );
-const allMigrations = `${migration}\n${hardeningMigration}`;
+const billingMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202606240003_stripe_billing.sql",
+  ),
+  "utf8",
+);
+const allMigrations = `${migration}\n${hardeningMigration}\n${billingMigration}`;
 
 describe("Supabase migration", () => {
   it("enables RLS for user data tables and defines token functions", () => {
@@ -66,5 +75,24 @@ describe("Supabase migration", () => {
       "duplicate_request_id_for_different_user",
     );
     expect(hardeningMigration).toContain("for update skip locked");
+  });
+
+  it("keeps Stripe purchase grants idempotent and service-only", () => {
+    expect(billingMigration).toContain("public.stripe_checkout_grants");
+    expect(billingMigration).toContain(
+      "stripe_checkout_session_id text primary key",
+    );
+    expect(billingMigration).toContain(
+      "create or replace function public.grant_purchased_tokens",
+    );
+    expect(billingMigration).toContain(
+      "on conflict (stripe_checkout_session_id) do nothing",
+    );
+    expect(billingMigration).toContain(
+      "revoke execute on function public.grant_purchased_tokens",
+    );
+    expect(billingMigration).toContain(
+      "grant execute on function public.grant_purchased_tokens",
+    );
   });
 });

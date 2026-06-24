@@ -5,7 +5,7 @@ export function PageHeader({
   title: string;
   description?: string;
 }) {
-  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You";
+  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.1";
 
   return (
     <div className="mb-8 border-b border-black/[0.08] pb-6">

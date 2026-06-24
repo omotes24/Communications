@@ -12,19 +12,19 @@ export default function AccountDeletionPage() {
         <section>
           <h2 className="text-xl font-semibold text-[#1d1d1f]">アプリ内で削除する方法</h2>
           <p className="mt-2">
-            ログイン後、Account → アカウント削除へ進み、確認欄にDELETEと入力して削除します。削除するとSupabase Authユーザー、プロフィール、企業情報、面接履歴、利用履歴、設定が削除されます。
+            ログイン後、Account → アカウント削除へ進み、確認欄にDELETEと入力して削除します。削除するとSupabase Authユーザー、プロフィール、企業情報、面接履歴、利用履歴、Stripe購入参照記録、設定が削除されます。
           </p>
         </section>
         <section>
           <h2 className="text-xl font-semibold text-[#1d1d1f]">保存期間</h2>
           <p className="mt-2">
-            アカウント削除後、通常のアプリDB上のユーザーデータは削除されます。Vercel、Supabase、メール配信事業者、OpenAI/Groq側のログ保持期間は各事業者のポリシーに従います。
+            アカウント削除後、通常のアプリDB上のユーザーデータは削除されます。Vercel、Supabase、Stripe、メール配信事業者、OpenAI/Groq側のログ保持期間は各事業者のポリシーに従います。
           </p>
         </section>
         <section>
           <h2 className="text-xl font-semibold text-[#1d1d1f]">削除できるデータ</h2>
           <p className="mt-2">
-            プロフィール、企業情報、面接前学習、明示保存した面接履歴、回答チャット履歴、ユーザー設定、トークン利用記録、設定済みStorage bucket内のユーザーprefix配下ファイルが対象です。
+            プロフィール、企業情報、面接前学習、明示保存した面接履歴、回答チャット履歴、ユーザー設定、トークン利用記録、Stripe Checkout Session参照記録、設定済みStorage bucket内のユーザーprefix配下ファイルが対象です。
           </p>
         </section>
         <section>

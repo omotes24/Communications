@@ -15,7 +15,7 @@ const navItems = [
   { href: "/support", label: "面接", icon: UsersRound },
 ];
 
-const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You";
+const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.1";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -77,6 +77,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <footer className="mt-12 flex flex-wrap items-center gap-5 border-t border-black/[0.08] pt-5 text-xs font-medium text-[#6e6e73]">
           <Link href="/history" className="hover:text-[#1d1d1f]">
             History
+          </Link>
+          <Link href="/pricing" className="hover:text-[#1d1d1f]">
+            Pricing
           </Link>
           <Link href="/privacy" className="hover:text-[#1d1d1f]">
             Privacy

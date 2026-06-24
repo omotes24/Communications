@@ -24,7 +24,7 @@ const apiRoutes = [
 ];
 
 export default function SetupPage() {
-  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You";
+  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.1";
   const companyInputCopy = getCompanyInputCopy();
   const aiProvider = process.env.AI_PROVIDER === "groq" ? "groq" : "openai";
   const providerName = aiProvider === "groq" ? "Groq" : "OpenAI API";

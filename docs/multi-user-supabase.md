@@ -19,6 +19,7 @@ Vercel Environment Variablesに次を設定します。
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_APP_NAME=Yell for You 1.1
 SUPABASE_SERVICE_ROLE_KEY=
 
 AI_PROVIDER=groq
@@ -28,6 +29,9 @@ AI_MOCK_MODE=false
 
 APP_SIGNUP_GRANT_TOKENS=0
 APP_REALTIME_SESSION_RESERVATION_SECONDS=180
+
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY`、`OPENAI_API_KEY`、`GROQ_API_KEY` はサーバー側だけで使用します。`NEXT_PUBLIC_` の付いたSupabase公開設定以外をブラウザへ送らないでください。
@@ -57,6 +61,17 @@ npm run dev
 - 失敗時は `release_token_reservation` で予約を戻します。
 - 消費係数は `token_rate_cards` で管理します。
 
+## Billing
+
+Web決済はStripe Checkoutで処理します。アプリはカード番号や銀行口座番号を保存しません。
+
+- 料金ページは `/pricing` です。
+- 支払額1円につき3 app tokensを付与します。
+- `/api/billing/checkout` はログイン済みユーザーだけがCheckout Sessionを作成できます。
+- `/api/stripe/webhook` はStripe署名をraw bodyで検証し、支払い済みCheckout Sessionだけを処理します。
+- `stripe_checkout_grants` はCheckout Session IDをprimary keyにして、webhook再送時の二重付与を防ぎます。
+- 売上の受取口座、本人確認、入金スケジュールはStripe DashboardのPayout settingsで設定します。
+
 ## Security Notes
 
 - 保護ページはmiddlewareでログイン必須です。
@@ -68,4 +83,4 @@ npm run dev
 
 ## Not Implemented
 
-今回の実装では決済画面、Stripe、Apple In-App Purchase、Google Play Billing、購入パック、円価格は未実装です。将来のWebhookはサーバー側で検証後、`grant_tokens` を呼び出す構造にしてください。
+Apple In-App Purchase、Google Play Billing、サブスクリプション、返金管理画面、特定商取引法に基づく表示の確定版は未実装です。
