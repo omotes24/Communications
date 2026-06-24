@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { requireCurrentUser } from "@/lib/auth/server";
+import { settleCheckoutSessionForUser } from "@/lib/billing/grants";
 import {
   getWalletBalance,
   listLedgerEvents,
@@ -11,8 +12,24 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function UsagePage() {
+type UsagePageSearchParams = Promise<{
+  checkout?: string | string[];
+  session_id?: string | string[];
+}>;
+
+type CheckoutNotice = {
+  tone: "success" | "warning";
+  message: string;
+};
+
+export default async function UsagePage({
+  searchParams,
+}: {
+  searchParams?: UsagePageSearchParams;
+}) {
   const user = await requireCurrentUser();
+  const params = searchParams ? await searchParams : {};
+  const checkoutNotice = await settleCheckoutReturn(params, user.id);
   const [wallet, ledger, usage] = await Promise.all([
     getWalletBalance(user.id),
     listLedgerEvents(user.id),
@@ -28,6 +45,18 @@ export default async function UsagePage() {
         title="トークン利用"
         description="アプリ内トークンの残高、累計消費、予約中残高、直近の増減を確認できます。"
       />
+
+      {checkoutNotice ? (
+        <div
+          className={
+            checkoutNotice.tone === "success"
+              ? "mb-5 rounded-[22px] bg-[var(--accent-soft)] px-5 py-4 text-sm font-semibold leading-6 text-[var(--accent)]"
+              : "mb-5 rounded-[22px] bg-amber-50 px-5 py-4 text-sm font-semibold leading-6 text-amber-800"
+          }
+        >
+          {checkoutNotice.message}
+        </div>
+      ) : null}
 
       <section className="grid gap-5 md:grid-cols-4">
         <div className="rounded-[26px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
@@ -174,6 +203,49 @@ export default async function UsagePage() {
       </section>
     </AppShell>
   );
+}
+
+async function settleCheckoutReturn(
+  params: Awaited<UsagePageSearchParams>,
+  userId: string,
+): Promise<CheckoutNotice | null> {
+  if (firstParam(params.checkout) !== "success") {
+    return null;
+  }
+
+  const sessionId = firstParam(params.session_id);
+  if (!sessionId) {
+    return {
+      tone: "warning",
+      message:
+        "支払い完了情報を確認できませんでした。残高が増えない場合は問い合わせから連絡してください。",
+    };
+  }
+
+  try {
+    const result = await settleCheckoutSessionForUser(sessionId, userId);
+    if (result === "settled") {
+      return {
+        tone: "success",
+        message: "支払いを確認しました。購入トークンを残高へ反映しました。",
+      };
+    }
+    return {
+      tone: "warning",
+      message:
+        "支払い処理がまだ完了していません。Stripe側で完了すると残高へ反映されます。",
+    };
+  } catch {
+    return {
+      tone: "warning",
+      message:
+        "支払い確認を完了できませんでした。残高が増えない場合は問い合わせから連絡してください。",
+    };
+  }
+}
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 function formatDate(value: string) {
