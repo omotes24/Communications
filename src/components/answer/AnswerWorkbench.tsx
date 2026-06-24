@@ -243,6 +243,7 @@ export function AnswerWorkbench({
 
   const activeLearningBrief =
     storage.learning?.companyId &&
+    storage.learning?.language === answerLanguage &&
     activeCompanies.some(
       (company) => company.id === storage.learning?.companyId,
     )
@@ -722,7 +723,7 @@ export function AnswerWorkbench({
                           selected
                             ? isDark
                               ? "bg-white text-neutral-950 shadow-sm"
-                              : "bg-[#1d1d1f] text-white shadow-sm"
+                              : "bg-[var(--accent)] text-white shadow-sm"
                             : isDark
                               ? "text-white/60 hover:bg-white/10 hover:text-white"
                               : "text-[#6e6e73] hover:bg-white hover:text-[#1d1d1f]",

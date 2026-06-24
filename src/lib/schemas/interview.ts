@@ -91,10 +91,7 @@ export const researchCompanyRequestSchema = z.preprocess(
   z.object({
     selfInfo: z.string().trim().min(1, "自分スロットを入力してください"),
     companyName: z.string().trim().min(1, "会社名を入力してください"),
-    companyWebsite: z
-      .string()
-      .trim()
-      .min(1, companyInputCopy.schemaMissing),
+    companyWebsite: z.string().trim().min(1, companyInputCopy.schemaMissing),
     desiredCourse: z.string().trim().min(1, "志望コースを入力してください"),
     additionalNotes: z.string().default(""),
   }),
@@ -155,6 +152,7 @@ export const preInterviewLearningSchema = z.object({
   caution: z.string().nullable(),
   learnedAt: z.string(),
   companyId: z.string().nullable(),
+  language: z.enum(["ja", "en"]).default("ja"),
 });
 
 export type PreInterviewLearning = z.infer<typeof preInterviewLearningSchema>;
@@ -165,6 +163,7 @@ export const learnInterviewContextRequestSchema = z.object({
   selfInfo: z.string().default(""),
   desiredCourse: z.string().default(""),
   additionalNotes: z.string().default(""),
+  learningLanguage: z.enum(["ja", "en"]).default("ja"),
 });
 
 export type LearnInterviewContextRequest = z.infer<

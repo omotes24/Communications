@@ -5,6 +5,10 @@ import {
   buildAnswerInstructions,
 } from "@/lib/prompts/answer";
 import { buildQuestionClassifierInput } from "@/lib/prompts/classifier";
+import {
+  buildInterviewLearningInput,
+  buildInterviewLearningInstructions,
+} from "@/lib/prompts/interview-learning";
 
 describe("prompts", () => {
   it("contains anti-fabrication rules", () => {
@@ -151,5 +155,21 @@ describe("prompts", () => {
 
     expect(input).toContain("回答言語: English");
     expect(input).toContain("回答本文は英語");
+  });
+
+  it("marks English language in interview learning prompt", () => {
+    const instructions = buildInterviewLearningInstructions("en");
+    const input = buildInterviewLearningInput({
+      profile: null,
+      company: null,
+      selfInfo: "SatoFC field implementation",
+      desiredCourse: "Business development",
+      additionalNotes: "Use concise English",
+      learningLanguage: "en",
+    });
+
+    expect(instructions).toContain("自然な英語");
+    expect(input).toContain("学習メモの出力言語: English");
+    expect(input).toContain("SatoFC field implementation");
   });
 });

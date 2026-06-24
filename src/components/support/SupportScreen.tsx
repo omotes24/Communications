@@ -161,7 +161,7 @@ export function SupportScreen({
   const { activeCompany } = useAppStorage();
   const activeCompanyName = activeCompany?.companyName || activeCompany?.label;
   const isEnglish = variant === "english";
-  const tone = isEnglish ? "dark" : "light";
+  const tone: "light" | "dark" = "light";
   const [latestTranscript, setLatestTranscript] = useState<{
     id: string;
     text: string;
@@ -184,27 +184,20 @@ export function SupportScreen({
         <div
           className={cn(
             "mb-4 rounded-[30px] p-6 shadow-sm ring-1",
-            isEnglish
-              ? "bg-neutral-950 text-white ring-white/10"
-              : "bg-white ring-black/[0.06]",
+            "bg-white ring-black/[0.06]",
           )}
         >
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
             Current Company
           </p>
-          <h2
-            className={cn(
-              "mt-2 text-3xl font-semibold tracking-tight",
-              isEnglish ? "text-white" : "text-[#1d1d1f]",
-            )}
-          >
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#1d1d1f]">
             {activeCompanyName}の{isEnglish ? "英語面接" : "面接"}
             を始めましょう！
           </h2>
         </div>
       ) : null}
       <div className="grid gap-4">
-        {isEnglish ? null : <PreInterviewLearningPanel />}
+        <PreInterviewLearningPanel learningLanguage={isEnglish ? "en" : "ja"} />
         <AudioCapturePanel
           autoSubmitRemoteFinal
           onRemoteTranscript={confirmQuestion}
