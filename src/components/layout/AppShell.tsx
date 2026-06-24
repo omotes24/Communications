@@ -85,7 +85,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Privacy
           </Link>
           <Link href="/terms" className="hover:text-[#1d1d1f]">
-            Terms
+            規約
           </Link>
           <Link href="/help" className="hover:text-[#1d1d1f]">
             Help
