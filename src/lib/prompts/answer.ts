@@ -1,4 +1,5 @@
 import type {
+  AnswerLanguage,
   CompanyProfile,
   GenerateAnswerRequest,
   UserProfile,
@@ -103,9 +104,10 @@ function formatMultiSection<T extends { label?: string }>(
           return value ? `- ${label}: ${value}` : null;
         })
         .filter(Boolean);
-      return [`【SLOT ${index + 1}: ${item.label || "未命名"}】`, ...lines].join(
-        "\n",
-      );
+      return [
+        `【SLOT ${index + 1}: ${item.label || "未命名"}】`,
+        ...lines,
+      ].join("\n");
     }),
   ].join("\n\n");
 }
@@ -120,8 +122,10 @@ export function buildEvidenceBlock(
   ].join("\n\n");
 }
 
-export function buildAnswerInstructions(): string {
-  return [
+export function buildAnswerInstructions(
+  language: AnswerLanguage = "ja",
+): string {
+  const baseRules = [
     "あなたは日本語の面接回答コーチです。",
     "ユーザーが登録した経歴、実績、スキル、応募企業情報を芯にして、面接でそのまま話せる回答案を作成してください。",
     "",
@@ -149,7 +153,22 @@ export function buildAnswerInstructions(): string {
     "16b. フェルミ推定モードがONのときは、『国土交通省のデータ』『統計によると』『公表値では』のような出典参照表現を使わない",
     "17. 自分スロット追加メモがある場合は、登録プロフィールよりも当日の制約・前提として優先する",
     "18. 回答本文では、面接で特に強調すべき重要語句または重要文を最大3箇所だけ **...** で囲む",
-  ].join("\n");
+  ];
+
+  if (language === "en") {
+    return [
+      ...baseRules,
+      "",
+      "英語面接モード:",
+      "19. 質問は日本語訳として渡される場合がある。質問の意味を保ったまま、回答本文 answer は自然な英語で書く",
+      "20. talkingPoints、evidenceUsed、missingInformation、caution も英語で書く",
+      "21. draft.question は入力された質問文をそのまま保持してよい。日本語訳が渡された場合は日本語のまま保持する",
+      "22. 英語回答は面接でそのまま話せる口語的で簡潔な表現にする。直訳調、不自然な日本語英語を避ける",
+      "23. 回答本文では、重要語句または重要文を最大3箇所だけ **...** で囲む",
+    ].join("\n");
+  }
+
+  return baseRules.join("\n");
 }
 
 function formatConversationContext(
@@ -193,10 +212,15 @@ export function buildAnswerInput(request: GenerateAnswerRequest): string {
   const lengthTarget = request.answerLengthTarget
     ? `目標文字数: ${request.answerLengthTarget}文字程度`
     : "目標文字数: 指定なし";
+  const answerLanguage =
+    request.answerLanguage === "en"
+      ? "回答言語: English。質問は日本語訳として扱い、回答本文は英語で作る"
+      : "回答言語: 日本語";
   return [
     `質問: ${request.question}`,
     `分類: ${request.category}`,
     `回答モード: ${answerMode}`,
+    answerLanguage,
     fermiGuide,
     lengthTarget,
     formatConversationContext(request.conversationContext),
@@ -212,15 +236,33 @@ export function buildAnswerInput(request: GenerateAnswerRequest): string {
     hasLearningBrief
       ? [
           profiles.length > 0
-            ? formatMultiSection("選択中の自分スロット", profiles, profileLabels)
-            : formatSection("ユーザー登録情報", request.profile, profileLabels, {
-                suppressMissingLabel: true,
-              }),
+            ? formatMultiSection(
+                "選択中の自分スロット",
+                profiles,
+                profileLabels,
+              )
+            : formatSection(
+                "ユーザー登録情報",
+                request.profile,
+                profileLabels,
+                {
+                  suppressMissingLabel: true,
+                },
+              ),
           companies.length > 0
-            ? formatMultiSection("選択中の会社スロット", companies, companyLabels)
-            : formatSection("応募企業・求人情報", request.company, companyLabels, {
-                suppressMissingLabel: true,
-              }),
+            ? formatMultiSection(
+                "選択中の会社スロット",
+                companies,
+                companyLabels,
+              )
+            : formatSection(
+                "応募企業・求人情報",
+                request.company,
+                companyLabels,
+                {
+                  suppressMissingLabel: true,
+                },
+              ),
         ].join("\n\n")
       : [
           formatMultiSection("選択中の自分スロット", profiles, profileLabels),

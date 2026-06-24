@@ -1,12 +1,23 @@
+import type { ReactNode } from "react";
+
+import { cn } from "@/lib/utils";
+
 export function FormField({
   label,
   children,
+  className,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
+  className?: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-semibold tracking-tight text-[#1d1d1f]">
+    <label
+      className={cn(
+        "grid gap-2 text-sm font-semibold tracking-tight text-[#1d1d1f]",
+        className,
+      )}
+    >
       <span>{label}</span>
       {children}
     </label>

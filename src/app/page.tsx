@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Languages } from "lucide-react";
 
 import { TypingHeadline } from "@/components/home/TypingHeadline";
 import { AppShell } from "@/components/layout/AppShell";
@@ -52,6 +52,13 @@ export default function Home() {
               className="inline-flex h-12 items-center rounded-full bg-white px-6 text-sm font-semibold text-[#1d1d1f] shadow-sm ring-1 ring-black/[0.08] transition hover:bg-[#fdfdfd]"
             >
               面接へ
+            </Link>
+            <Link
+              href="/english-interview"
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-[#1d1d1f] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-black"
+            >
+              <Languages className="h-4 w-4" aria-hidden />
+              英語面接
             </Link>
           </div>
         </div>

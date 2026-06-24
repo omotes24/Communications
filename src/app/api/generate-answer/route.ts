@@ -121,7 +121,7 @@ export async function POST(request: Request): Promise<Response> {
         const responseStream = client.responses.stream(
           {
             model,
-            instructions: buildAnswerInstructions(),
+            instructions: buildAnswerInstructions(body.answerLanguage),
             input: buildAnswerInput(body),
             text: {
               format: zodTextFormat(answerDraftSchema, "answer_draft"),

@@ -30,6 +30,7 @@ type AudioCapturePanelProps = {
   questionCycle?: number;
   onTranscriptItemsChange?: (items: TranscriptItem[]) => void;
   showTranscript?: boolean;
+  tone?: "light" | "dark";
 };
 
 export function AudioCapturePanel({
@@ -39,6 +40,7 @@ export function AudioCapturePanel({
   questionCycle = 0,
   onTranscriptItemsChange,
   showTranscript = true,
+  tone = "light",
 }: AudioCapturePanelProps) {
   const transcription = useRealtimeTranscription();
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -47,6 +49,7 @@ export function AudioCapturePanel({
     null,
   );
   const [error, setError] = useState<string | null>(null);
+  const isDark = tone === "dark";
   const submittedIdsRef = useRef<Set<string>>(new Set());
   const pendingQuestionCueSubmitTimerRef = useRef<number | null>(null);
   const lastAutoSubmittedAtRef = useRef(0);
@@ -271,8 +274,11 @@ export function AudioCapturePanel({
   return (
     <section
       className={cn(
-        "rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06] transition",
-        isRecording ? "shadow-red-500/10 ring-red-400/60" : "ring-black/[0.06]",
+        "rounded-[30px] p-5 shadow-sm ring-1 transition",
+        isDark
+          ? "bg-neutral-950 text-white ring-white/10"
+          : "bg-white text-[#1d1d1f] ring-black/[0.06]",
+        isRecording ? "shadow-red-500/10 ring-red-400/60" : null,
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -283,7 +289,12 @@ export function AudioCapturePanel({
           <h2 className="mt-1 text-2xl font-semibold tracking-tight">
             音声入力
           </h2>
-          <p className="mt-2 text-sm font-medium leading-6 text-neutral-600">
+          <p
+            className={cn(
+              "mt-2 text-sm font-medium leading-6",
+              isDark ? "text-white/60" : "text-neutral-600",
+            )}
+          >
             <span className="underline underline-offset-2">Chrome/Edge</span>
             でZoomやMeetのブラウザタブを選び、タブ音声を共有すると相手の質問を文字起こしできます。
           </p>
@@ -297,7 +308,9 @@ export function AudioCapturePanel({
                 ? "border-amber-300 bg-amber-50 text-amber-800"
                 : transcription.status === "error"
                   ? "border-red-300 bg-red-50 text-red-700"
-                  : "border-neutral-950/10 bg-neutral-50 text-neutral-600",
+                  : isDark
+                    ? "border-white/10 bg-white/10 text-white/70"
+                    : "border-neutral-950/10 bg-neutral-50 text-neutral-600",
           )}
         >
           {isRecording ? (
@@ -313,11 +326,31 @@ export function AudioCapturePanel({
       <div
         className={cn(
           "mt-5 rounded-[24px] p-4 transition",
-          isRecording ? "bg-red-50 ring-1 ring-red-200" : "bg-[#f5f5f7]",
+          isRecording
+            ? isDark
+              ? "bg-red-950/40 ring-1 ring-red-500/35"
+              : "bg-red-50 ring-1 ring-red-200"
+            : isDark
+              ? "bg-neutral-900"
+              : "bg-[#f5f5f7]",
         )}
       >
-        <div className="mb-4 rounded-2xl border border-neutral-950/10 bg-white p-4 text-sm font-medium leading-6 text-neutral-700">
-          <p className="font-semibold text-neutral-950">相手の声を拾うには</p>
+        <div
+          className={cn(
+            "mb-4 rounded-2xl border p-4 text-sm font-medium leading-6",
+            isDark
+              ? "border-white/10 bg-neutral-950 text-white/60"
+              : "border-neutral-950/10 bg-white text-neutral-700",
+          )}
+        >
+          <p
+            className={cn(
+              "font-semibold",
+              isDark ? "text-white" : "text-neutral-950",
+            )}
+          >
+            相手の声を拾うには
+          </p>
           <p className="mt-2">
             Zoom/Meetをブラウザで開き、録音開始後の共有ダイアログで「タブ」を選びます。Macでは画面全体やウィンドウ共有では音声が付かないことがあります。
           </p>
@@ -328,7 +361,11 @@ export function AudioCapturePanel({
             <p
               className={cn(
                 "text-xs font-semibold uppercase tracking-[0.22em]",
-                isRecording ? "text-red-600" : "text-neutral-500",
+                isRecording
+                  ? "text-red-500"
+                  : isDark
+                    ? "text-white/50"
+                    : "text-neutral-500",
               )}
             >
               {isRecording ? "Recording" : "Ready"}
@@ -373,7 +410,12 @@ export function AudioCapturePanel({
             type="button"
             onClick={stopAll}
             disabled={!isAudioBusy}
-            className="inline-flex min-h-16 items-center justify-center gap-3 rounded-3xl border border-red-300 bg-white px-5 text-base font-semibold text-red-700 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:border-neutral-950/10 disabled:text-neutral-400"
+            className={cn(
+              "inline-flex min-h-16 items-center justify-center gap-3 rounded-3xl border px-5 text-base font-semibold shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-neutral-400",
+              isDark
+                ? "border-red-500/40 bg-neutral-950 text-red-300 hover:bg-red-950/30 disabled:border-white/10"
+                : "border-red-300 bg-white text-red-700 disabled:border-neutral-950/10",
+            )}
           >
             <Square className="h-5 w-5" aria-hidden />
             停止
@@ -384,7 +426,12 @@ export function AudioCapturePanel({
           type="button"
           onClick={startMic}
           disabled={isAudioBusy}
-          className="mt-3 inline-flex h-11 items-center gap-2 rounded-full border border-neutral-950/15 bg-white px-5 text-sm font-semibold text-neutral-900 transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:text-neutral-400"
+          className={cn(
+            "mt-3 inline-flex h-11 items-center gap-2 rounded-full border px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:text-neutral-400",
+            isDark
+              ? "border-white/10 bg-neutral-950 text-white hover:border-white/30"
+              : "border-neutral-950/15 bg-white text-neutral-900 hover:border-neutral-950",
+          )}
         >
           <Mic className="h-4 w-4" aria-hidden />
           マイクのみ開始
@@ -403,10 +450,18 @@ export function AudioCapturePanel({
           <div
             ref={transcriptScrollRef}
             onScroll={updateTranscriptScrollMode}
-            className="flex h-[calc(var(--transcript-lines)*1.5rem+3rem)] [--transcript-lines:4] flex-col overflow-y-auto overscroll-contain rounded-2xl bg-neutral-50 sm:[--transcript-lines:6] lg:[--transcript-lines:8]"
+            className={cn(
+              "flex h-[calc(var(--transcript-lines)*1.5rem+3rem)] [--transcript-lines:4] flex-col overflow-y-auto overscroll-contain rounded-2xl sm:[--transcript-lines:6] lg:[--transcript-lines:8]",
+              isDark ? "bg-neutral-900" : "bg-neutral-50",
+            )}
           >
             {transcriptItemsForDisplay.length === 0 ? (
-              <p className="mt-auto p-4 text-sm font-medium text-neutral-500">
+              <p
+                className={cn(
+                  "mt-auto p-4 text-sm font-medium",
+                  isDark ? "text-white/40" : "text-neutral-500",
+                )}
+              >
                 まだ文字起こしはありません。
               </p>
             ) : (
@@ -419,15 +474,28 @@ export function AudioCapturePanel({
                 return (
                   <div
                     key={`${item.id}-${item.createdAt}`}
-                    className="border-b border-neutral-950/10 p-3 last:border-b-0"
+                    className={cn(
+                      "border-b p-3 last:border-b-0",
+                      isDark ? "border-white/10" : "border-neutral-950/10",
+                    )}
                   >
-                    <div className="mb-1 flex items-center justify-between gap-2 text-xs font-semibold text-neutral-500">
+                    <div
+                      className={cn(
+                        "mb-1 flex items-center justify-between gap-2 text-xs font-semibold",
+                        isDark ? "text-white/45" : "text-neutral-500",
+                      )}
+                    >
                       <span>
                         {item.source === "remote" ? "相手側" : "自分側"}
                       </span>
                       <span>{item.final ? "確定" : "入力中"}</span>
                     </div>
-                    <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-800">
+                    <p
+                      className={cn(
+                        "whitespace-pre-wrap text-sm leading-6",
+                        isDark ? "text-white/80" : "text-neutral-800",
+                      )}
+                    >
                       {item.text}
                     </p>
                     {canConfirmQuestion ? (
@@ -445,7 +513,12 @@ export function AudioCapturePanel({
                             onRemoteTranscript?.(questionCandidate);
                           }
                         }}
-                        className="mt-2 inline-flex h-8 items-center gap-2 rounded-full border border-neutral-950/15 bg-white px-3 text-xs font-semibold transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:text-neutral-400"
+                        className={cn(
+                          "mt-2 inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:text-neutral-400",
+                          isDark
+                            ? "border-white/10 bg-neutral-950 text-white hover:border-white/30"
+                            : "border-neutral-950/15 bg-white hover:border-neutral-950",
+                        )}
                       >
                         <Wand2 className="h-3.5 w-3.5" aria-hidden />
                         {questionLocked ? "質問確定済み" : "質問を確定"}

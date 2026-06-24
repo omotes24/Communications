@@ -15,6 +15,13 @@ describe("prompts", () => {
     expect(prompt).toContain("evidenceUsed");
   });
 
+  it("contains English interview mode rules", () => {
+    const prompt = buildAnswerInstructions("en");
+    expect(prompt).toContain("英語面接モード");
+    expect(prompt).toContain("回答本文 answer は自然な英語");
+    expect(prompt).toContain("talkingPoints");
+  });
+
   it("marks local speech in classifier input", () => {
     const input = buildQuestionClassifierInput({
       transcript: "私の回答です",
@@ -32,6 +39,7 @@ describe("prompts", () => {
       company: null,
       learningBrief: "SatoFCの社会実装経験と応募企業の事業接点を整理済み。",
       conversationContext: [],
+      answerLanguage: "ja",
     });
 
     expect(input).toContain("面接前理解メモ");
@@ -52,6 +60,7 @@ describe("prompts", () => {
           answer: "野生動物追跡システムを現地実装した経験です。",
         },
       ],
+      answerLanguage: "ja",
     });
 
     expect(input).toContain("直近会話");
@@ -67,6 +76,7 @@ describe("prompts", () => {
       company: null,
       learningBrief: "",
       conversationContext: [],
+      answerLanguage: "ja",
       answerModelMode: "fermi",
       selfSlot: "東京、20代、単価は月額ではなく1回あたりで置く",
       answerLengthTarget: 700,
@@ -126,5 +136,20 @@ describe("prompts", () => {
     expect(input).toContain("1回あたり");
     expect(input).toContain("選択中の自分スロット");
     expect(input).toContain("選択中の会社スロット");
+  });
+
+  it("marks English answer language in answer input", () => {
+    const input = buildAnswerInput({
+      question: "あなたのリーダー経験を教えてください。",
+      category: "experience",
+      profile: null,
+      company: null,
+      learningBrief: "",
+      conversationContext: [],
+      answerLanguage: "en",
+    });
+
+    expect(input).toContain("回答言語: English");
+    expect(input).toContain("回答本文は英語");
   });
 });

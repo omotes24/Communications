@@ -12,7 +12,11 @@ import {
 } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-export function ThemeCustomizer() {
+export function ThemeCustomizer({
+  tone = "light",
+}: {
+  tone?: "light" | "dark";
+}) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<AppTheme>(defaultAppTheme);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -70,7 +74,12 @@ export function ThemeCustomizer() {
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
         aria-controls="theme-customizer"
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#6e6e73] transition hover:text-[#1d1d1f]"
+        className={cn(
+          "inline-flex items-center gap-1.5 text-xs font-medium transition",
+          tone === "dark"
+            ? "text-white/50 hover:text-white"
+            : "text-[#6e6e73] hover:text-[#1d1d1f]",
+        )}
       >
         <Palette className="h-3.5 w-3.5" aria-hidden />
         Customize
