@@ -18,10 +18,20 @@ import {
 describe("transcript auto submit helpers", () => {
   it("normalizes and filters tiny partial transcripts", () => {
     expect(normalizeTranscriptForSubmit("  自己紹介から\nお願いします  ")).toBe(
-      "自己紹介から お願いします",
+      "自己紹介からお願いします",
     );
     expect(isSubmittableTranscript("はい")).toBe(false);
     expect(isSubmittableTranscript("自己紹介をお願いします")).toBe(true);
+  });
+
+  it("removes unnatural spaces inside Japanese transcripts", () => {
+    expect(
+      normalizeTranscriptForSubmit(
+        "では 自己紹介を 分程度でお願いします。 学生時代最も この力を入れたことは何ですか? AI いや機械学習の研究 で 最も黒 した地点は何ですか? なぜ 技術職を死亡しているの ですか?",
+      ),
+    ).toBe(
+      "では自己紹介を分程度でお願いします。学生時代最もこの力を入れたことは何ですか?AI いや機械学習の研究で最も苦労した地点は何ですか?なぜ技術職を志望しているのですか?",
+    );
   });
 
   it("uses text content in the submit key so extended partials can resubmit", () => {
@@ -103,13 +113,13 @@ describe("transcript auto submit helpers", () => {
     ]);
 
     expect(merged.map((item) => item.text)).toEqual([
-      "面白いですね。 あなたの 弱みを教えてください。",
+      "面白いですね。あなたの弱みを教えてください。",
     ]);
     expect(extractLikelyInterviewQuestion(merged[0]?.text ?? "")).toBe(
-      "あなたの 弱みを教えてください。",
+      "あなたの弱みを教えてください。",
     );
     expect(formatTranscriptItemsForReading(merged)).toBe(
-      "面白いですね。 あなたの 弱みを教えてください。",
+      "面白いですね。あなたの弱みを教えてください。",
     );
   });
 });

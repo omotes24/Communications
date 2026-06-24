@@ -28,16 +28,30 @@ const questionStartPatterns = [
 ];
 const leadingFillerPattern =
   /^(?:(?:はい|では|それでは|じゃあ|次に|続いて|まず|最初に|最後に|ありがとうございます|承知しました|ちなみに)[、,\s。]*)+/;
+const japaneseCharacterClass = "\u3040-\u30ff\u3400-\u9fff々〆〇ー";
+const japaneseInternalSpacePattern = new RegExp(
+  `([${japaneseCharacterClass}])\\s+(?=[${japaneseCharacterClass}])`,
+  "g",
+);
+const spaceBeforeJapanesePunctuationPattern = /[\s　]+([、。！？?？])/g;
+const spaceAfterJapanesePunctuationPattern = /([、。！？?？])[\s　]+/g;
 
 export function normalizeCommonTranscriptErrors(text: string): string {
   return text
     .replace(/死亡(?=(?:理由|動機))/g, "志望")
     .replace(/死望(?=(?:理由|動機))/g, "志望")
-    .replace(/志亡(?=(?:理由|動機))/g, "志望");
+    .replace(/志亡(?=(?:理由|動機))/g, "志望")
+    .replace(/死亡(?=(?:して|し|する|職))/g, "志望")
+    .replace(/黒\s*(?=した(?:点|ところ)|した地点)/g, "苦労");
 }
 
 export function normalizeTranscriptForSubmit(text: string): string {
-  return normalizeCommonTranscriptErrors(text).replace(/\s+/g, " ").trim();
+  return normalizeCommonTranscriptErrors(text)
+    .replace(/\s+/g, " ")
+    .replace(japaneseInternalSpacePattern, "$1")
+    .replace(spaceBeforeJapanesePunctuationPattern, "$1")
+    .replace(spaceAfterJapanesePunctuationPattern, "$1")
+    .trim();
 }
 
 export function isSubmittableTranscript(text: string): boolean {
