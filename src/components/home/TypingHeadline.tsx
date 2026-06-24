@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const headlineLines = ["Web面接を", "AIで攻略。"] as const;
+const headlineLines = ["Web面接を", "AIで完全攻略。"] as const;
 const typingSpeedMs = 95;
 const startDelayMs = 260;
 

@@ -21,7 +21,7 @@ const navItems = [
   { href: "/english-interview", label: "英語", icon: Languages },
 ];
 
-const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.1";
+const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.2";
 
 export function AppShell({
   children,

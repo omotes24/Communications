@@ -1,4 +1,4 @@
-# Yell for You 1.1
+# Yell for You 1.2
 
 日本語面接の準備、企業理解、リアルタイム文字起こし、質問判定、回答案作成を支援するWebアプリです。
 
@@ -31,7 +31,7 @@ npm run dev
 
 ```env
 AI_PROVIDER=openai
-NEXT_PUBLIC_APP_NAME=Yell for You 1.1
+NEXT_PUBLIC_APP_NAME=Yell for You 1.2
 OPENAI_API_KEY=
 
 OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
@@ -135,7 +135,7 @@ Google Meetの相手側音声を拾う場合は、SafariではなくChromeまた
 
 1. ChromeでGoogle Meetを開き、面接ルームに入ります。
 2. 同じChromeの別タブで `http://127.0.0.1:3000/support` を開きます。
-3. Yell for You 1.1の面接画面で「タブ・画面音声を共有」を押します。
+3. Yell for You 1.2の面接画面で「タブ・画面音声を共有」を押します。
 4. Chromeの共有ダイアログで「Chromeタブ」を選び、`meet.google.com` のタブを選択します。
 5. 「タブの音声も共有」または「Share tab audio」が有効になっていることを確認して共有します。
 

@@ -1,4 +1,4 @@
-# Yell for You 1.1 Multi-user Setup
+# Yell for You 1.2 Multi-user Setup
 
 ## Supabase
 
@@ -19,7 +19,7 @@ Vercel Environment Variablesに次を設定します。
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-NEXT_PUBLIC_APP_NAME=Yell for You 1.1
+NEXT_PUBLIC_APP_NAME=Yell for You 1.2
 SUPABASE_SERVICE_ROLE_KEY=
 
 AI_PROVIDER=openai
