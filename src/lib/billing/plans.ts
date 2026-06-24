@@ -14,7 +14,7 @@ const planInputs = [
     id: "starter",
     name: "Starter",
     amountJpy: 1000,
-    description: "軽い面接準備や動作確認向け",
+    description: "数回の面接だけならこのパック",
   },
   {
     id: "standard",
