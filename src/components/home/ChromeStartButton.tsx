@@ -2,6 +2,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { type MouseEvent } from "react";
 
 type UserAgentDataBrand = {
   brand: string;
@@ -13,6 +14,8 @@ type NavigatorWithUserAgentData = Navigator & {
     brands?: UserAgentDataBrand[];
   };
 };
+
+const PROFILE_PATH = "/profile";
 
 export function isDesktopGoogleChrome(
   navigatorLike: Pick<Navigator, "userAgent"> & {
@@ -63,6 +66,13 @@ export function toChromeUrl(
   return targetUrl;
 }
 
+export function getChromeStartHref(
+  currentPageUrl: string,
+  userAgent: string,
+): string {
+  return toChromeUrl(new URL(PROFILE_PATH, currentPageUrl).toString(), userAgent);
+}
+
 function ChromeMark() {
   return (
     <span
@@ -81,30 +91,41 @@ function ChromeMark() {
 export function ChromeStartButton() {
   const router = useRouter();
 
-  function openProfile() {
-    const profileUrl = new URL("/profile", window.location.href).toString();
+  function updateLinkHref(anchor: HTMLAnchorElement) {
+    const nextHref = getChromeStartHref(
+      window.location.href,
+      navigator.userAgent,
+    );
+    anchor.href = nextHref;
+  }
+
+  function openProfile(event: MouseEvent<HTMLAnchorElement>) {
     if (
       isDesktopGoogleChrome(navigator as NavigatorWithUserAgentData) ||
       window.location.protocol === "googlechrome:" ||
       window.location.protocol === "googlechromes:" ||
       window.location.protocol === "google-chrome:"
     ) {
-      router.push("/profile");
+      event.preventDefault();
+      router.push(PROFILE_PATH);
       return;
     }
 
-    window.location.href = toChromeUrl(profileUrl, navigator.userAgent);
+    updateLinkHref(event.currentTarget);
   }
 
   return (
-    <button
-      type="button"
+    <a
+      href={PROFILE_PATH}
+      onFocus={(event) => updateLinkHref(event.currentTarget)}
+      onPointerDown={(event) => updateLinkHref(event.currentTarget)}
+      onTouchStart={(event) => updateLinkHref(event.currentTarget)}
       onClick={openProfile}
       className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--accent)] px-6 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
     >
       <ChromeMark />
       Chromeで始める
       <ArrowRight className="h-4 w-4" aria-hidden />
-    </button>
+    </a>
   );
 }

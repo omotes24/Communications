@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getChromeStartHref,
   isDesktopGoogleChrome,
   toChromeUrl,
 } from "@/components/home/ChromeStartButton";
@@ -30,6 +31,21 @@ describe("ChromeStartButton helpers", () => {
     ).toBe(
       "intent://communications-umber.vercel.app/profile?slot=me#Intent;scheme=https;package=com.android.chrome;end",
     );
+  });
+
+  it("points the start link at the profile page", () => {
+    expect(
+      getChromeStartHref(
+        "https://communications-umber.vercel.app/company",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
+      ),
+    ).toBe("google-chrome://https://communications-umber.vercel.app/profile");
+    expect(
+      getChromeStartHref(
+        "https://communications-umber.vercel.app/support",
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Line/15.0.0",
+      ),
+    ).toBe("googlechromes://communications-umber.vercel.app/profile");
   });
 
   it("detects desktop Google Chrome without treating Safari as Chrome", () => {
