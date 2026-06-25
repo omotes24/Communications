@@ -5,11 +5,13 @@ export function PageHeader({
   description,
   tone = "light",
   compact = false,
+  dense = false,
 }: {
   title: string;
   description?: string;
   tone?: "light" | "dark";
   compact?: boolean;
+  dense?: boolean;
 }) {
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.2";
   const isDark = tone === "dark";
@@ -17,21 +19,27 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        compact ? "mb-4 border-b pb-4" : "mb-8 border-b pb-6",
+        dense
+          ? "mb-3 border-b pb-3"
+          : compact
+            ? "mb-4 border-b pb-4"
+            : "mb-8 border-b pb-6",
         isDark ? "border-white/10" : "border-black/[0.08]",
       )}
     >
       <p
         className={cn(
           "text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]",
-          compact ? "mb-2" : "mb-3",
+          dense ? "mb-1 text-[10px]" : compact ? "mb-2" : "mb-3",
         )}
       >
         {appName}
       </p>
       <h1
         className={cn(
-          compact
+          dense
+            ? "text-2xl font-semibold tracking-tight sm:text-3xl"
+            : compact
             ? "text-3xl font-semibold tracking-tight sm:text-4xl"
             : "text-4xl font-semibold tracking-tight sm:text-6xl",
           isDark ? "text-white" : "text-[#1d1d1f]",
