@@ -195,7 +195,10 @@ export function useAppStorage() {
           void fetch("/api/storage", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(defaultStorage),
+            body: JSON.stringify({
+              storage: defaultStorage,
+              allowEmptyOverwrite: true,
+            }),
           });
         }
       },

@@ -129,9 +129,19 @@ export async function loadCloudStorage(userId: string): Promise<{
 export async function saveCloudStorage(
   userId: string,
   storage: AppStorage,
+  options: { allowEmptyOverwrite?: boolean } = {},
 ): Promise<void> {
   const supabase = createSupabaseServiceClient();
   const parsed = appStorageSchema.parse(storage);
+
+  if (!options.allowEmptyOverwrite && !hasMeaningfulAppStorage(parsed)) {
+    const existing = await loadCloudStorage(userId);
+    if (hasMeaningfulAppStorage(existing.storage)) {
+      throw new Error(
+        "既存のクラウドデータがあるため、空のデータでは上書きしません。",
+      );
+    }
+  }
 
   const { error: profileError } = await supabase
     .from("profiles")
@@ -402,4 +412,13 @@ function parseAnswerPayload(value: string): Omit<SessionRecord, "id" | "question
 
 function firstUrl(text: string): string {
   return text.match(/https?:\/\/[^\s<>"'、。)）]+/)?.[0] ?? "";
+}
+
+function hasMeaningfulAppStorage(storage: AppStorage): boolean {
+  return (
+    storage.profiles.length > 0 ||
+    storage.companies.length > 0 ||
+    storage.history.length > 0 ||
+    Boolean(storage.learning)
+  );
 }
