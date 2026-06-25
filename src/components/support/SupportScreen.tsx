@@ -79,7 +79,7 @@ function RealtimeTranscriptPanel({
           <h2
             className={cn(
               "font-semibold tracking-tight",
-              compact ? "text-lg" : "text-xl",
+              compact ? "text-sm" : "text-base",
             )}
           >
             リアルタイム文字起こし
@@ -112,7 +112,7 @@ function RealtimeTranscriptPanel({
         ) : (
           <pre
             className={cn(
-              "whitespace-pre-wrap p-4 text-[13px] font-medium leading-6",
+              "whitespace-pre-wrap p-4 text-[12px] font-medium leading-5",
               isDark ? "text-white/80" : "text-[#1d1d1f]",
             )}
           >

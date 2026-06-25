@@ -5,12 +5,11 @@ import type { KeyboardEvent, ReactNode } from "react";
 import {
   AlertTriangle,
   Brain,
-  CheckCircle2,
-  Loader2,
   RotateCw,
   Save,
   Send,
   Square,
+  Type,
 } from "lucide-react";
 
 import { FormField, textareaClassName } from "@/components/forms/FormField";
@@ -202,6 +201,7 @@ export function AnswerWorkbench({
   const [answerModelMode, setAnswerModelMode] =
     useState<AnswerModelMode>("standard");
   const [answerLengthTarget, setAnswerLengthTarget] = useState(450);
+  const [chatFontSize, setChatFontSize] = useState(13);
   const [fermiEstimationMode, setFermiEstimationMode] = useState(false);
   const [selfSlot, setSelfSlot] = useState("");
   const [manualNotice, setManualNotice] = useState<string | null>(null);
@@ -210,6 +210,9 @@ export function AnswerWorkbench({
   const quickDraftTimersRef = useRef<Map<string, number>>(new Map());
   const controllersRef = useRef<Map<string, AbortController>>(new Map());
   const isDark = tone === "dark";
+  const questionFontSize = Math.max(12, chatFontSize - 1);
+  const answerLineHeight = `${Math.round(chatFontSize * 1.9)}px`;
+  const questionLineHeight = `${Math.round(questionFontSize * 1.8)}px`;
 
   const activeLearningBrief =
     storage.learning?.companyId &&
@@ -675,6 +678,38 @@ export function AnswerWorkbench({
                   }
                 />
               </label>
+              <label
+                className={cn(
+                  "inline-flex min-h-9 min-w-[190px] flex-1 items-center gap-2 rounded-full px-3 text-xs font-semibold sm:max-w-[260px]",
+                  isDark
+                    ? "bg-white/10 text-white/70"
+                    : "bg-[#f5f5f7] text-[#6e6e73]",
+                )}
+              >
+                <Type className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span className="shrink-0">文字</span>
+                <input
+                  type="range"
+                  min={12}
+                  max={16}
+                  step={1}
+                  value={chatFontSize}
+                  onChange={(event) =>
+                    setChatFontSize(Number(event.target.value))
+                  }
+                  className="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--accent)]"
+                />
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-2 py-0.5",
+                    isDark
+                      ? "bg-neutral-950 text-white"
+                      : "bg-white text-[#1d1d1f]",
+                  )}
+                >
+                  {chatFontSize}
+                </span>
+              </label>
               {answerModelMode === "fermi" ? (
                 <label
                   className={cn(
@@ -759,28 +794,16 @@ export function AnswerWorkbench({
                       </div>
                     ) : null}
 
-                    <div>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="flex items-center gap-2 text-sm font-semibold">
-                          {turn.loading ? (
-                            <Loader2
-                              className="h-4 w-4 animate-spin text-[var(--accent)]"
-                              aria-hidden
-                            />
-                          ) : turn.finalDraft ? (
-                            <CheckCircle2
-                              className="h-4 w-4 text-emerald-600"
-                              aria-hidden
-                            />
-                          ) : null}
-                          回答案
-                        </h3>
-                      </div>
+                    <div className={turn.error ? "mt-3" : undefined}>
                       <p
                         className={cn(
-                          "mt-2 min-h-24 whitespace-pre-wrap text-[15px] font-semibold leading-8",
+                          "min-h-20 whitespace-pre-wrap font-semibold",
                           isDark ? "text-white" : "text-[#1d1d1f]",
                         )}
+                        style={{
+                          fontSize: `${chatFontSize}px`,
+                          lineHeight: answerLineHeight,
+                        }}
                       >
                         {answer
                           ? renderEmphasizedText(answer)
@@ -790,61 +813,68 @@ export function AnswerWorkbench({
                       </p>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          classifyAndGenerate(turn.question, turn.source)
-                        }
-                        disabled={turn.loading}
-                        className={cn(
-                          "inline-flex h-10 items-center gap-2 rounded-full px-4 text-xs font-semibold transition disabled:cursor-not-allowed disabled:text-[#86868b]",
-                          isDark
-                            ? "bg-neutral-950 text-white hover:bg-neutral-800"
-                            : "bg-white hover:bg-[#e8e8ed]",
-                        )}
-                      >
-                        <RotateCw className="h-4 w-4" aria-hidden />
-                        再生成
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => saveHistory(turn)}
-                        disabled={!turn.finalDraft || turn.saved}
-                        className={cn(
-                          "inline-flex h-10 items-center gap-2 rounded-full px-4 text-xs font-semibold transition disabled:cursor-not-allowed disabled:text-[#86868b]",
-                          isDark
-                            ? "bg-neutral-950 text-white hover:bg-neutral-800"
-                            : "bg-white hover:bg-[#e8e8ed]",
-                        )}
-                      >
-                        <Save className="h-4 w-4" aria-hidden />
-                        {turn.saved ? "保存済み" : "履歴に保存"}
-                      </button>
-                      {turn.loading ? (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => stopTurn(turn.id)}
-                          className="inline-flex h-10 items-center gap-2 rounded-full border border-red-300 bg-white px-4 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+                          onClick={() =>
+                            classifyAndGenerate(turn.question, turn.source)
+                          }
+                          disabled={turn.loading}
+                          className={cn(
+                            "inline-flex h-10 items-center gap-2 rounded-full px-4 text-xs font-semibold transition disabled:cursor-not-allowed disabled:text-[#86868b]",
+                            isDark
+                              ? "bg-neutral-950 text-white hover:bg-neutral-800"
+                              : "bg-white hover:bg-[#e8e8ed]",
+                          )}
                         >
-                          <Square className="h-4 w-4" aria-hidden />
-                          停止
+                          <RotateCw className="h-4 w-4" aria-hidden />
+                          再生成
                         </button>
-                      ) : null}
+                        <button
+                          type="button"
+                          onClick={() => saveHistory(turn)}
+                          disabled={!turn.finalDraft || turn.saved}
+                          className={cn(
+                            "inline-flex h-10 items-center gap-2 rounded-full px-4 text-xs font-semibold transition disabled:cursor-not-allowed disabled:text-[#86868b]",
+                            isDark
+                              ? "bg-neutral-950 text-white hover:bg-neutral-800"
+                              : "bg-white hover:bg-[#e8e8ed]",
+                          )}
+                        >
+                          <Save className="h-4 w-4" aria-hidden />
+                          {turn.saved ? "保存済み" : "履歴に保存"}
+                        </button>
+                        {turn.loading ? (
+                          <button
+                            type="button"
+                            onClick={() => stopTurn(turn.id)}
+                            className="inline-flex h-10 items-center gap-2 rounded-full border border-red-300 bg-white px-4 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+                          >
+                            <Square className="h-4 w-4" aria-hidden />
+                            停止
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="flex min-w-[220px] flex-1 justify-end">
+                        <div
+                          className={cn(
+                            "max-w-full rounded-[24px] px-4 py-3 text-white shadow-sm sm:max-w-[62%]",
+                            isDark ? "bg-violet-600" : "bg-[var(--accent)]",
+                          )}
+                        >
+                          <p
+                            className="whitespace-pre-wrap font-semibold"
+                            style={{
+                              fontSize: `${questionFontSize}px`,
+                              lineHeight: questionLineHeight,
+                            }}
+                          >
+                            {turn.question}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <div
-                    className={cn(
-                      "max-w-[88%] rounded-[26px] px-5 py-4 text-white shadow-sm",
-                      isDark ? "bg-violet-600" : "bg-[var(--accent)]",
-                    )}
-                  >
-                    <p className="whitespace-pre-wrap text-[13px] font-semibold leading-6">
-                      {turn.question}
-                    </p>
                   </div>
                 </div>
               </article>
