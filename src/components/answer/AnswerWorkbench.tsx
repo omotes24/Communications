@@ -706,8 +706,8 @@ export function AnswerWorkbench({
           className={cn(
             "grid overflow-y-auto pr-1",
             compact
-              ? "mt-2 max-h-[300px] gap-2 sm:max-h-[340px]"
-              : "mt-3 max-h-[430px] gap-3 sm:max-h-[520px]",
+              ? "mt-2 max-h-[260px] gap-2 sm:max-h-[300px]"
+              : "mt-3 max-h-[360px] gap-3 sm:max-h-[440px]",
           )}
         >
           {turns.length === 0 ? (
@@ -752,7 +752,7 @@ export function AnswerWorkbench({
                     <div className={turn.error ? "mt-3" : undefined}>
                       <p
                         className={cn(
-                          "min-h-20 whitespace-pre-wrap text-[13px] font-semibold leading-[25px]",
+                          "min-h-16 whitespace-pre-wrap text-[13px] font-semibold leading-[25px]",
                           isDark ? "text-white" : "text-[#1d1d1f]",
                         )}
                       >
