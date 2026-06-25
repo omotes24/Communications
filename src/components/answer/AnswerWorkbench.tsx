@@ -21,7 +21,6 @@ import {
 import {
   answerDraftSchema,
   questionClassificationSchema,
-  validateAnswerLength,
   type AnswerDraft,
   type AnswerLanguage,
   type AnswerConversationTurn,
@@ -69,16 +68,6 @@ const answerModelOptions: Array<{
         { mode: "standard", label: "5.4 mini", description: "高速" },
         { mode: "fermi", label: "5.5", description: "高精度" },
       ];
-
-function answerModelLabel(mode: AnswerModelMode): string {
-  return (
-    answerModelOptions.find((option) => option.mode === mode)?.label ??
-    answerModelOptions[0]?.label ??
-    "標準"
-  );
-}
-
-const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.2";
 
 type AnswerTurn = {
   id: string;
@@ -162,23 +151,6 @@ async function readSse(
       );
     }
   }
-}
-
-function sourceLabel(source: AnswerSource): string {
-  if (source === "remote-audio") {
-    return "音声検知";
-  }
-  if (source === "practice") {
-    return "練習";
-  }
-  return "手動";
-}
-
-function formatTime(value: string): string {
-  return new Intl.DateTimeFormat("ja-JP", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
 
 function compactForContext(text: string, maxLength: number): string {
@@ -744,8 +716,8 @@ export function AnswerWorkbench({
           className={cn(
             "grid overflow-y-auto pr-1",
             compact
-              ? "mt-3 max-h-[220px] gap-3 sm:max-h-[260px]"
-              : "mt-5 max-h-[360px] gap-4 sm:max-h-[420px]",
+              ? "mt-3 max-h-[300px] gap-3 sm:max-h-[340px]"
+              : "mt-5 max-h-[430px] gap-4 sm:max-h-[520px]",
           )}
         >
           {turns.length === 0 ? (
@@ -765,135 +737,20 @@ export function AnswerWorkbench({
 
           {visibleTurns.map((turn) => {
             const answer = turn.finalDraft?.answer ?? turn.draft.answer ?? "";
-            const length = validateAnswerLength(
-              answer,
-              turn.answerLengthTarget ?? undefined,
-            );
 
             return (
               <article key={turn.id} className="grid gap-3">
                 <div className="flex justify-start">
                   <div
                     className={cn(
-                      "max-w-[92%] rounded-[26px] px-5 py-4",
+                      "max-w-[96%] rounded-[26px] px-5 py-4",
                       isDark
                         ? "bg-white/10 text-white"
                         : "bg-[#f5f5f7] text-[#1d1d1f]",
                     )}
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        {turn.loading ? (
-                          <Loader2
-                            className="h-4 w-4 animate-spin text-[var(--accent)]"
-                            aria-hidden
-                          />
-                        ) : turn.finalDraft ? (
-                          <CheckCircle2
-                            className="h-4 w-4 text-emerald-600"
-                            aria-hidden
-                          />
-                        ) : null}
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6e6e73]">
-                          {appName}
-                        </p>
-                      </div>
-                      <span
-                        className={cn(
-                          "rounded-full px-3 py-1 text-xs font-semibold",
-                          isDark
-                            ? "bg-neutral-950 text-white/60"
-                            : "bg-white text-[#6e6e73]",
-                        )}
-                      >
-                        {length.count}文字
-                      </span>
-                    </div>
-
-                    {turn.classification ? (
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#6e6e73]">
-                        <span
-                          className={cn(
-                            "rounded-full px-3 py-1",
-                            isDark ? "bg-neutral-950" : "bg-white",
-                          )}
-                        >
-                          {turn.category}
-                        </span>
-                        <span
-                          className={cn(
-                            "rounded-full px-3 py-1",
-                            isDark ? "bg-neutral-950" : "bg-white",
-                          )}
-                        >
-                          {answerModelLabel(turn.answerModelMode)}
-                        </span>
-                        {turn.answerLengthTarget ? (
-                          <span
-                            className={cn(
-                              "rounded-full px-3 py-1",
-                              isDark ? "bg-neutral-950" : "bg-white",
-                            )}
-                          >
-                            目標{turn.answerLengthTarget}文字
-                          </span>
-                        ) : null}
-                        {turn.fermiEstimationMode ? (
-                          <span
-                            className={cn(
-                              "rounded-full px-3 py-1",
-                              isDark ? "bg-neutral-950" : "bg-white",
-                            )}
-                          >
-                            フェルミ推定
-                          </span>
-                        ) : null}
-                        {turn.profileSlotLabels.map((label) => (
-                          <span
-                            key={`profile-${turn.id}-${label}`}
-                            className={cn(
-                              "rounded-full px-3 py-1",
-                              isDark ? "bg-neutral-950" : "bg-white",
-                            )}
-                          >
-                            自分: {label}
-                          </span>
-                        ))}
-                        {turn.companySlotLabels.map((label) => (
-                          <span
-                            key={`company-${turn.id}-${label}`}
-                            className={cn(
-                              "rounded-full px-3 py-1",
-                              isDark ? "bg-neutral-950" : "bg-white",
-                            )}
-                          >
-                            会社: {label}
-                          </span>
-                        ))}
-                        {turn.selfSlotSnapshot ? (
-                          <span
-                            className={cn(
-                              "rounded-full px-3 py-1",
-                              isDark ? "bg-neutral-950" : "bg-white",
-                            )}
-                          >
-                            メモあり
-                          </span>
-                        ) : null}
-                        <span
-                          className={cn(
-                            "rounded-full px-3 py-1",
-                            isDark ? "bg-neutral-950" : "bg-white",
-                          )}
-                        >
-                          信頼度{" "}
-                          {Math.round(turn.classification.confidence * 100)}%
-                        </span>
-                      </div>
-                    ) : null}
-
                     {turn.error ? (
-                      <div className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-900">
+                      <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-900">
                         <AlertTriangle
                           className="mt-0.5 h-4 w-4 shrink-0"
                           aria-hidden
@@ -902,13 +759,26 @@ export function AnswerWorkbench({
                       </div>
                     ) : null}
 
-                    <div className="mt-4">
+                    <div>
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="text-[13px] font-semibold">回答案</h3>
+                        <h3 className="flex items-center gap-2 text-sm font-semibold">
+                          {turn.loading ? (
+                            <Loader2
+                              className="h-4 w-4 animate-spin text-[var(--accent)]"
+                              aria-hidden
+                            />
+                          ) : turn.finalDraft ? (
+                            <CheckCircle2
+                              className="h-4 w-4 text-emerald-600"
+                              aria-hidden
+                            />
+                          ) : null}
+                          回答案
+                        </h3>
                       </div>
                       <p
                         className={cn(
-                          "mt-2 min-h-20 whitespace-pre-wrap text-[13px] font-semibold leading-6",
+                          "mt-2 min-h-24 whitespace-pre-wrap text-[15px] font-semibold leading-8",
                           isDark ? "text-white" : "text-[#1d1d1f]",
                         )}
                       >
@@ -972,11 +842,7 @@ export function AnswerWorkbench({
                       isDark ? "bg-violet-600" : "bg-[var(--accent)]",
                     )}
                   >
-                    <div className="mb-2 flex flex-wrap items-center justify-end gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/75">
-                      <span>{sourceLabel(turn.source)}</span>
-                      <span>{formatTime(turn.createdAt)}</span>
-                    </div>
-                    <p className="whitespace-pre-wrap text-[12px] font-semibold leading-5">
+                    <p className="whitespace-pre-wrap text-[13px] font-semibold leading-6">
                       {turn.question}
                     </p>
                   </div>
