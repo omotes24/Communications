@@ -76,12 +76,9 @@ function RealtimeTranscriptPanel({
     >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
-            Live Transcript
-          </p>
           <h2
             className={cn(
-              "mt-1 font-semibold tracking-tight",
+              "font-semibold tracking-tight",
               compact ? "text-lg" : "text-xl",
             )}
           >
@@ -238,6 +235,10 @@ export function SupportScreen({
           showTranscript={false}
           tone={tone}
           compact={compact}
+        />
+        <div
+          aria-hidden="true"
+          className={compact ? "h-[30vh]" : "h-[22vh]"}
         />
       </div>
     </section>

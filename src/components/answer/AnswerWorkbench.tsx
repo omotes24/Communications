@@ -675,6 +675,34 @@ export function AnswerWorkbench({
                 <Brain className="h-3.5 w-3.5" aria-hidden />
                 フェルミ推定
               </button>
+              <label
+                className={cn(
+                  "inline-flex min-h-9 min-w-[220px] flex-1 items-center gap-2 rounded-full border px-3 text-xs font-semibold sm:max-w-[360px]",
+                  isDark
+                    ? "border-white/10 bg-neutral-900 text-white/70"
+                    : "border-neutral-950/10 bg-white text-[#6e6e73]",
+                )}
+              >
+                <span className="shrink-0">
+                  {answerLanguage === "en" ? "Temporary note" : "一時メモ"}
+                </span>
+                <input
+                  type="text"
+                  value={selfSlot}
+                  onChange={(event) => setSelfSlot(event.target.value)}
+                  className={cn(
+                    "min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#1d1d1f] outline-none placeholder:text-[#86868b]",
+                    isDark
+                      ? "text-white placeholder:text-white/40"
+                      : "text-[#1d1d1f]",
+                  )}
+                  placeholder={
+                    answerLanguage === "en"
+                      ? "concise, confident tone"
+                      : "具体例多め、論理的に"
+                  }
+                />
+              </label>
               {answerModelMode === "fermi" ? (
                 <label
                   className={cn(
@@ -709,33 +737,6 @@ export function AnswerWorkbench({
                 </label>
               ) : null}
             </div>
-
-            <label
-              className={cn(
-                "grid gap-1 text-xs font-semibold",
-                isDark ? "text-white/70" : "text-[#6e6e73]",
-              )}
-            >
-              <span>
-                {answerLanguage === "en" ? "Temporary note" : "一時メモ"}
-              </span>
-              <textarea
-                value={selfSlot}
-                onChange={(event) => setSelfSlot(event.target.value)}
-                rows={1}
-                className={cn(
-                  "min-h-8 resize-y rounded-2xl border px-3 py-1.5 text-sm font-semibold leading-5 outline-none transition",
-                  isDark
-                    ? "border-white/10 bg-neutral-900 text-white placeholder:text-white/40 focus:border-violet-400 focus:ring-4 focus:ring-violet-400/20"
-                    : "border-neutral-950/10 bg-white text-[#1d1d1f] placeholder:text-[#86868b] focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent-ring-strong)]",
-                )}
-                placeholder={
-                  answerLanguage === "en"
-                    ? "Example: keep it concise, use a confident tone"
-                    : "例:具体例を多くする、論理的な思考をする"
-                }
-              />
-            </label>
           </div>
         </div>
 
