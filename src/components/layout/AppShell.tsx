@@ -6,6 +6,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BriefcaseBusiness,
+  ChevronDown,
+  ChevronUp,
   Languages,
   UserRound,
   UsersRound,
@@ -41,6 +43,13 @@ export function AppShell({
   const displayedPathname =
     optimisticPathname?.from === pathname ? optimisticPathname.to : pathname;
   const isDark = variant === "dark";
+  const canCollapseTabs =
+    displayedPathname === "/support" ||
+    displayedPathname.startsWith("/support/") ||
+    displayedPathname === "/english-interview" ||
+    displayedPathname.startsWith("/english-interview/");
+  const [tabsCollapsed, setTabsCollapsed] = useState(false);
+  const tabsHidden = canCollapseTabs && tabsCollapsed;
 
   useEffect(() => {
     for (const item of navItems) {
@@ -89,7 +98,29 @@ export function AppShell({
               </span>
             </Link>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {canCollapseTabs ? (
+                <button
+                  type="button"
+                  onClick={() => setTabsCollapsed((current) => !current)}
+                  aria-expanded={!tabsHidden}
+                  className={cn(
+                    "inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-xs font-semibold",
+                    isDark
+                      ? "bg-white/10 text-white/70 hover:bg-white/15 hover:text-white"
+                      : "bg-white text-[#6e6e73] shadow-sm ring-1 ring-black/[0.06] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
+                  )}
+                >
+                  {tabsHidden ? (
+                    <ChevronDown className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <ChevronUp className="h-4 w-4" aria-hidden />
+                  )}
+                  <span className="hidden sm:inline">
+                    {tabsHidden ? "タブを表示" : "タブをしまう"}
+                  </span>
+                </button>
+              ) : null}
               <span
                 className={cn(
                   "hidden rounded-full px-3 py-1.5 text-xs font-semibold sm:inline-flex",
@@ -104,46 +135,49 @@ export function AppShell({
             </div>
           </div>
 
-          <nav
-            aria-label="主要画面"
-            className={cn(
-              "mt-3 grid grid-cols-4 overflow-hidden rounded-full p-1 shadow-sm ring-1",
-              isDark
-                ? "bg-white/5 ring-white/10"
-                : "bg-white/75 ring-black/[0.06]",
-            )}
-          >
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active =
-                displayedPathname === item.href ||
-                (item.href !== "/" && displayedPathname.startsWith(item.href));
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  prefetch
-                  onMouseEnter={() => router.prefetch(item.href)}
-                  onFocus={() => router.prefetch(item.href)}
-                  onPointerDown={() => markNavigationIntent(item.href)}
-                  onClick={() => markNavigationIntent(item.href)}
-                  className={cn(
-                    "flex h-10 items-center justify-center gap-2 rounded-full px-2 text-sm font-semibold tracking-tight",
-                    active
-                      ? isDark
-                        ? "bg-white text-neutral-950 shadow-sm"
-                        : "bg-[var(--accent)] text-white shadow-sm"
-                      : isDark
-                        ? "text-white/60 hover:bg-white/10 hover:text-white"
-                        : "text-[#6e6e73] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
-                  )}
-                >
-                  <Icon aria-hidden className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          {!tabsHidden ? (
+            <nav
+              aria-label="主要画面"
+              className={cn(
+                "mt-3 grid grid-cols-4 overflow-hidden rounded-full p-1 shadow-sm ring-1",
+                isDark
+                  ? "bg-white/5 ring-white/10"
+                  : "bg-white/75 ring-black/[0.06]",
+              )}
+            >
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const active =
+                  displayedPathname === item.href ||
+                  (item.href !== "/" &&
+                    displayedPathname.startsWith(item.href));
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    prefetch
+                    onMouseEnter={() => router.prefetch(item.href)}
+                    onFocus={() => router.prefetch(item.href)}
+                    onPointerDown={() => markNavigationIntent(item.href)}
+                    onClick={() => markNavigationIntent(item.href)}
+                    className={cn(
+                      "flex h-10 items-center justify-center gap-2 rounded-full px-2 text-sm font-semibold tracking-tight",
+                      active
+                        ? isDark
+                          ? "bg-white text-neutral-950 shadow-sm"
+                          : "bg-[var(--accent)] text-white shadow-sm"
+                        : isDark
+                          ? "text-white/60 hover:bg-white/10 hover:text-white"
+                          : "text-[#6e6e73] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
+                    )}
+                  >
+                    <Icon aria-hidden className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : null}
         </div>
       </header>
 
