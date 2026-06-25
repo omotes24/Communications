@@ -773,13 +773,13 @@ export function AnswerWorkbench({
                           }
                           disabled={turn.loading}
                           className={cn(
-                            "inline-flex h-10 items-center gap-2 rounded-full px-4 text-xs font-semibold transition disabled:cursor-not-allowed disabled:text-[#86868b]",
+                            "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:text-[#86868b]",
                             isDark
                               ? "bg-neutral-950 text-white hover:bg-neutral-800"
                               : "bg-white hover:bg-[#e8e8ed]",
                           )}
                         >
-                          <RotateCw className="h-4 w-4" aria-hidden />
+                          <RotateCw className="h-3.5 w-3.5" aria-hidden />
                           再生成
                         </button>
                         <button
@@ -787,22 +787,22 @@ export function AnswerWorkbench({
                           onClick={() => saveHistory(turn)}
                           disabled={!turn.finalDraft || turn.saved}
                           className={cn(
-                            "inline-flex h-10 items-center gap-2 rounded-full px-4 text-xs font-semibold transition disabled:cursor-not-allowed disabled:text-[#86868b]",
+                            "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:text-[#86868b]",
                             isDark
                               ? "bg-neutral-950 text-white hover:bg-neutral-800"
                               : "bg-white hover:bg-[#e8e8ed]",
                           )}
                         >
-                          <Save className="h-4 w-4" aria-hidden />
+                          <Save className="h-3.5 w-3.5" aria-hidden />
                           {turn.saved ? "保存済み" : "履歴に保存"}
                         </button>
                         {turn.loading ? (
                           <button
                             type="button"
                             onClick={() => stopTurn(turn.id)}
-                            className="inline-flex h-10 items-center gap-2 rounded-full border border-red-300 bg-white px-4 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-red-300 bg-white px-3.5 text-[11px] font-semibold text-red-700 transition hover:bg-red-50"
                           >
-                            <Square className="h-4 w-4" aria-hidden />
+                            <Square className="h-3.5 w-3.5" aria-hidden />
                             停止
                           </button>
                         ) : null}
