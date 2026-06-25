@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 import { AnswerWorkbench } from "@/components/answer/AnswerWorkbench";
 import { PreInterviewLearningPanel } from "@/components/answer/PreInterviewLearningPanel";
@@ -10,6 +16,14 @@ import type { TranscriptItem } from "@/components/audio/use-realtime-transcripti
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 import { cn } from "@/lib/utils";
+
+const minInterviewScale = 0.62;
+const maxInterviewScale = 1;
+const compactScaleThreshold = 0.92;
+
+function clampInterviewScale(value: number) {
+  return Math.min(maxInterviewScale, Math.max(minInterviewScale, value));
+}
 
 type RealtimeTranscriptPanelProps = {
   items: TranscriptItem[];
@@ -123,8 +137,8 @@ export function SupportScreen({
   const isEnglish = variant === "english";
   const tone: "light" | "dark" = "light";
   const screenRef = useRef<HTMLElement | null>(null);
-  const pinchDeltaRef = useRef(0);
-  const [compact, setCompact] = useState(false);
+  const [interviewScale, setInterviewScale] = useState(maxInterviewScale);
+  const compact = interviewScale < compactScaleThreshold;
   const [latestTranscript, setLatestTranscript] = useState<{
     id: string;
     text: string;
@@ -133,30 +147,24 @@ export function SupportScreen({
   const [transcriptItems, setTranscriptItems] = useState<TranscriptItem[]>([]);
 
   useEffect(() => {
-    const screen = screenRef.current;
-    if (!screen) {
-      return;
-    }
-
-    function handleWheel(event: WheelEvent) {
+    function handleWindowWheel(event: WheelEvent) {
       if (!event.ctrlKey) {
         return;
       }
+      const screen = screenRef.current;
+      const target = event.target;
+      if (!screen || !(target instanceof Node) || !screen.contains(target)) {
+        return;
+      }
       event.preventDefault();
-      pinchDeltaRef.current += event.deltaY;
-      if (pinchDeltaRef.current > 28) {
-        setCompact(true);
-        pinchDeltaRef.current = 0;
-      }
-      if (pinchDeltaRef.current < -28) {
-        setCompact(false);
-        pinchDeltaRef.current = 0;
-      }
+      setInterviewScale((current) =>
+        clampInterviewScale(current - event.deltaY * 0.001),
+      );
     }
 
-    screen.addEventListener("wheel", handleWheel, { passive: false });
+    window.addEventListener("wheel", handleWindowWheel, { passive: false });
     return () => {
-      screen.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("wheel", handleWindowWheel);
     };
   }, []);
 
@@ -169,7 +177,10 @@ export function SupportScreen({
   }
 
   return (
-    <section ref={screenRef}>
+    <section
+      ref={screenRef}
+      style={{ zoom: interviewScale } as CSSProperties & { zoom: number }}
+    >
       <PageHeader
         title={isEnglish ? "英語面接" : "面接"}
         tone={tone}
