@@ -514,14 +514,6 @@ export function AnswerWorkbench({
       setQuestion("");
     }
     void classifyAndGenerate(submittedQuestion, "manual");
-    if (submittedQuestion) {
-      window.requestAnimationFrame(() => {
-        answerChatRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      });
-    }
   }
 
   function handleManualQuestionKeyDown(
