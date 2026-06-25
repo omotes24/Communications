@@ -41,6 +41,7 @@ function submitForm(buttonName: string) {
 describe("AuthForm", () => {
   afterEach(() => {
     vi.clearAllMocks();
+    delete process.env.NEXT_PUBLIC_SITE_URL;
   });
 
   it("sends only one login request while a login is pending", async () => {
@@ -122,5 +123,29 @@ describe("AuthForm", () => {
     expect(
       screen.queryByText(/受け付けられません|時間をおいて|再度お試し/),
     ).not.toBeInTheDocument();
+  });
+
+  it("uses the configured public site URL for signup confirmation emails", async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://communications-umber.vercel.app/";
+    authMocks.signUp.mockResolvedValue({ error: null });
+
+    render(<AuthForm mode="sign-up" />);
+    fireEvent.change(screen.getByLabelText("メールアドレス"), {
+      target: { value: "new@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("パスワード"), {
+      target: { value: "password123" },
+    });
+
+    submitForm("登録する");
+    await screen.findByText("確認メールを送信しました。メール内のリンクを開いてください。");
+
+    expect(authMocks.signUp).toHaveBeenCalledWith({
+      email: "new@example.com",
+      password: "password123",
+      options: {
+        emailRedirectTo: "https://communications-umber.vercel.app/auth/confirm",
+      },
+    });
   });
 });

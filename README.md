@@ -33,6 +33,7 @@ npm run dev
 ```env
 AI_PROVIDER=openai
 NEXT_PUBLIC_APP_NAME=Yell for You 1.2
+NEXT_PUBLIC_SITE_URL=
 OPENAI_API_KEY=
 
 OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
@@ -57,11 +58,22 @@ STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 ```
 
-`NEXT_PUBLIC_APP_NAME` はビルド時に反映されます。Vercelで変更した場合は再デプロイが必要です。
+`NEXT_PUBLIC_APP_NAME` と `NEXT_PUBLIC_SITE_URL` はビルド時に反映されます。Vercelで変更した場合は再デプロイが必要です。Productionでは `NEXT_PUBLIC_SITE_URL=https://communications-umber.vercel.app` を設定します。
 
 ## Supabase
 
 Supabase Auth、RLS付きPostgres、アプリ内トークン台帳を使います。
+
+AuthのURL設定:
+
+- Site URL: `https://communications-umber.vercel.app`
+- Redirect URLs:
+  - `https://communications-umber.vercel.app/auth/confirm`
+  - `https://communications-umber.vercel.app/auth/callback`
+  - `http://localhost:3000/auth/confirm`
+  - `http://localhost:3000/auth/callback`
+
+Confirm signupメールテンプレートのボタンURLは、標準テンプレートの場合は `{{ .ConfirmationURL }}` を使います。独自リンクにする場合は `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/profile` にします。
 
 適用するmigration:
 

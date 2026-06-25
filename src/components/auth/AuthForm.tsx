@@ -14,6 +14,22 @@ type AuthAttemptResult = {
   text: string;
 };
 
+function getAuthRedirectOrigin(): string {
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configuredSiteUrl) {
+    return configuredSiteUrl.replace(/\/+$/, "");
+  }
+  return window.location.origin;
+}
+
+function buildAuthConfirmUrl(next?: string): string {
+  const url = new URL("/auth/confirm", `${getAuthRedirectOrigin()}/`);
+  if (next) {
+    url.searchParams.set("next", next);
+  }
+  return url.toString();
+}
+
 const authCopy = {
   login: {
     title: "ログイン",
@@ -118,7 +134,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: buildAuthConfirmUrl(),
           },
         });
         if (signUpError) {
@@ -138,7 +154,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         email,
         {
-          redirectTo: `${window.location.origin}/auth/callback?next=/account`,
+          redirectTo: buildAuthConfirmUrl("/account"),
         },
       );
       if (resetError) {

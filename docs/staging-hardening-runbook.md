@@ -28,6 +28,7 @@ Capacitor、iOS、Android、Apple In-App Purchase、Google Play Billingはこの
 NEXT_PUBLIC_SUPABASE_URL=<staging url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<staging anon key>
 NEXT_PUBLIC_APP_NAME=Yell for You 1.2
+NEXT_PUBLIC_SITE_URL=<preview deployment url>
 SUPABASE_SERVICE_ROLE_KEY=<staging service role key>
 SUPABASE_STORAGE_BUCKETS=
 APP_SIGNUP_GRANT_TOKENS=300000
@@ -50,6 +51,7 @@ AI_MOCK_MODE=false
 NEXT_PUBLIC_SUPABASE_URL=<production url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<production anon key>
 NEXT_PUBLIC_APP_NAME=Yell for You 1.2
+NEXT_PUBLIC_SITE_URL=https://communications-umber.vercel.app
 SUPABASE_SERVICE_ROLE_KEY=<production service role key>
 SUPABASE_STORAGE_BUCKETS=
 APP_SIGNUP_GRANT_TOKENS=0
@@ -67,6 +69,17 @@ AI_MOCK_MODE=false
 ```
 
 環境変数変更は既存デプロイへ反映されません。Preview/Productionとも再デプロイが必要です。
+
+## Supabase Auth URL設定
+
+ProductionのSupabase Dashboardで、Auth -> URL Configurationを次のように設定します。
+
+- Site URL: `https://communications-umber.vercel.app`
+- Redirect URLs:
+  - `https://communications-umber.vercel.app/auth/confirm`
+  - `https://communications-umber.vercel.app/auth/callback`
+
+Confirm signupメールテンプレートは、標準の `{{ .ConfirmationURL }}` を使うか、独自リンクの場合は `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/profile` を使います。空のhref、`about:blank`、`{{ .RedirectTo }}` だけのリンクは使わないでください。
 
 ## Supabase migration適用
 
