@@ -9,7 +9,6 @@ import {
   Save,
   Send,
   Square,
-  Type,
 } from "lucide-react";
 
 import { FormField, textareaClassName } from "@/components/forms/FormField";
@@ -201,7 +200,6 @@ export function AnswerWorkbench({
   const [answerModelMode, setAnswerModelMode] =
     useState<AnswerModelMode>("standard");
   const [answerLengthTarget, setAnswerLengthTarget] = useState(450);
-  const [chatFontSize, setChatFontSize] = useState(13);
   const [fermiEstimationMode, setFermiEstimationMode] = useState(false);
   const [selfSlot, setSelfSlot] = useState("");
   const [manualNotice, setManualNotice] = useState<string | null>(null);
@@ -210,9 +208,6 @@ export function AnswerWorkbench({
   const quickDraftTimersRef = useRef<Map<string, number>>(new Map());
   const controllersRef = useRef<Map<string, AbortController>>(new Map());
   const isDark = tone === "dark";
-  const questionFontSize = Math.max(12, chatFontSize - 1);
-  const answerLineHeight = `${Math.round(chatFontSize * 1.9)}px`;
-  const questionLineHeight = `${Math.round(questionFontSize * 1.8)}px`;
 
   const activeLearningBrief =
     storage.learning?.companyId &&
@@ -547,19 +542,19 @@ export function AnswerWorkbench({
   const visibleTurns = [...turns].reverse();
 
   return (
-    <section className={cn("grid", compact ? "gap-2" : "gap-4")}>
+    <section className={cn("grid", compact ? "gap-1" : "gap-1.5")}>
       <section
         ref={answerChatRef}
         className={cn(
           compact
-            ? "rounded-[24px] p-3 shadow-sm ring-1"
-            : "rounded-[30px] p-4 shadow-sm ring-1 sm:p-5",
+            ? "rounded-2xl p-3 shadow-none ring-1"
+            : "rounded-[18px] p-3 shadow-none ring-1",
           isDark
             ? "bg-neutral-950 text-white ring-white/10"
             : "bg-white ring-black/[0.06]",
         )}
       >
-        <div className={cn("grid", compact ? "gap-2" : "gap-3")}>
+        <div className={cn("grid", compact ? "gap-2" : "gap-2")}>
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
               Answer Chat
@@ -678,38 +673,6 @@ export function AnswerWorkbench({
                   }
                 />
               </label>
-              <label
-                className={cn(
-                  "inline-flex min-h-9 min-w-[190px] flex-1 items-center gap-2 rounded-full px-3 text-xs font-semibold sm:max-w-[260px]",
-                  isDark
-                    ? "bg-white/10 text-white/70"
-                    : "bg-[#f5f5f7] text-[#6e6e73]",
-                )}
-              >
-                <Type className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span className="shrink-0">文字</span>
-                <input
-                  type="range"
-                  min={12}
-                  max={16}
-                  step={1}
-                  value={chatFontSize}
-                  onChange={(event) =>
-                    setChatFontSize(Number(event.target.value))
-                  }
-                  className="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--accent)]"
-                />
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5",
-                    isDark
-                      ? "bg-neutral-950 text-white"
-                      : "bg-white text-[#1d1d1f]",
-                  )}
-                >
-                  {chatFontSize}
-                </span>
-              </label>
               {answerModelMode === "fermi" ? (
                 <label
                   className={cn(
@@ -751,14 +714,14 @@ export function AnswerWorkbench({
           className={cn(
             "grid overflow-y-auto pr-1",
             compact
-              ? "mt-3 max-h-[300px] gap-3 sm:max-h-[340px]"
-              : "mt-5 max-h-[430px] gap-4 sm:max-h-[520px]",
+              ? "mt-2 max-h-[300px] gap-2 sm:max-h-[340px]"
+              : "mt-3 max-h-[430px] gap-3 sm:max-h-[520px]",
           )}
         >
           {turns.length === 0 ? (
             <div
               className={cn(
-                "rounded-[24px] p-5 text-[13px] font-medium leading-6",
+                "rounded-2xl p-4 text-[13px] font-medium leading-6",
                 isDark
                   ? "bg-white/10 text-white/60"
                   : "bg-[#f5f5f7] text-[#6e6e73]",
@@ -774,11 +737,11 @@ export function AnswerWorkbench({
             const answer = turn.finalDraft?.answer ?? turn.draft.answer ?? "";
 
             return (
-              <article key={turn.id} className="grid gap-3">
+              <article key={turn.id} className="grid gap-2">
                 <div className="flex justify-start">
                   <div
                     className={cn(
-                      "max-w-[96%] rounded-[26px] px-5 py-4",
+                      "max-w-[96%] rounded-2xl px-4 py-3",
                       isDark
                         ? "bg-white/10 text-white"
                         : "bg-[#f5f5f7] text-[#1d1d1f]",
@@ -797,13 +760,9 @@ export function AnswerWorkbench({
                     <div className={turn.error ? "mt-3" : undefined}>
                       <p
                         className={cn(
-                          "min-h-20 whitespace-pre-wrap font-semibold",
+                          "min-h-20 whitespace-pre-wrap text-[13px] font-semibold leading-[25px]",
                           isDark ? "text-white" : "text-[#1d1d1f]",
                         )}
-                        style={{
-                          fontSize: `${chatFontSize}px`,
-                          lineHeight: answerLineHeight,
-                        }}
                       >
                         {answer
                           ? renderEmphasizedText(answer)
@@ -813,7 +772,7 @@ export function AnswerWorkbench({
                       </p>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
@@ -859,17 +818,11 @@ export function AnswerWorkbench({
                       <div className="flex min-w-[220px] flex-1 justify-end">
                         <div
                           className={cn(
-                            "max-w-full rounded-[24px] px-4 py-3 text-white shadow-sm sm:max-w-[62%]",
+                            "max-w-full rounded-2xl px-4 py-3 text-white shadow-sm sm:max-w-[62%]",
                             isDark ? "bg-violet-600" : "bg-[var(--accent)]",
                           )}
                         >
-                          <p
-                            className="whitespace-pre-wrap font-semibold"
-                            style={{
-                              fontSize: `${questionFontSize}px`,
-                              lineHeight: questionLineHeight,
-                            }}
-                          >
+                          <p className="whitespace-pre-wrap text-[12px] font-semibold leading-[22px]">
                             {turn.question}
                           </p>
                         </div>
@@ -888,8 +841,8 @@ export function AnswerWorkbench({
       <div
         className={cn(
           compact
-            ? "rounded-[24px] p-3 shadow-sm ring-1"
-            : "rounded-[30px] p-5 shadow-sm ring-1",
+            ? "rounded-2xl p-3 shadow-none ring-1"
+            : "rounded-[18px] p-3 shadow-none ring-1",
           isDark
             ? "bg-neutral-950 text-white ring-white/10"
             : "bg-white ring-black/[0.06]",

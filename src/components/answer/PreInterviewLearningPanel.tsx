@@ -100,8 +100,8 @@ export function PreInterviewLearningPanel({
   return (
     <section
       className={cn(
-        "bg-white shadow-sm ring-1 ring-black/[0.06]",
-        compact ? "rounded-[24px] p-3" : "rounded-[30px] p-5",
+        "bg-white shadow-none ring-1 ring-black/[0.06]",
+        compact ? "rounded-2xl p-3" : "rounded-[18px] p-3",
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -163,7 +163,7 @@ export function PreInterviewLearningPanel({
       <div
         className={cn(
           "grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]",
-          compact ? "mt-3" : "mt-5",
+          compact ? "mt-2" : "mt-2",
         )}
       >
         <button
@@ -174,7 +174,7 @@ export function PreInterviewLearningPanel({
             "inline-flex items-center justify-center gap-3 bg-[var(--accent)] font-semibold text-white shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:bg-[#86868b]",
             compact
               ? "min-h-11 rounded-2xl px-4 text-sm"
-              : "min-h-16 rounded-3xl px-6 text-base",
+              : "min-h-14 rounded-2xl px-5 text-base",
           )}
         >
           {loading ? (
@@ -192,7 +192,7 @@ export function PreInterviewLearningPanel({
               "inline-flex items-center justify-center gap-2 bg-[#f5f5f7] text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]",
               compact
                 ? "min-h-11 rounded-2xl px-4"
-                : "min-h-16 rounded-3xl px-5",
+                : "min-h-14 rounded-2xl px-5",
             )}
           >
             <X className="h-4 w-4" aria-hidden />
