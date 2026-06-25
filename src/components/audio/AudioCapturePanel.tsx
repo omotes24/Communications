@@ -35,6 +35,7 @@ type AudioCapturePanelProps = {
   onTranscriptItemsChange?: (items: TranscriptItem[]) => void;
   showTranscript?: boolean;
   tone?: "light" | "dark";
+  compact?: boolean;
 };
 
 export function AudioCapturePanel({
@@ -45,6 +46,7 @@ export function AudioCapturePanel({
   onTranscriptItemsChange,
   showTranscript = true,
   tone = "light",
+  compact = false,
 }: AudioCapturePanelProps) {
   const transcription = useRealtimeTranscription();
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -187,7 +189,8 @@ export function AudioCapturePanel({
       .slice()
       .reverse()
       .find(
-        (item) => item.source === "remote" && isSubmittableTranscript(item.text),
+        (item) =>
+          item.source === "remote" && isSubmittableTranscript(item.text),
       );
     if (!latestRemoteItem) {
       return;
@@ -286,7 +289,9 @@ export function AudioCapturePanel({
   return (
     <section
       className={cn(
-        "rounded-[30px] p-5 shadow-sm ring-1 transition",
+        compact
+          ? "rounded-[24px] p-3 shadow-sm ring-1 transition"
+          : "rounded-[30px] p-5 shadow-sm ring-1 transition",
         isDark
           ? "bg-neutral-950 text-white ring-white/10"
           : "bg-white text-[#1d1d1f] ring-black/[0.06]",
@@ -298,18 +303,25 @@ export function AudioCapturePanel({
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
             Audio
           </p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight">
-            音声入力
-          </h2>
-          <p
+          <h2
             className={cn(
-              "mt-2 text-sm font-medium leading-6",
-              isDark ? "text-white/60" : "text-neutral-600",
+              "mt-1 font-semibold tracking-tight",
+              compact ? "text-xl" : "text-2xl",
             )}
           >
-            <span className="underline underline-offset-2">Chrome/Edge</span>
-            でZoomやMeetのブラウザタブを選び、タブ音声を共有すると相手の質問を文字起こしできます。
-          </p>
+            音声入力
+          </h2>
+          {!compact ? (
+            <p
+              className={cn(
+                "mt-2 text-sm font-medium leading-6",
+                isDark ? "text-white/60" : "text-neutral-600",
+              )}
+            >
+              <span className="underline underline-offset-2">Chrome/Edge</span>
+              でZoomやMeetのブラウザタブを選び、タブ音声を共有すると相手の質問を文字起こしできます。
+            </p>
+          ) : null}
         </div>
         <span
           className={cn(
@@ -337,7 +349,9 @@ export function AudioCapturePanel({
 
       <div
         className={cn(
-          "mt-5 rounded-[24px] p-4 transition",
+          compact
+            ? "mt-3 rounded-[20px] p-3 transition"
+            : "mt-5 rounded-[24px] p-4 transition",
           isRecording
             ? isDark
               ? "bg-red-950/40 ring-1 ring-red-500/35"
@@ -347,26 +361,28 @@ export function AudioCapturePanel({
               : "bg-[#f5f5f7]",
         )}
       >
-        <div
-          className={cn(
-            "mb-4 rounded-2xl border p-4 text-sm font-medium leading-6",
-            isDark
-              ? "border-white/10 bg-neutral-950 text-white/60"
-              : "border-neutral-950/10 bg-white text-neutral-700",
-          )}
-        >
-          <p
+        {!compact ? (
+          <div
             className={cn(
-              "font-semibold",
-              isDark ? "text-white" : "text-neutral-950",
+              "mb-4 rounded-2xl border p-4 text-sm font-medium leading-6",
+              isDark
+                ? "border-white/10 bg-neutral-950 text-white/60"
+                : "border-neutral-950/10 bg-white text-neutral-700",
             )}
           >
-            相手の声を拾うには
-          </p>
-          <p className="mt-2">
-            Zoom/Meetをブラウザで開き、録音開始後の共有ダイアログで「タブ」を選びます。Macでは画面全体やウィンドウ共有では音声が付かないことがあります。
-          </p>
-        </div>
+            <p
+              className={cn(
+                "font-semibold",
+                isDark ? "text-white" : "text-neutral-950",
+              )}
+            >
+              相手の声を拾うには
+            </p>
+            <p className="mt-2">
+              Zoom/Meetをブラウザで開き、録音開始後の共有ダイアログで「タブ」を選びます。Macでは画面全体やウィンドウ共有では音声が付かないことがあります。
+            </p>
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -382,7 +398,12 @@ export function AudioCapturePanel({
             >
               {isRecording ? "Recording" : "Ready"}
             </p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight">
+            <p
+              className={cn(
+                "mt-1 font-semibold tracking-tight",
+                compact ? "text-xl" : "text-2xl",
+              )}
+            >
               {isRecording
                 ? `${sourceLabel}を録音中`
                 : isConnecting
@@ -407,7 +428,10 @@ export function AudioCapturePanel({
             onClick={startRemoteAudio}
             disabled={isAudioBusy}
             className={cn(
-              "inline-flex min-h-16 items-center justify-center gap-3 rounded-3xl px-5 text-base font-semibold shadow-sm transition disabled:cursor-not-allowed",
+              "inline-flex items-center justify-center gap-3 px-5 font-semibold shadow-sm transition disabled:cursor-not-allowed",
+              compact
+                ? "min-h-12 rounded-2xl text-sm"
+                : "min-h-16 rounded-3xl text-base",
               isRecording && activeSource === "remote"
                 ? "bg-red-600 text-white"
                 : "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] disabled:bg-[#86868b]",
@@ -423,7 +447,10 @@ export function AudioCapturePanel({
             onClick={stopAll}
             disabled={!isAudioBusy}
             className={cn(
-              "inline-flex min-h-16 items-center justify-center gap-3 rounded-3xl border px-5 text-base font-semibold shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-neutral-400",
+              "inline-flex items-center justify-center gap-3 border px-5 font-semibold shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-neutral-400",
+              compact
+                ? "min-h-12 rounded-2xl text-sm"
+                : "min-h-16 rounded-3xl text-base",
               isDark
                 ? "border-red-500/40 bg-neutral-950 text-red-300 hover:bg-red-950/30 disabled:border-white/10"
                 : "border-red-300 bg-white text-red-700 disabled:border-neutral-950/10",

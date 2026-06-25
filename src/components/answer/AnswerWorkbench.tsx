@@ -47,6 +47,7 @@ type AnswerWorkbenchProps = {
   transcriptPanel?: ReactNode;
   answerLanguage?: AnswerLanguage;
   tone?: "light" | "dark";
+  compact?: boolean;
 };
 
 type AnswerSource = NonNullable<AnswerWorkbenchProps["autoSource"]>;
@@ -213,6 +214,7 @@ export function AnswerWorkbench({
   transcriptPanel,
   answerLanguage = "ja",
   tone = "light",
+  compact = false,
 }: AnswerWorkbenchProps) {
   const {
     ready,
@@ -570,22 +572,29 @@ export function AnswerWorkbench({
   const visibleTurns = [...turns].reverse();
 
   return (
-    <section className="grid gap-4">
+    <section className={cn("grid", compact ? "gap-2" : "gap-4")}>
       <section
         ref={answerChatRef}
         className={cn(
-          "rounded-[30px] p-4 shadow-sm ring-1 sm:p-5",
+          compact
+            ? "rounded-[24px] p-3 shadow-sm ring-1"
+            : "rounded-[30px] p-4 shadow-sm ring-1 sm:p-5",
           isDark
             ? "bg-neutral-950 text-white ring-white/10"
             : "bg-white ring-black/[0.06]",
         )}
       >
-        <div className="grid gap-3">
+        <div className={cn("grid", compact ? "gap-2" : "gap-3")}>
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
               Answer Chat
             </p>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight">
+            <h2
+              className={cn(
+                "mt-1 font-semibold tracking-tight",
+                compact ? "text-lg" : "text-xl",
+              )}
+            >
               {answerLanguage === "en" ? "English Answer Chat" : "回答チャット"}
             </h2>
           </div>
@@ -730,7 +739,14 @@ export function AnswerWorkbench({
           </div>
         </div>
 
-        <div className="mt-5 grid max-h-[360px] gap-4 overflow-y-auto pr-1 sm:max-h-[420px]">
+        <div
+          className={cn(
+            "grid overflow-y-auto pr-1",
+            compact
+              ? "mt-3 max-h-[220px] gap-3 sm:max-h-[260px]"
+              : "mt-5 max-h-[360px] gap-4 sm:max-h-[420px]",
+          )}
+        >
           {turns.length === 0 ? (
             <div
               className={cn(
@@ -974,7 +990,9 @@ export function AnswerWorkbench({
 
       <div
         className={cn(
-          "rounded-[30px] p-5 shadow-sm ring-1",
+          compact
+            ? "rounded-[24px] p-3 shadow-sm ring-1"
+            : "rounded-[30px] p-5 shadow-sm ring-1",
           isDark
             ? "bg-neutral-950 text-white ring-white/10"
             : "bg-white ring-black/[0.06]",
@@ -989,8 +1007,13 @@ export function AnswerWorkbench({
           <textarea
             className={
               isDark
-                ? "min-h-32 rounded-2xl border border-white/10 bg-neutral-900 px-4 py-3 text-sm leading-7 text-white outline-none shadow-sm transition placeholder:text-white/40 focus:border-violet-400 focus:ring-4 focus:ring-violet-400/20"
-                : textareaClassName
+                ? cn(
+                    "rounded-2xl border border-white/10 bg-neutral-900 px-4 py-3 text-sm leading-7 text-white outline-none shadow-sm transition placeholder:text-white/40 focus:border-violet-400 focus:ring-4 focus:ring-violet-400/20",
+                    compact ? "min-h-20" : "min-h-32",
+                  )
+                : compact
+                  ? "min-h-20 rounded-2xl border border-black/[0.08] bg-white px-4 py-3 text-sm leading-7 text-[#1d1d1f] outline-none shadow-sm transition placeholder:text-[#86868b] focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent-ring)]"
+                  : textareaClassName
             }
             value={question}
             onChange={(event) => setQuestion(event.target.value)}

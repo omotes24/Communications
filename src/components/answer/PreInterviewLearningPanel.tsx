@@ -4,13 +4,16 @@ import { useState } from "react";
 import { Brain, Building2, CheckCircle2, Loader2, X } from "lucide-react";
 
 import { useAppStorage } from "@/lib/storage/use-app-storage";
+import { cn } from "@/lib/utils";
 
 type LearningLanguage = "ja" | "en";
 
 export function PreInterviewLearningPanel({
   learningLanguage = "ja",
+  compact = false,
 }: {
   learningLanguage?: LearningLanguage;
+  compact?: boolean;
 }) {
   const {
     storage,
@@ -95,16 +98,26 @@ export function PreInterviewLearningPanel({
   }
 
   return (
-    <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
+    <section
+      className={cn(
+        "bg-white shadow-sm ring-1 ring-black/[0.06]",
+        compact ? "rounded-[24px] p-3" : "rounded-[30px] p-5",
+      )}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
             Pre Interview
           </p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight">
+          <h2
+            className={cn(
+              "mt-1 font-semibold tracking-tight",
+              compact ? "text-xl" : "text-2xl",
+            )}
+          >
             {isEnglish ? "英語面接前に学習" : "面接前に学習"}
           </h2>
-          {learningMatchesCompany || companyName ? (
+          {!compact && (learningMatchesCompany || companyName) ? (
             <p className="mt-2 text-sm font-medium leading-6 text-neutral-600">
               {learningMatchesCompany
                 ? isEnglish
@@ -118,7 +131,9 @@ export function PreInterviewLearningPanel({
         </div>
         <span
           className={[
-            "inline-flex h-10 items-center gap-1.5 rounded-full border px-4 text-xs font-semibold",
+            compact
+              ? "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold"
+              : "inline-flex h-10 items-center gap-1.5 rounded-full border px-4 text-xs font-semibold",
             learningMatchesCompany
               ? "border-emerald-200 bg-emerald-50 text-emerald-800"
               : "border-neutral-950/10 bg-neutral-100 text-neutral-600",
@@ -130,8 +145,8 @@ export function PreInterviewLearningPanel({
           {learningStatusLabel}
         </span>
       </div>
-      {learningMatchesCompany && companyName ? (
-        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+      {learningMatchesCompany && companyName && !compact ? (
+        <div className="mt-3 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
             <Building2 className="h-5 w-5" aria-hidden />
           </span>
@@ -145,12 +160,22 @@ export function PreInterviewLearningPanel({
           </div>
         </div>
       ) : null}
-      <div className="mt-5 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <div
+        className={cn(
+          "grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]",
+          compact ? "mt-3" : "mt-5",
+        )}
+      >
         <button
           type="button"
           onClick={learn}
           disabled={loading}
-          className="inline-flex min-h-16 items-center justify-center gap-3 rounded-3xl bg-[var(--accent)] px-6 text-base font-semibold text-white shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:bg-[#86868b]"
+          className={cn(
+            "inline-flex items-center justify-center gap-3 bg-[var(--accent)] font-semibold text-white shadow-sm transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:bg-[#86868b]",
+            compact
+              ? "min-h-11 rounded-2xl px-4 text-sm"
+              : "min-h-16 rounded-3xl px-6 text-base",
+          )}
         >
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
@@ -163,7 +188,12 @@ export function PreInterviewLearningPanel({
           <button
             type="button"
             onClick={actions.clearLearning}
-            className="inline-flex min-h-16 items-center justify-center gap-2 rounded-3xl bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
+            className={cn(
+              "inline-flex items-center justify-center gap-2 bg-[#f5f5f7] text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]",
+              compact
+                ? "min-h-11 rounded-2xl px-4"
+                : "min-h-16 rounded-3xl px-5",
+            )}
           >
             <X className="h-4 w-4" aria-hidden />
             解除
@@ -171,12 +201,24 @@ export function PreInterviewLearningPanel({
         ) : null}
       </div>
       {status ? (
-        <p className="mt-4 rounded-2xl bg-[#f5f5f7] px-4 py-3 text-sm font-medium text-[#6e6e73]">
+        <p
+          className={cn(
+            "rounded-2xl bg-[#f5f5f7] text-sm font-medium text-[#6e6e73]",
+            compact ? "mt-2 px-3 py-2" : "mt-4 px-4 py-3",
+          )}
+        >
           {status}
         </p>
       ) : null}
       {learningMatchesCompany && storage.learning ? (
-        <div className="mt-4 rounded-2xl bg-[#f5f5f7] p-4 text-sm font-medium leading-7 text-[#424245]">
+        <div
+          className={cn(
+            "rounded-2xl bg-[#f5f5f7] text-sm font-medium text-[#424245]",
+            compact
+              ? "mt-2 max-h-16 overflow-y-auto p-3 leading-6"
+              : "mt-4 p-4 leading-7",
+          )}
+        >
           <p>{storage.learning.brief}</p>
         </div>
       ) : null}
