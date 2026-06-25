@@ -764,8 +764,8 @@ export function AnswerWorkbench({
                       </p>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
                         <button
                           type="button"
                           onClick={() =>
@@ -807,10 +807,10 @@ export function AnswerWorkbench({
                           </button>
                         ) : null}
                       </div>
-                      <div className="flex min-w-[220px] flex-1 justify-end">
+                      <div className="min-w-[260px] flex-1">
                         <div
                           className={cn(
-                            "max-w-full rounded-2xl px-4 py-3 text-white shadow-sm sm:max-w-[62%]",
+                            "w-full rounded-2xl px-4 py-3 text-white shadow-sm",
                             isDark ? "bg-violet-600" : "bg-[var(--accent)]",
                           )}
                         >
