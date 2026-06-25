@@ -5,9 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnswerWorkbench } from "@/components/answer/AnswerWorkbench";
 import { PreInterviewLearningPanel } from "@/components/answer/PreInterviewLearningPanel";
 import { AudioCapturePanel } from "@/components/audio/AudioCapturePanel";
-import {
-  formatTranscriptItemsForReading,
-} from "@/components/audio/transcript-items";
+import { formatTranscriptItemsForReading } from "@/components/audio/transcript-items";
 import type { TranscriptItem } from "@/components/audio/use-realtime-transcription";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
@@ -148,13 +146,6 @@ export function SupportScreen({
       ) : null}
       <div className="grid gap-4">
         <PreInterviewLearningPanel learningLanguage={isEnglish ? "en" : "ja"} />
-        <AudioCapturePanel
-          autoSubmitRemoteFinal
-          onRemoteTranscript={confirmQuestion}
-          onTranscriptItemsChange={setTranscriptItems}
-          showTranscript={false}
-          tone={tone}
-        />
         <AnswerWorkbench
           mode="support"
           initialQuestion={latestTranscript?.text ?? ""}
@@ -164,11 +155,15 @@ export function SupportScreen({
           answerLanguage={isEnglish ? "en" : "ja"}
           tone={tone}
           transcriptPanel={
-            <RealtimeTranscriptPanel
-              items={transcriptItems}
-              tone={tone}
-            />
+            <RealtimeTranscriptPanel items={transcriptItems} tone={tone} />
           }
+        />
+        <AudioCapturePanel
+          autoSubmitRemoteFinal
+          onRemoteTranscript={confirmQuestion}
+          onTranscriptItemsChange={setTranscriptItems}
+          showTranscript={false}
+          tone={tone}
         />
       </div>
     </section>
