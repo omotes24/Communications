@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BriefcaseBusiness,
-  ChevronDown,
   ChevronUp,
   Languages,
   UserRound,
@@ -73,69 +72,77 @@ export function AppShell({
         isDark ? "bg-[#050506] text-white" : "bg-[#f5f5f7] text-[#1d1d1f]",
       )}
     >
-      <header
-        className={cn(
-          "sticky top-0 z-20 border-b backdrop-blur-2xl",
-          isDark
-            ? "border-white/10 bg-neutral-950/85"
-            : "border-black/[0.06] bg-[#fbfbfd]/80",
-        )}
-      >
-        <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6">
-          <div className="flex items-center justify-between gap-4">
-            <Link
-              href="/"
-              aria-label={`${appName} ホーム`}
-              className="group flex min-w-0 items-center"
-            >
-              <span
-                className={cn(
-                  "truncate text-[22px] font-semibold tracking-normal transition group-hover:opacity-70 sm:text-[24px]",
-                  isDark ? "text-white" : "text-[#1d1d1f]",
-                )}
+      {tabsHidden ? (
+        <button
+          type="button"
+          onClick={() => setTabsCollapsed(false)}
+          aria-expanded={false}
+          className={cn(
+            "fixed right-2 top-3 z-40 inline-flex rounded-full px-2.5 py-3 text-xs font-semibold shadow-lg ring-1 [writing-mode:vertical-rl]",
+            isDark
+              ? "bg-neutral-950/90 text-white ring-white/10 hover:bg-neutral-900"
+              : "bg-white/95 text-[#1d1d1f] ring-black/[0.08] hover:bg-[#f5f5f7]",
+          )}
+        >
+          タブを表示
+        </button>
+      ) : (
+        <header
+          className={cn(
+            "sticky top-0 z-20 border-b backdrop-blur-2xl",
+            isDark
+              ? "border-white/10 bg-neutral-950/85"
+              : "border-black/[0.06] bg-[#fbfbfd]/80",
+          )}
+        >
+          <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6">
+            <div className="flex items-center justify-between gap-4">
+              <Link
+                href="/"
+                aria-label={`${appName} ホーム`}
+                className="group flex min-w-0 items-center"
               >
-                {appName}
-              </span>
-            </Link>
-
-            <div className="flex items-center gap-2 sm:gap-3">
-              {canCollapseTabs ? (
-                <button
-                  type="button"
-                  onClick={() => setTabsCollapsed((current) => !current)}
-                  aria-expanded={!tabsHidden}
+                <span
                   className={cn(
-                    "inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-xs font-semibold",
-                    isDark
-                      ? "bg-white/10 text-white/70 hover:bg-white/15 hover:text-white"
-                      : "bg-white text-[#6e6e73] shadow-sm ring-1 ring-black/[0.06] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
+                    "truncate text-[22px] font-semibold tracking-normal transition group-hover:opacity-70 sm:text-[24px]",
+                    isDark ? "text-white" : "text-[#1d1d1f]",
                   )}
                 >
-                  {tabsHidden ? (
-                    <ChevronDown className="h-4 w-4" aria-hidden />
-                  ) : (
-                    <ChevronUp className="h-4 w-4" aria-hidden />
-                  )}
-                  <span className="hidden sm:inline">
-                    {tabsHidden ? "タブを表示" : "タブをしまう"}
-                  </span>
-                </button>
-              ) : null}
-              <span
-                className={cn(
-                  "hidden rounded-full px-3 py-1.5 text-xs font-semibold sm:inline-flex",
-                  isDark
-                    ? "bg-white/10 text-white/70"
-                    : "bg-[var(--accent-soft)] text-[var(--accent)]",
-                )}
-              >
-                AI READY
-              </span>
-              <AccountMenu />
-            </div>
-          </div>
+                  {appName}
+                </span>
+              </Link>
 
-          {!tabsHidden ? (
+              <div className="flex items-center gap-2 sm:gap-3">
+                {canCollapseTabs ? (
+                  <button
+                    type="button"
+                    onClick={() => setTabsCollapsed(true)}
+                    aria-expanded
+                    className={cn(
+                      "inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-xs font-semibold",
+                      isDark
+                        ? "bg-white/10 text-white/70 hover:bg-white/15 hover:text-white"
+                        : "bg-white text-[#6e6e73] shadow-sm ring-1 ring-black/[0.06] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
+                    )}
+                  >
+                    <ChevronUp className="h-4 w-4" aria-hidden />
+                    <span className="hidden sm:inline">タブをしまう</span>
+                  </button>
+                ) : null}
+                <span
+                  className={cn(
+                    "hidden rounded-full px-3 py-1.5 text-xs font-semibold sm:inline-flex",
+                    isDark
+                      ? "bg-white/10 text-white/70"
+                      : "bg-[var(--accent-soft)] text-[var(--accent)]",
+                  )}
+                >
+                  AI READY
+                </span>
+                <AccountMenu />
+              </div>
+            </div>
+
             <nav
               aria-label="主要画面"
               className={cn(
@@ -177,11 +184,16 @@ export function AppShell({
                 );
               })}
             </nav>
-          ) : null}
-        </div>
-      </header>
+          </div>
+        </header>
+      )}
 
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-10">
+      <div
+        className={cn(
+          "mx-auto max-w-6xl px-4 sm:px-6",
+          tabsHidden ? "py-3 lg:py-4" : "py-8 lg:py-10",
+        )}
+      >
         <main className="min-w-0">{children}</main>
         <footer
           className={cn(
