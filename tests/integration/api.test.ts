@@ -20,6 +20,8 @@ describe("API routes in mock mode", () => {
     process.env.AI_MOCK_MODE = "true";
     process.env.TEST_AUTH_USER_ID = testUserId;
     process.env.TOKEN_TEST_MODE = "true";
+    delete process.env.OPENAI_TRANSCRIPTION_DELAY;
+    delete process.env.OPENAI_AUDIO_NOISE_REDUCTION;
     resetTestTokenState(testUserId, 100000);
   });
 
@@ -210,7 +212,7 @@ describe("API routes in mock mode", () => {
     });
   });
 
-  it("keeps realtime transcription low latency while enabling input cleanup", async () => {
+  it("uses accuracy-biased realtime transcription while enabling input cleanup", async () => {
     process.env.AI_MOCK_MODE = "false";
     process.env.AI_PROVIDER = "openai";
     process.env.OPENAI_API_KEY = "test-openai-key";
@@ -241,7 +243,7 @@ describe("API routes in mock mode", () => {
     expect(body.session.audio.input.transcription).toMatchObject({
       model: "gpt-realtime-whisper",
       language: "ja",
-      delay: "low",
+      delay: "high",
     });
     expect(body.session.audio.input.transcription.prompt).toContain(
       "フェルミ推定",
@@ -250,6 +252,35 @@ describe("API routes in mock mode", () => {
       type: "far_field",
     });
     expect(body.session.audio.input.turn_detection).toBeNull();
+  });
+
+  it("passes explicit realtime transcription tuning to OpenAI", async () => {
+    process.env.AI_MOCK_MODE = "false";
+    process.env.AI_PROVIDER = "openai";
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    process.env.OPENAI_TRANSCRIPTION_MODEL = "gpt-realtime-whisper";
+    process.env.OPENAI_TRANSCRIPTION_DELAY = "medium";
+    process.env.OPENAI_AUDIO_NOISE_REDUCTION = "near_field";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ value: "ephemeral-token" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const response = await realtimeSession(
+      new Request("http://localhost/api/realtime-session", {
+        method: "POST",
+      }),
+    );
+
+    expect(response.ok).toBe(true);
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    const body = JSON.parse(String(init?.body));
+    expect(body.session.audio.input.transcription.delay).toBe("medium");
+    expect(body.session.audio.input.noise_reduction).toEqual({
+      type: "near_field",
+    });
   });
 
   it("falls back when realtime transcription prompt is rejected", async () => {

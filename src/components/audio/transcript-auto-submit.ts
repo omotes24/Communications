@@ -1,6 +1,6 @@
-export const remoteTranscriptAutoSubmitDelayMs = 1200;
-export const remoteTranscriptQuestionCueDelayMs = 450;
-export const remoteTranscriptMinimumAutoSubmitGapMs = 900;
+export const remoteTranscriptAutoSubmitDelayMs = 2200;
+export const remoteTranscriptQuestionCueDelayMs = 1400;
+export const remoteTranscriptMinimumAutoSubmitGapMs = 1500;
 export const remoteTranscriptDuplicateWindowMs = 60_000;
 
 const minimumTranscriptLength = 8;

@@ -23,8 +23,18 @@ describe("server env", () => {
 
     expect(env.AI_PROVIDER).toBe("openai");
     expect(env.CLASSIFIER_MODEL).toBe("gpt-5.4-nano");
-    expect(env.OPENAI_TRANSCRIPTION_DELAY).toBe("low");
+    expect(env.OPENAI_TRANSCRIPTION_DELAY).toBe("high");
     expect(env.OPENAI_AUDIO_NOISE_REDUCTION).toBe("far_field");
+  });
+
+  it("reads realtime transcription tuning from environment variables", () => {
+    process.env.OPENAI_TRANSCRIPTION_DELAY = "medium";
+    process.env.OPENAI_AUDIO_NOISE_REDUCTION = "near_field";
+
+    const env = getServerEnv();
+
+    expect(env.OPENAI_TRANSCRIPTION_DELAY).toBe("medium");
+    expect(env.OPENAI_AUDIO_NOISE_REDUCTION).toBe("near_field");
   });
 
   it("uses Groq only when explicitly selected", () => {

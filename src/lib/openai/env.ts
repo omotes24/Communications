@@ -19,7 +19,7 @@ const serverEnvSchema = z.object({
   OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-realtime-whisper"),
   OPENAI_TRANSCRIPTION_DELAY: z
     .enum(["minimal", "low", "medium", "high", "xhigh"])
-    .default("low"),
+    .default("high"),
   OPENAI_AUDIO_NOISE_REDUCTION: z
     .enum(["near_field", "far_field", "off"])
     .default("far_field"),
@@ -58,6 +58,8 @@ export function getServerEnv(): ServerEnv {
     AI_MOCK_MODE: process.env.AI_MOCK_MODE,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     OPENAI_TRANSCRIPTION_MODEL: process.env.OPENAI_TRANSCRIPTION_MODEL,
+    OPENAI_TRANSCRIPTION_DELAY: process.env.OPENAI_TRANSCRIPTION_DELAY,
+    OPENAI_AUDIO_NOISE_REDUCTION: process.env.OPENAI_AUDIO_NOISE_REDUCTION,
     OPENAI_CLASSIFIER_MODEL: process.env.OPENAI_CLASSIFIER_MODEL,
     OPENAI_ANSWER_MODEL: process.env.OPENAI_ANSWER_MODEL,
     OPENAI_RESEARCH_MODEL: process.env.OPENAI_RESEARCH_MODEL,

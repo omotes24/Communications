@@ -50,7 +50,7 @@ describe("transcript auto submit helpers", () => {
       createTranscriptSubmitFingerprint("では 自己紹介をお願いします。"),
     ).toBe(createTranscriptSubmitFingerprint("自己紹介をお願いします"));
     expect(remoteTranscriptDuplicateWindowMs).toBe(60_000);
-    expect(remoteTranscriptAutoSubmitDelayMs).toBeLessThanOrEqual(1500);
+    expect(remoteTranscriptAutoSubmitDelayMs).toBe(2200);
   });
 
   it("deduplicates repeated remote questions with noisy prefixes", () => {
@@ -97,7 +97,7 @@ describe("transcript auto submit helpers", () => {
     expect(looksLikeInterviewQuestion("本日はよろしくお願いいたします。")).toBe(
       false,
     );
-    expect(remoteTranscriptQuestionCueDelayMs).toBeLessThanOrEqual(500);
+    expect(remoteTranscriptQuestionCueDelayMs).toBe(1400);
   });
 
   it("detects common Japanese interview question variations", () => {
@@ -145,7 +145,7 @@ describe("transcript auto submit helpers", () => {
     expect(
       looksLikeInterviewQuestion("質問をもうちょっと簡潔にしてください"),
     ).toBe(false);
-    expect(remoteTranscriptMinimumAutoSubmitGapMs).toBeLessThanOrEqual(1000);
+    expect(remoteTranscriptMinimumAutoSubmitGapMs).toBe(1500);
   });
 
   it("extracts the latest question segment from noisy interviewer text", () => {
