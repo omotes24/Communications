@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { isAuthThrottleError, translateAuthError } from "@/lib/auth/errors";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  createSupabaseBrowserClient,
+  createSupabasePasswordRecoveryClient,
+} from "@/lib/supabase/client";
 
 type AuthMode = "login" | "sign-up" | "forgot-password";
 type AuthAttemptResult = {
@@ -181,12 +184,11 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         return;
       }
 
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        email,
-        {
+      const recoverySupabase = createSupabasePasswordRecoveryClient();
+      const { error: resetError } =
+        await recoverySupabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${getAuthRedirectOrigin()}/auth/reset-password`,
-        },
-      );
+        });
       if (resetError) {
         throw resetError;
       }

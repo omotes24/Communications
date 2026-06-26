@@ -14,6 +14,10 @@ const authMocks = vi.hoisted(() => ({
   resetPasswordForEmail: vi.fn(),
 }));
 
+const recoveryAuthMocks = vi.hoisted(() => ({
+  resetPasswordForEmail: vi.fn(),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
   useSearchParams: () => new URLSearchParams(),
@@ -22,6 +26,9 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/supabase/client", () => ({
   createSupabaseBrowserClient: () => ({
     auth: authMocks,
+  }),
+  createSupabasePasswordRecoveryClient: () => ({
+    auth: recoveryAuthMocks,
   }),
 }));
 
@@ -194,7 +201,7 @@ describe("AuthForm", () => {
 
   it("sends password reset emails to the dedicated reset password page", async () => {
     process.env.NEXT_PUBLIC_SITE_URL = "https://communications-umber.vercel.app/";
-    authMocks.resetPasswordForEmail.mockResolvedValue({ error: null });
+    recoveryAuthMocks.resetPasswordForEmail.mockResolvedValue({ error: null });
 
     render(<AuthForm mode="forgot-password" />);
     fireEvent.change(screen.getByLabelText("メールアドレス"), {
@@ -204,7 +211,8 @@ describe("AuthForm", () => {
     submitForm("再設定メールを送る");
     await screen.findByText("再設定メールを送信しました。");
 
-    expect(authMocks.resetPasswordForEmail).toHaveBeenCalledWith(
+    expect(authMocks.resetPasswordForEmail).not.toHaveBeenCalled();
+    expect(recoveryAuthMocks.resetPasswordForEmail).toHaveBeenCalledWith(
       "user@example.com",
       {
         redirectTo:
