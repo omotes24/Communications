@@ -41,6 +41,7 @@ function submitForm(buttonName: string) {
 describe("AuthForm", () => {
   afterEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
     delete process.env.NEXT_PUBLIC_SITE_URL;
   });
 
@@ -101,6 +102,14 @@ describe("AuthForm", () => {
   });
 
   it("treats duplicate signup throttle responses as an already-sent email", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ exists: false }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
     authMocks.signUp.mockResolvedValue({
       error: new Error(
         "For security purposes, you can only request this after 60 seconds.",
@@ -127,6 +136,14 @@ describe("AuthForm", () => {
 
   it("uses the configured public site URL for signup confirmation emails", async () => {
     process.env.NEXT_PUBLIC_SITE_URL = "https://communications-umber.vercel.app/";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ exists: false }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
     authMocks.signUp.mockResolvedValue({ error: null });
 
     render(<AuthForm mode="sign-up" />);
@@ -147,6 +164,32 @@ describe("AuthForm", () => {
         emailRedirectTo: "https://communications-umber.vercel.app/auth/confirm",
       },
     });
+  });
+
+  it("does not send a signup email when the email is already registered", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ exists: true }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    render(<AuthForm mode="sign-up" />);
+    fireEvent.change(screen.getByLabelText("メールアドレス"), {
+      target: { value: "existing@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("パスワード"), {
+      target: { value: "password123" },
+    });
+
+    submitForm("登録する");
+    await screen.findByText(
+      "このメールアドレスは既に登録されています。ログインまたはパスワード再設定を使ってください。",
+    );
+
+    expect(authMocks.signUp).not.toHaveBeenCalled();
   });
 
   it("sends password reset emails to the dedicated reset password page", async () => {

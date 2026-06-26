@@ -14,6 +14,11 @@ type AuthAttemptResult = {
   text: string;
 };
 
+type CheckEmailResponse = {
+  exists?: boolean;
+  error?: string;
+};
+
 function getAuthRedirectOrigin(): string {
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (configuredSiteUrl) {
@@ -130,6 +135,31 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       }
 
       if (mode === "sign-up") {
+        const checkResponse = await fetch("/api/auth/sign-up/check-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const checkData = (await checkResponse
+          .json()
+          .catch(() => null)) as CheckEmailResponse | null;
+        if (!checkResponse.ok) {
+          throw new Error(
+            checkData?.error ?? "登録済みメールアドレスの確認に失敗しました。",
+          );
+        }
+        if (checkData?.exists) {
+          const existingAccountMessage =
+            "このメールアドレスは既に登録されています。ログインまたはパスワード再設定を使ってください。";
+          lastAttemptRef.current = {
+            key: attemptKey,
+            kind: "error",
+            text: existingAccountMessage,
+          };
+          setError(existingAccountMessage);
+          return;
+        }
+
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
