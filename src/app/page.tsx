@@ -46,7 +46,7 @@ export default function Home() {
               className="inline-flex h-12 items-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-[#1d1d1f] shadow-sm ring-1 ring-black/[0.08] transition hover:bg-[#fdfdfd]"
             >
               <BarChart3 className="h-4 w-4" aria-hidden />
-              企業研究AI
+              複数の会社を比較する
             </Link>
           </div>
         </div>
