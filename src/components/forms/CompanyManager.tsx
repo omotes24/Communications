@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BarChart3,
   CheckCircle2,
   Loader2,
   Plus,
@@ -363,14 +365,23 @@ export function CompanyManager() {
                 会社スロットを選ぶ
               </h2>
             </div>
-            <button
-              type="button"
-              onClick={reset}
-              className="inline-flex h-10 items-center gap-2 rounded-full bg-[#f5f5f7] px-4 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              新規
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={reset}
+                className="inline-flex h-10 items-center gap-2 rounded-full bg-[#f5f5f7] px-4 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                新規
+              </button>
+              <Link
+                href="/company/intelligence"
+                className="inline-flex h-10 items-center gap-2 rounded-full bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
+              >
+                <BarChart3 className="h-4 w-4" aria-hidden />
+                企業研究AI
+              </Link>
+            </div>
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

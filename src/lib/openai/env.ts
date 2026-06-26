@@ -7,6 +7,11 @@ const booleanEnvSchema = z
   .default("false")
   .transform((value) => value === "true" || value === "1");
 
+const enabledBooleanEnvSchema = z
+  .enum(["true", "false", "1", "0"])
+  .default("true")
+  .transform((value) => value === "true" || value === "1");
+
 const serverEnvSchema = z.object({
   AI_PROVIDER: z.enum(["openai", "groq"]).default("openai"),
   AI_MOCK_MODE: booleanEnvSchema,
@@ -21,6 +26,12 @@ const serverEnvSchema = z.object({
   OPENAI_CLASSIFIER_MODEL: z.string().default("gpt-5.4-nano"),
   OPENAI_ANSWER_MODEL: z.string().default("gpt-5.4-mini"),
   OPENAI_RESEARCH_MODEL: z.string().default("gpt-5.5"),
+  COMPANY_INTELLIGENCE_STRICT_MODE: enabledBooleanEnvSchema,
+  COMPANY_INTELLIGENCE_MOCK_MODE: booleanEnvSchema,
+  COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL: z
+    .string()
+    .default("o4-mini-deep-research"),
+  COMPANY_INTELLIGENCE_SYNTHESIS_MODEL: z.string().default("gpt-5.5"),
   OPENAI_MOCK_MODE: booleanEnvSchema,
   GROQ_API_KEY: z.string().trim().min(1).optional(),
   GROQ_TRANSCRIPTION_MODEL: z.string().default("whisper-large-v3-turbo"),
@@ -50,6 +61,13 @@ export function getServerEnv(): ServerEnv {
     OPENAI_CLASSIFIER_MODEL: process.env.OPENAI_CLASSIFIER_MODEL,
     OPENAI_ANSWER_MODEL: process.env.OPENAI_ANSWER_MODEL,
     OPENAI_RESEARCH_MODEL: process.env.OPENAI_RESEARCH_MODEL,
+    COMPANY_INTELLIGENCE_STRICT_MODE:
+      process.env.COMPANY_INTELLIGENCE_STRICT_MODE,
+    COMPANY_INTELLIGENCE_MOCK_MODE: process.env.COMPANY_INTELLIGENCE_MOCK_MODE,
+    COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL:
+      process.env.COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL,
+    COMPANY_INTELLIGENCE_SYNTHESIS_MODEL:
+      process.env.COMPANY_INTELLIGENCE_SYNTHESIS_MODEL,
     OPENAI_MOCK_MODE: process.env.OPENAI_MOCK_MODE,
     GROQ_API_KEY: process.env.GROQ_API_KEY,
     GROQ_TRANSCRIPTION_MODEL: process.env.GROQ_TRANSCRIPTION_MODEL,

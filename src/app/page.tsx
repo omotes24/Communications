@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Languages } from "lucide-react";
+import { BarChart3, Languages } from "lucide-react";
 
 import { ChromeStartButton } from "@/components/home/ChromeStartButton";
 import { TypingHeadline } from "@/components/home/TypingHeadline";
@@ -19,6 +19,11 @@ export default function Home() {
       href: "/company",
       title: "会社/面接の情報を入力する",
       action: "Company",
+    },
+    {
+      href: "/company/intelligence",
+      title: "URLから企業研究・比較を作る",
+      action: "Research",
     },
     {
       href: "/support",
@@ -58,10 +63,17 @@ export default function Home() {
               <Languages className="h-4 w-4" aria-hidden />
               英語面接
             </Link>
+            <Link
+              href="/company/intelligence"
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-[#1d1d1f] shadow-sm ring-1 ring-black/[0.08] transition hover:bg-[#fdfdfd]"
+            >
+              <BarChart3 className="h-4 w-4" aria-hidden />
+              企業研究AI
+            </Link>
           </div>
         </div>
 
-        <aside className="grid gap-4 md:grid-cols-3">
+        <aside className="grid gap-4 md:grid-cols-4">
           <h2 className="sr-only">Current Flow</h2>
           {steps.map((step) => (
             <Link
