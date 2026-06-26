@@ -4,13 +4,13 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
-  BarChart3,
   CheckCircle2,
   ExternalLink,
   Loader2,
   Plus,
   Search,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -128,6 +128,12 @@ function formatSourceLabel(url: string): string {
   }
 }
 
+function summarizeReport(report: CompanyIntelligenceReport): string {
+  const firstFact = report.checkedFacts[0]?.claim;
+  const firstInference = report.aiInferences[0]?.claim;
+  return firstFact || firstInference || report.statusSummary;
+}
+
 export function CompanyIntelligenceScreen() {
   const { ready, storage, activeProfiles, actions } = useAppStorage();
   const [companyName, setCompanyName] = useState("");
@@ -140,6 +146,9 @@ export function CompanyIntelligenceScreen() {
   const [audit, setAudit] = useState<HallucinationAuditResult | null>(null);
   const [saved, setSaved] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const [comparisonReports, setComparisonReports] = useState<
+    CompanyIntelligenceReport[]
+  >([]);
 
   const selectedCompanies = useMemo(
     () => storage.companies.slice(-5).reverse(),
@@ -235,7 +244,7 @@ export function CompanyIntelligenceScreen() {
       setReport(parsed.report);
       setAudit(parsed.audit);
       setStatus("completed");
-      setMessage("根拠付き企業研究が完了しました。会社スロットへ保存できます。");
+      setMessage("企業研究が完了しました。会社スロットへ保存できます。");
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -259,6 +268,25 @@ export function CompanyIntelligenceScreen() {
     setMessage("会社スロットへ保存しました。面接対策でこの企業を使えます。");
   }
 
+  function addReportToComparison() {
+    if (!report) {
+      return;
+    }
+    setComparisonReports((current) => {
+      if (current.some((item) => item.reportId === report.reportId)) {
+        return current;
+      }
+      return [...current, report].slice(-5);
+    });
+    setMessage("比較リストに追加しました。別の企業も調査して追加できます。");
+  }
+
+  function removeReportFromComparison(reportId: string) {
+    setComparisonReports((current) =>
+      current.filter((item) => item.reportId !== reportId),
+    );
+  }
+
   return (
     <section>
       <PageHeader
@@ -274,7 +302,7 @@ export function CompanyIntelligenceScreen() {
                 Company Intelligence
               </p>
               <h2 className="mt-1 text-2xl font-semibold tracking-tight">
-                根拠付きDeep Research
+                Deep Research
               </h2>
             </div>
             <span
@@ -439,32 +467,47 @@ export function CompanyIntelligenceScreen() {
         <aside className="grid gap-5">
           <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
-              Company Slots
+              Compare
             </p>
             <h2 className="mt-1 text-2xl font-semibold tracking-tight">
-              比較候補
+              比較リスト
             </h2>
             <div className="mt-4 grid gap-2">
-              {selectedCompanies.length === 0 ? (
+              {comparisonReports.length === 0 ? (
                 <p className="rounded-2xl bg-[#f5f5f7] p-4 text-sm font-medium leading-6 text-[#6e6e73]">
-                  会社スロットへ保存すると、ここに比較候補が表示されます。
+                  調査結果の + ボタンで、比較したい企業を追加できます。
                 </p>
               ) : (
-                selectedCompanies.map((company) => (
+                comparisonReports.map((item) => (
                   <div
-                    key={company.id}
-                    className="rounded-2xl bg-[#f5f5f7] p-4"
+                    key={item.reportId}
+                    className="flex items-start justify-between gap-3 rounded-2xl bg-[#f5f5f7] p-4"
                   >
-                    <p className="truncate text-sm font-semibold">
-                      {company.companyName || company.label}
-                    </p>
-                    <p className="mt-1 line-clamp-2 text-xs font-medium leading-5 text-[#6e6e73]">
-                      {company.targetRole || company.researchSummary}
-                    </p>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {item.companyName}
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-xs font-medium leading-5 text-[#6e6e73]">
+                        {item.jobTitle || summarizeReport(item)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeReportFromComparison(item.reportId)}
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[#6e6e73] transition hover:text-[#1d1d1f]"
+                      aria-label={`${item.companyName}を比較から外す`}
+                    >
+                      <X className="h-4 w-4" aria-hidden />
+                    </button>
                   </div>
                 ))
               )}
             </div>
+            {selectedCompanies.length > 0 ? (
+              <p className="mt-3 text-xs font-medium leading-5 text-[#86868b]">
+                会社スロット保存済み: {selectedCompanies.length}件
+              </p>
+            ) : null}
           </section>
 
           <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
@@ -485,6 +528,73 @@ export function CompanyIntelligenceScreen() {
       </div>
 
       <div className="mt-5 grid gap-5">
+        {comparisonReports.length > 0 ? (
+          <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06] sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
+                  Compare
+                </p>
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight">
+                  複数社比較
+                </h2>
+              </div>
+              <span className="rounded-full bg-[#f5f5f7] px-3 py-1.5 text-xs font-semibold text-[#6e6e73]">
+                {comparisonReports.length}社
+              </span>
+            </div>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-[760px] w-full border-separate border-spacing-0 text-left text-sm">
+                <thead>
+                  <tr className="text-xs font-semibold text-[#6e6e73]">
+                    <th className="rounded-l-2xl bg-[#f5f5f7] px-4 py-3">
+                      会社
+                    </th>
+                    <th className="bg-[#f5f5f7] px-4 py-3">確認できた情報</th>
+                    <th className="bg-[#f5f5f7] px-4 py-3">AI推定</th>
+                    <th className="bg-[#f5f5f7] px-4 py-3">要確認</th>
+                    <th className="rounded-r-2xl bg-[#f5f5f7] px-4 py-3">
+                      情報源
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparisonReports.map((item) => (
+                    <tr key={item.reportId} className="align-top">
+                      <td className="border-b border-black/[0.06] px-4 py-4 font-semibold">
+                        <p>{item.companyName}</p>
+                        {item.jobTitle ? (
+                          <p className="mt-1 text-xs font-medium text-[#6e6e73]">
+                            {item.jobTitle}
+                          </p>
+                        ) : null}
+                      </td>
+                      <td className="border-b border-black/[0.06] px-4 py-4 text-[#424245]">
+                        <p className="line-clamp-3 leading-6">
+                          {item.checkedFacts[0]?.claim || "要確認"}
+                        </p>
+                      </td>
+                      <td className="border-b border-black/[0.06] px-4 py-4 text-[#424245]">
+                        <p className="line-clamp-3 leading-6">
+                          {item.aiInferences[0]?.claim || "なし"}
+                        </p>
+                      </td>
+                      <td className="border-b border-black/[0.06] px-4 py-4 text-[#424245]">
+                        <p className="line-clamp-3 leading-6">
+                          {item.unknowns[0]?.topic || "なし"}
+                        </p>
+                      </td>
+                      <td className="border-b border-black/[0.06] px-4 py-4 text-[#424245]">
+                        {item.sources.length}件
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
         {audit && !audit.safeToDisplay ? (
           <section className="rounded-[30px] border border-amber-200 bg-amber-50 p-5 shadow-sm">
             <div className="flex items-start gap-3">
@@ -529,6 +639,14 @@ export function CompanyIntelligenceScreen() {
                   <CheckCircle2 className="h-4 w-4" aria-hidden />
                   {saved ? "保存済み" : "会社スロットに保存"}
                 </button>
+                <button
+                  type="button"
+                  onClick={addReportToComparison}
+                  className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-xs font-semibold text-[#1d1d1f] shadow-sm ring-1 ring-black/[0.08] transition hover:bg-[#f5f5f7]"
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                  比較に追加
+                </button>
                 <Link
                   href="/support"
                   className="inline-flex h-10 items-center gap-2 rounded-full bg-[var(--accent)] px-4 text-xs font-semibold text-white transition hover:bg-[var(--accent-hover)]"
@@ -538,7 +656,6 @@ export function CompanyIntelligenceScreen() {
                 </Link>
               </div>
             </div>
-
             <div className="mt-5 grid gap-4">
               <section className="rounded-2xl bg-[#f5f5f7] p-4">
                 <h3 className="text-sm font-semibold">確認できた情報</h3>
@@ -631,22 +748,6 @@ export function CompanyIntelligenceScreen() {
           </section>
         ) : null}
 
-        <section className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06]">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#f5f5f7] text-[var(--accent)]">
-              <BarChart3 className="h-5 w-5" aria-hidden />
-            </span>
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight">
-                Phase 1の範囲
-              </h2>
-              <p className="mt-2 text-sm font-medium leading-7 text-[#6e6e73]">
-                URL入力、Deep Research実行、根拠付きレポート、Hallucination監査、会社スロット保存までを接続しています。
-                複数社の自動ランキングは次フェーズで追加します。
-              </p>
-            </div>
-          </div>
-        </section>
       </div>
     </section>
   );
