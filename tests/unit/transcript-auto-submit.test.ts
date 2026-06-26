@@ -35,6 +35,9 @@ describe("transcript auto submit helpers", () => {
     ).toBe(
       "では自己紹介を分程度でお願いします。学生時代最もこの力を入れたことは何ですか?AI いや機械学習の研究で最も苦労した地点は何ですか?なぜ技術職を志望しているのですか?",
     );
+    expect(normalizeTranscriptForSubmit("脂肪動機を教えてください。")).toBe(
+      "志望動機を教えてください。",
+    );
   });
 
   it("uses text content in the submit key so extended partials can resubmit", () => {
@@ -80,6 +83,12 @@ describe("transcript auto submit helpers", () => {
         "当社であなたの強みがどう生きるか教えてください",
       ),
     ).toBe(true);
+    expect(looksLikeInterviewQuestion("志望動機を教えてください。")).toBe(
+      true,
+    );
+    expect(looksCompleteInterviewQuestion("脂肪動機を教えてください。")).toBe(
+      true,
+    );
     expect(
       looksLikeInterviewQuestion(
         "日本にある次の数を推定してみてください",

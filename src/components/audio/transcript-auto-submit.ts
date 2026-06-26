@@ -64,6 +64,7 @@ const nonInterviewMetaPatterns = [
 
 export function normalizeCommonTranscriptErrors(text: string): string {
   return text
+    .replace(/脂肪(?=(?:理由|動機|して|し|する|職))/g, "志望")
     .replace(/死亡(?=(?:理由|動機))/g, "志望")
     .replace(/死望(?=(?:理由|動機))/g, "志望")
     .replace(/志亡(?=(?:理由|動機))/g, "志望")
@@ -107,6 +108,19 @@ function questionCueScore(text: string): number {
   return score;
 }
 
+function hasCompleteAskWithQuestionCue(text: string): boolean {
+  if (!completeQuestionEndPatterns.some((pattern) => pattern.test(text))) {
+    return false;
+  }
+  return (
+    reasoningCuePatterns.some((pattern) => pattern.test(text)) ||
+    topicCuePatterns.some((pattern) => pattern.test(text)) ||
+    /(?:教えて|聞かせて|話して|説明して|述べて|挙げて|推定して|見積もって|考えて|答えて)/.test(
+      text,
+    )
+  );
+}
+
 export function looksLikeInterviewQuestion(text: string): boolean {
   const normalized = normalizeTranscriptForSubmit(text);
   if (!isSubmittableTranscript(normalized)) {
@@ -115,7 +129,11 @@ export function looksLikeInterviewQuestion(text: string): boolean {
   if (looksLikeNonInterviewMeta(normalized)) {
     return false;
   }
-  return hasDirectQuestionCue(normalized) || questionCueScore(normalized) >= 3;
+  return (
+    hasDirectQuestionCue(normalized) ||
+    questionCueScore(normalized) >= 3 ||
+    hasCompleteAskWithQuestionCue(normalized)
+  );
 }
 
 export function looksCompleteInterviewQuestion(text: string): boolean {
