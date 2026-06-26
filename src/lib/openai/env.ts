@@ -1,6 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
+import { realtimeTranscriptionDelays } from "@/lib/openai/transcription-delay";
 
 const booleanEnvSchema = z
   .enum(["true", "false", "1", "0"])
@@ -18,7 +19,7 @@ const serverEnvSchema = z.object({
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-realtime-whisper"),
   OPENAI_TRANSCRIPTION_DELAY: z
-    .enum(["minimal", "low", "medium", "high", "xhigh"])
+    .enum(realtimeTranscriptionDelays)
     .default("high"),
   OPENAI_AUDIO_NOISE_REDUCTION: z
     .enum(["near_field", "far_field", "off"])

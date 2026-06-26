@@ -6,6 +6,7 @@ import {
   normalizeCommonTranscriptErrors,
   normalizeTranscriptForSubmit,
 } from "@/components/audio/transcript-auto-submit";
+import type { RealtimeTranscriptionDelay } from "@/lib/openai/transcription-delay";
 
 export type TranscriptItem = {
   id: string;
@@ -28,6 +29,10 @@ type RealtimeSessionResponse = {
   model?: string;
   reservationExpiresAt?: string;
   reservationSeconds?: number;
+};
+
+type RealtimeTranscriptionOptions = {
+  transcriptionDelay?: RealtimeTranscriptionDelay;
 };
 
 const groqSegmentMs = 2800;
@@ -140,13 +145,19 @@ export function useRealtimeTranscription() {
     setStatus("idle");
   }, []);
 
-  async function requestRealtimeSession(): Promise<RealtimeSessionResponse> {
+  async function requestRealtimeSession(
+    options: RealtimeTranscriptionOptions = {},
+  ): Promise<RealtimeSessionResponse> {
     const tokenResponse = await fetch("/api/realtime-session", {
       method: "POST",
       headers: {
+        "Content-Type": "application/json",
         "x-operation-id": crypto.randomUUID(),
         "x-request-id": crypto.randomUUID(),
       },
+      body: JSON.stringify({
+        transcriptionDelay: options.transcriptionDelay,
+      }),
     });
     if (!tokenResponse.ok) {
       throw new Error("Realtime セッションを作成できませんでした");
@@ -157,6 +168,7 @@ export function useRealtimeTranscription() {
   function scheduleRealtimeReservationRenewal(
     stream: MediaStream,
     reservationSeconds: number | undefined,
+    options: RealtimeTranscriptionOptions,
   ) {
     if (realtimeRenewalTimerRef.current) {
       window.clearTimeout(realtimeRenewalTimerRef.current);
@@ -178,12 +190,13 @@ export function useRealtimeTranscription() {
       ) {
         return;
       }
-      void requestRealtimeSession()
+      void requestRealtimeSession(options)
         .then((nextSession) => {
           setError(null);
           scheduleRealtimeReservationRenewal(
             stream,
             nextSession.reservationSeconds,
+            options,
           );
         })
         .catch((caught) => {
@@ -193,7 +206,7 @@ export function useRealtimeTranscription() {
               : "Realtime予約の更新に失敗しました。録音は継続中です。自動で再試行します。",
           );
           realtimeRenewalTimerRef.current = window.setTimeout(() => {
-            scheduleRealtimeReservationRenewal(stream, 30);
+            scheduleRealtimeReservationRenewal(stream, 30, options);
           }, 10_000);
         });
     }, renewalDelayMs);
@@ -264,14 +277,22 @@ export function useRealtimeTranscription() {
     [],
   );
 
-  async function start(stream: MediaStream, source: "local" | "remote") {
+  async function start(
+    stream: MediaStream,
+    source: "local" | "remote",
+    options: RealtimeTranscriptionOptions = {},
+  ) {
     stop();
     setStatus("connecting");
     setError(null);
 
     try {
-      const tokenData = await requestRealtimeSession();
-      scheduleRealtimeReservationRenewal(stream, tokenData.reservationSeconds);
+      const tokenData = await requestRealtimeSession(options);
+      scheduleRealtimeReservationRenewal(
+        stream,
+        tokenData.reservationSeconds,
+        options,
+      );
       if (tokenData.provider === "groq") {
         void startChunkedTranscription(stream, source).catch((caught) => {
           setError(

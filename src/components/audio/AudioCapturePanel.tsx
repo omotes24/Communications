@@ -7,6 +7,7 @@ import {
   useRealtimeTranscription,
   type TranscriptItem,
 } from "@/components/audio/use-realtime-transcription";
+import type { RealtimeTranscriptionDelay } from "@/lib/openai/transcription-delay";
 import {
   formatTranscriptItemsForReading,
   mergeTranscriptItemsForReading,
@@ -30,6 +31,15 @@ import {
   stopMediaStream,
 } from "@/lib/audio/media";
 import { cn } from "@/lib/utils";
+
+const transcriptionDelayOptions: Array<{
+  value: RealtimeTranscriptionDelay;
+  label: string;
+  description: string;
+}> = [
+  { value: "high", label: "高精度", description: "標準" },
+  { value: "xhigh", label: "最高精度", description: "遅め" },
+];
 
 type AudioCapturePanelProps = {
   onRemoteTranscript?: (text: string) => void;
@@ -58,6 +68,8 @@ export function AudioCapturePanel({
   const [activeSource, setActiveSource] = useState<"remote" | "local" | null>(
     null,
   );
+  const [transcriptionDelay, setTranscriptionDelay] =
+    useState<RealtimeTranscriptionDelay>("high");
   const [error, setError] = useState<string | null>(null);
   const isDark = tone === "dark";
   const submittedIdsRef = useRef<Set<string>>(new Set());
@@ -282,7 +294,7 @@ export function AudioCapturePanel({
       const stream = await requestMicrophone();
       setLocalStream(stream);
       setActiveSource("local");
-      await transcription.start(stream, "local");
+      await transcription.start(stream, "local", { transcriptionDelay });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "マイク取得エラー");
     }
@@ -295,7 +307,7 @@ export function AudioCapturePanel({
       const stream = await requestDisplayAudio();
       setRemoteStream(stream);
       setActiveSource("remote");
-      await transcription.start(stream, "remote");
+      await transcription.start(stream, "remote", { transcriptionDelay });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "画面音声取得エラー");
     }
@@ -445,6 +457,58 @@ export function AudioCapturePanel({
               LIVE
             </span>
           ) : null}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              "text-xs font-semibold",
+              isDark ? "text-white/50" : "text-neutral-500",
+            )}
+          >
+            文字起こし
+          </span>
+          <div
+            className={cn(
+              "inline-flex rounded-full p-1",
+              isDark ? "bg-white/10" : "bg-white",
+            )}
+          >
+            {transcriptionDelayOptions.map((option) => {
+              const isSelected = transcriptionDelay === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setTranscriptionDelay(option.value)}
+                  disabled={isAudioBusy}
+                  className={cn(
+                    "inline-flex min-h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
+                    isSelected
+                      ? "bg-[var(--accent)] text-white shadow-sm"
+                      : isDark
+                        ? "text-white/60 hover:text-white"
+                        : "text-neutral-500 hover:text-neutral-950",
+                  )}
+                  aria-pressed={isSelected}
+                >
+                  {option.label}
+                  <span
+                    className={cn(
+                      "text-[10px] font-semibold",
+                      isSelected
+                        ? "text-white/75"
+                        : isDark
+                          ? "text-white/35"
+                          : "text-neutral-400",
+                    )}
+                  >
+                    {option.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="mt-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">

@@ -1,6 +1,7 @@
 import { requireApiUser } from "@/lib/auth/server";
 import { getServerEnv, assertOpenAIKey } from "@/lib/openai/env";
 import { japaneseInterviewTranscriptionPrompt } from "@/lib/openai/transcription";
+import { isRealtimeTranscriptionDelay } from "@/lib/openai/transcription-delay";
 import { jsonError, toPublicError } from "@/lib/privacy/logging";
 import { estimateRealtimeSessionTokens } from "@/lib/tokens/ai-estimates";
 import {
@@ -13,6 +14,16 @@ import {
 
 export const dynamic = "force-dynamic";
 
+async function readRequestedTranscriptionDelay(
+  request: Request,
+): Promise<string | null> {
+  const body = (await request.json().catch(() => null)) as {
+    transcriptionDelay?: unknown;
+  } | null;
+  const requestedDelay = body?.transcriptionDelay;
+  return isRealtimeTranscriptionDelay(requestedDelay) ? requestedDelay : null;
+}
+
 export async function POST(request: Request): Promise<Response> {
   const auth = await requireApiUser();
   if (!auth.ok) {
@@ -21,6 +32,8 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const env = getServerEnv();
+    const requestedTranscriptionDelay =
+      await readRequestedTranscriptionDelay(request);
     const reservedSeconds = Number(
       process.env.APP_REALTIME_SESSION_RESERVATION_SECONDS ?? 180,
     );
@@ -28,7 +41,10 @@ export async function POST(request: Request): Promise<Response> {
       model: env.TRANSCRIPTION_MODEL,
       language: "ja",
       ...(env.TRANSCRIPTION_MODEL === "gpt-realtime-whisper"
-        ? { delay: env.OPENAI_TRANSCRIPTION_DELAY }
+        ? {
+            delay:
+              requestedTranscriptionDelay ?? env.OPENAI_TRANSCRIPTION_DELAY,
+          }
         : {}),
     };
     const noiseReductionConfig =

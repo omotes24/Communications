@@ -47,18 +47,26 @@ describe("useRealtimeTranscription", () => {
     const { result, unmount } = renderHook(() => useRealtimeTranscription());
 
     await act(async () => {
-      await result.current.start(stream, "remote");
+      await result.current.start(stream, "remote", {
+        transcriptionDelay: "xhigh",
+      });
     });
 
     expect(result.current.status).toBe("live");
     expect(result.current.error).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      transcriptionDelay: "xhigh",
+    });
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2500);
     });
 
     expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      transcriptionDelay: "xhigh",
+    });
     expect(result.current.status).toBe("live");
     expect(result.current.error).toBeNull();
 

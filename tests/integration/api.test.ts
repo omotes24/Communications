@@ -283,6 +283,32 @@ describe("API routes in mock mode", () => {
     });
   });
 
+  it("lets the client request xhigh realtime transcription for a session", async () => {
+    process.env.AI_MOCK_MODE = "false";
+    process.env.AI_PROVIDER = "openai";
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    process.env.OPENAI_TRANSCRIPTION_MODEL = "gpt-realtime-whisper";
+    process.env.OPENAI_TRANSCRIPTION_DELAY = "high";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ value: "ephemeral-token" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const response = await realtimeSession(
+      new Request("http://localhost/api/realtime-session", {
+        method: "POST",
+        body: JSON.stringify({ transcriptionDelay: "xhigh" }),
+      }),
+    );
+
+    expect(response.ok).toBe(true);
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    const body = JSON.parse(String(init?.body));
+    expect(body.session.audio.input.transcription.delay).toBe("xhigh");
+  });
+
   it("falls back when realtime transcription prompt is rejected", async () => {
     process.env.AI_MOCK_MODE = "false";
     process.env.AI_PROVIDER = "openai";
