@@ -60,12 +60,9 @@ describe("auth confirmation routes", () => {
       ),
     );
 
-    expect(authMocks.verifyOtp).toHaveBeenCalledWith({
-      token_hash: "hash",
-      type: "recovery",
-    });
+    expect(authMocks.verifyOtp).not.toHaveBeenCalled();
     expect(response.headers.get("location")).toBe(
-      "https://communications-umber.vercel.app/auth/reset-password",
+      "https://communications-umber.vercel.app/auth/reset-password?token_hash=hash&type=recovery",
     );
   });
 
@@ -76,9 +73,22 @@ describe("auth confirmation routes", () => {
       ),
     );
 
-    expect(authMocks.exchangeCodeForSession).toHaveBeenCalledWith("abc");
+    expect(authMocks.exchangeCodeForSession).not.toHaveBeenCalled();
     expect(response.headers.get("location")).toBe(
-      "https://communications-umber.vercel.app/auth/reset-password",
+      "https://communications-umber.vercel.app/auth/reset-password?code=abc",
+    );
+  });
+
+  it("passes recovery PKCE codes to the browser reset flow", async () => {
+    const response = await confirmGET(
+      request(
+        "https://communications-umber.vercel.app/auth/confirm?code=abc&type=recovery",
+      ),
+    );
+
+    expect(authMocks.exchangeCodeForSession).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toBe(
+      "https://communications-umber.vercel.app/auth/reset-password?code=abc",
     );
   });
 

@@ -45,6 +45,17 @@ function redirectToAuthError(request: NextRequest): NextResponse {
   return redirectTo(request, "/auth/login?auth_callback=failed");
 }
 
+function redirectToPasswordReset(
+  request: NextRequest,
+  params: URLSearchParams,
+): NextResponse {
+  const query = params.toString();
+  return redirectTo(
+    request,
+    query ? `/auth/reset-password?${query}` : "/auth/reset-password",
+  );
+}
+
 export async function completeAuthRedirect(
   request: NextRequest,
   fallbackNext = "/profile",
@@ -58,6 +69,17 @@ export async function completeAuthRedirect(
     type === "recovery" || (code && next === "/account")
       ? "/auth/reset-password"
       : next;
+
+  if (code && (type === "recovery" || next === "/account")) {
+    return redirectToPasswordReset(request, new URLSearchParams({ code }));
+  }
+
+  if (tokenHash && type === "recovery") {
+    return redirectToPasswordReset(
+      request,
+      new URLSearchParams({ token_hash: tokenHash, type }),
+    );
+  }
 
   try {
     const supabase = await createSupabaseServerClient();

@@ -53,4 +53,23 @@ describe("ResetPasswordPanel", () => {
     });
     expect(screen.getByLabelText("新しいパスワード")).toBeInTheDocument();
   });
+
+  it("verifies recovery token hashes and shows the password update form", async () => {
+    authMocks.verifyOtp.mockResolvedValue({ error: null });
+
+    window.history.pushState(
+      null,
+      "",
+      "/auth/reset-password?token_hash=hash&type=recovery",
+    );
+    render(<ResetPasswordPanel />);
+
+    await waitFor(() => {
+      expect(authMocks.verifyOtp).toHaveBeenCalledWith({
+        token_hash: "hash",
+        type: "recovery",
+      });
+    });
+    expect(screen.getByLabelText("新しいパスワード")).toBeInTheDocument();
+  });
 });
