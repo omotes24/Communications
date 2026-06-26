@@ -9,7 +9,6 @@ import {
   Loader2,
   Plus,
   Search,
-  ShieldCheck,
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -135,7 +134,7 @@ function summarizeReport(report: CompanyIntelligenceReport): string {
 }
 
 export function CompanyIntelligenceScreen() {
-  const { ready, storage, activeProfiles, actions } = useAppStorage();
+  const { storage, activeProfiles, actions } = useAppStorage();
   const [companyName, setCompanyName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [urlInput, setUrlInput] = useState("");
@@ -190,7 +189,7 @@ export function CompanyIntelligenceScreen() {
     setSaved(false);
     setStatus("researching");
     setStepIndex(0);
-    setMessage("根拠確認を優先して調査しています。数分かかることがあります。");
+    setMessage("Deep Researchを実行しています。数分かかることがあります。");
 
     const stepTimer = window.setInterval(() => {
       setStepIndex((current) => Math.min(current + 1, researchSteps.length - 1));
@@ -305,17 +304,6 @@ export function CompanyIntelligenceScreen() {
                 Deep Research
               </h2>
             </div>
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold",
-                ready
-                  ? "bg-emerald-50 text-emerald-800"
-                  : "bg-[#f5f5f7] text-[#6e6e73]",
-              )}
-            >
-              <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-              {ready ? "根拠確認モード" : "読み込み中"}
-            </span>
           </div>
 
           <div className="mt-5 grid gap-4">
