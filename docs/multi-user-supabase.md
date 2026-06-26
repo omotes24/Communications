@@ -1,9 +1,9 @@
-# Yell for You 1.1 Multi-user Setup
+# Yell for You 1.2 Multi-user Setup
 
 ## Supabase
 
 1. Supabase projectを作成します。
-2. SQL editor または Supabase CLI で `supabase/migrations/202606240001_multi_user_tokens.sql` を適用します。
+2. SQL editor または Supabase CLI で `supabase/migrations` のmigrationを順番に適用します。
 3. AuthenticationのEmail providerを有効にし、Site URLをVercel本番URLへ設定します。
 4. Redirect URLsに以下を追加します。
    - `http://localhost:3000/auth/callback`
@@ -19,18 +19,25 @@ Vercel Environment Variablesに次を設定します。
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_APP_NAME=Yell for You 1.2
 SUPABASE_SERVICE_ROLE_KEY=
 
-AI_PROVIDER=groq
-GROQ_API_KEY=
+AI_PROVIDER=openai
 OPENAI_API_KEY=
+OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
+OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
+OPENAI_ANSWER_MODEL=gpt-5.4-mini
+OPENAI_RESEARCH_MODEL=gpt-5.5
 AI_MOCK_MODE=false
 
 APP_SIGNUP_GRANT_TOKENS=0
 APP_REALTIME_SESSION_RESERVATION_SECONDS=180
+
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY`、`OPENAI_API_KEY`、`GROQ_API_KEY` はサーバー側だけで使用します。`NEXT_PUBLIC_` の付いたSupabase公開設定以外をブラウザへ送らないでください。
+`SUPABASE_SERVICE_ROLE_KEY` と `OPENAI_API_KEY` はサーバー側だけで使用します。`NEXT_PUBLIC_` の付いたSupabase公開設定以外をブラウザへ送らないでください。
 
 ## Local Development
 
@@ -45,7 +52,7 @@ npm run dev
 
 既存ブラウザの `jp-interview-assistant:v1` は、初回ログイン後に同意ダイアログを表示します。
 
-同意した場合だけ `/api/storage/import-local` へ送信し、`local_storage_imports` の `import_id` と `migration_version` で二重移行を防止します。同意しない限り既存localStorageデータはサーバーに送信しません。
+同意した場合だけ `/api/storage/import-local` へ送信し、`local_storage_imports` の `import_id` と `migration_version` で二重移行を防止します。同意しない限り既存localStorageデータはサーバーに送信しません。移行または拒否後は、別アカウントへ旧ブラウザデータが見えないようにローカルのアプリデータを削除します。
 
 ## Token Model
 
@@ -56,6 +63,17 @@ npm run dev
 - 成功後にusageからアプリ内トークンを算出し、`settle_tokens` で確定します。
 - 失敗時は `release_token_reservation` で予約を戻します。
 - 消費係数は `token_rate_cards` で管理します。
+
+## Billing
+
+Web決済はStripe Checkoutで処理します。アプリはカード番号や銀行口座番号を保存しません。
+
+- 料金ページは `/pricing` です。
+- 購入プランごとに `1,000円 = 300,000 tokens`, `3,000円 = 1,000,000 tokens`, `10,000円 = 4,000,000 tokens` を付与します。
+- `/api/billing/checkout` はログイン済みユーザーだけがCheckout Sessionを作成できます。
+- `/api/stripe/webhook` はStripe署名をraw bodyで検証し、支払い済みCheckout Sessionだけを処理します。
+- `stripe_checkout_grants` はCheckout Session IDをprimary keyにして、webhook再送時の二重付与を防ぎます。
+- 売上の受取口座、本人確認、入金スケジュールはStripe DashboardのPayout settingsで設定します。
 
 ## Security Notes
 
@@ -68,4 +86,4 @@ npm run dev
 
 ## Not Implemented
 
-今回の実装では決済画面、Stripe、Apple In-App Purchase、Google Play Billing、購入パック、円価格は未実装です。将来のWebhookはサーバー側で検証後、`grant_tokens` を呼び出す構造にしてください。
+Apple In-App Purchase、Google Play Billing、サブスクリプション、返金管理画面、特定商取引法に基づく表示の確定版は未実装です。

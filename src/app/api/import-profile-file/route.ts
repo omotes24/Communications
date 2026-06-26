@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { requireApiUser } from "@/lib/auth/server";
-import { checkRateLimit, rateLimitResponse } from "@/lib/api/rate-limit";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
 import {
@@ -283,14 +282,6 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const body = await parseImportRequest(request);
     const env = getServerEnv();
-    const rateLimit = checkRateLimit({
-      key: `${auth.user.id}:import-profile-file`,
-      limit: 10,
-      windowMs: 60_000,
-    });
-    if (!rateLimit.ok) {
-      return rateLimitResponse(rateLimit.retryAfterSeconds);
-    }
     const { requestId, operationId } = createRequestIds(request);
     const reservation = await reserveAiTokens({
       userId: auth.user.id,

@@ -27,13 +27,13 @@ export type UsageParts = {
 };
 
 export const fallbackRateCard: TokenRateCard = {
-  version: "default-v1",
+  version: "default-v2",
   inputTokenMultiplier: 1,
   cachedInputTokenMultiplier: 0.25,
   outputTokenMultiplier: 4,
   reasoningTokenMultiplier: 4,
-  audioSecondMultiplier: 20,
-  webSearchMultiplier: 250,
+  audioSecondMultiplier: 40,
+  webSearchMultiplier: 500,
 };
 
 export function estimateTextTokens(text: string): number {

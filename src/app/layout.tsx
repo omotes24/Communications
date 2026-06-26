@@ -18,9 +18,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const appDescription = "Web面接をAIで完全攻略。";
+
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You",
-  description: "日本語面接の準備と回答案作成を支援するアプリケーション",
+  title: process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.2",
+  description: appDescription,
+  openGraph: {
+    description: appDescription,
+  },
+  twitter: {
+    description: appDescription,
+  },
 };
 
 export default function RootLayout({

@@ -1,7 +1,6 @@
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { requireApiUser } from "@/lib/auth/server";
-import { checkRateLimit, rateLimitResponse } from "@/lib/api/rate-limit";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
 import { extractPartialAnswer } from "@/lib/openai/partial-json";
@@ -59,14 +58,6 @@ export async function POST(request: Request): Promise<Response> {
 
   const env = getServerEnv();
   const body = parsed.data;
-  const rateLimit = checkRateLimit({
-    key: `${auth.user.id}:generate-answer`,
-    limit: 30,
-    windowMs: 60_000,
-  });
-  if (!rateLimit.ok) {
-    return rateLimitResponse(rateLimit.retryAfterSeconds);
-  }
   const model = resolveAnswerModel(env, body.answerModelMode);
   const { requestId, operationId } = createRequestIds(request);
   let reservation;
@@ -121,7 +112,7 @@ export async function POST(request: Request): Promise<Response> {
         const responseStream = client.responses.stream(
           {
             model,
-            instructions: buildAnswerInstructions(),
+            instructions: buildAnswerInstructions(body.answerLanguage),
             input: buildAnswerInput(body),
             text: {
               format: zodTextFormat(answerDraftSchema, "answer_draft"),

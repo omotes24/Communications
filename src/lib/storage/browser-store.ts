@@ -60,12 +60,15 @@ function normalizeStorage(storage: AppStorage): AppStorage {
     storage.selectedCompanyIds,
     storage.companies,
   );
-  const fallbackCompanyId =
-    selectedCompanyIds[0] ??
-    (storage.activeCompanyId &&
+  const validActiveCompanyId =
+    storage.activeCompanyId &&
     storage.companies.some((company) => company.id === storage.activeCompanyId)
       ? storage.activeCompanyId
-      : storage.companies[0]?.id) ??
+      : null;
+  const fallbackCompanyId =
+    validActiveCompanyId ??
+    selectedCompanyIds[0] ??
+    storage.companies[0]?.id ??
     null;
   const normalizedCompanyIds =
     selectedCompanyIds.length > 0
@@ -73,13 +76,19 @@ function normalizeStorage(storage: AppStorage): AppStorage {
       : fallbackCompanyId
         ? [fallbackCompanyId]
         : [];
+  const companyIdsWithActive =
+    validActiveCompanyId &&
+    !normalizedCompanyIds.includes(validActiveCompanyId)
+      ? [validActiveCompanyId, ...normalizedCompanyIds]
+      : normalizedCompanyIds;
 
   return {
     ...storage,
     selectedProfileIds: normalizedProfileIds,
     activeProfileId: normalizedProfileIds[0] ?? fallbackProfileId,
-    selectedCompanyIds: normalizedCompanyIds,
-    activeCompanyId: normalizedCompanyIds[0] ?? fallbackCompanyId,
+    selectedCompanyIds: companyIdsWithActive,
+    activeCompanyId:
+      validActiveCompanyId ?? companyIdsWithActive[0] ?? fallbackCompanyId,
   };
 }
 
@@ -203,7 +212,10 @@ export function setActiveCompany(
 ): AppStorage {
   const activeCompanyId =
     id && storage.companies.some((company) => company.id === id) ? id : null;
-  const selectedCompanyIds = activeCompanyId ? [activeCompanyId] : [];
+  const selectedCompanyIds =
+    activeCompanyId && !storage.selectedCompanyIds.includes(activeCompanyId)
+      ? [...storage.selectedCompanyIds, activeCompanyId]
+      : storage.selectedCompanyIds;
   return { ...storage, activeCompanyId, selectedCompanyIds };
 }
 
@@ -214,10 +226,15 @@ export function setSelectedCompanies(
   const selectedCompanyIds = ids.filter((id) =>
     storage.companies.some((company) => company.id === id),
   );
+  const activeCompanyId =
+    storage.activeCompanyId &&
+    selectedCompanyIds.includes(storage.activeCompanyId)
+      ? storage.activeCompanyId
+      : (selectedCompanyIds[0] ?? null);
   return {
     ...storage,
     selectedCompanyIds,
-    activeCompanyId: selectedCompanyIds[0] ?? null,
+    activeCompanyId,
   };
 }
 
@@ -228,15 +245,24 @@ export function toggleSelectedCompany(
   if (!storage.companies.some((company) => company.id === id)) {
     return storage;
   }
+  if (
+    storage.selectedCompanyIds.includes(id) &&
+    storage.activeCompanyId !== id
+  ) {
+    return { ...storage, activeCompanyId: id };
+  }
   const selectedCompanyIds = storage.selectedCompanyIds.includes(id)
     ? storage.selectedCompanyIds.length > 1
       ? storage.selectedCompanyIds.filter((item) => item !== id)
       : storage.selectedCompanyIds
     : [...storage.selectedCompanyIds, id];
+  const activeCompanyId = storage.selectedCompanyIds.includes(id)
+    ? selectedCompanyIds[0] ?? null
+    : id;
   return {
     ...storage,
     selectedCompanyIds,
-    activeCompanyId: selectedCompanyIds[0] ?? null,
+    activeCompanyId,
   };
 }
 
@@ -251,6 +277,12 @@ export function getActiveCompanies(storage: AppStorage): CompanyProfile[] {
 }
 
 export function getActiveCompany(storage: AppStorage): CompanyProfile | null {
+  const active = storage.companies.find(
+    (company) => company.id === storage.activeCompanyId,
+  );
+  if (active) {
+    return active;
+  }
   const selected = storage.selectedCompanyIds
     .map((id) => storage.companies.find((company) => company.id === id))
     .find(Boolean);

@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   APP_STORAGE_EVENT,
+  clearAppStorage,
   hasMeaningfulLocalStorage,
   loadAppStorage,
   LOCAL_STORAGE_IMPORT_STATUS_KEY,
   LOCAL_STORAGE_IMPORT_VERSION,
-  saveAppStorage,
 } from "@/lib/storage/browser-store";
 
 type MigrationState = "checking" | "hidden" | "prompt" | "working";
@@ -62,9 +62,16 @@ export function LocalStorageMigrationPrompt() {
           importedLocalStorage: boolean;
         };
         if (!cancelled) {
-          setState(
-            data.hasCloudData || data.importedLocalStorage ? "hidden" : "prompt",
-          );
+          if (data.hasCloudData || data.importedLocalStorage) {
+            window.localStorage.setItem(
+              LOCAL_STORAGE_IMPORT_STATUS_KEY,
+              "declined",
+            );
+            clearAppStorage();
+            setState("hidden");
+            return;
+          }
+          setState("prompt");
         }
       } catch {
         if (!cancelled) {
@@ -92,19 +99,16 @@ export function LocalStorageMigrationPrompt() {
       }),
     });
     if (response.ok) {
-      const data = (await response.json()) as { storage?: unknown };
       window.localStorage.setItem(LOCAL_STORAGE_IMPORT_STATUS_KEY, "accepted");
-      if (data.storage) {
-        saveAppStorage(data.storage as ReturnType<typeof loadAppStorage>);
-      } else {
-        window.dispatchEvent(new Event(APP_STORAGE_EVENT));
-      }
+      clearAppStorage();
+      window.dispatchEvent(new Event(APP_STORAGE_EVENT));
     }
     setState("hidden");
   }
 
   function skipImport() {
     window.localStorage.setItem(LOCAL_STORAGE_IMPORT_STATUS_KEY, "declined");
+    clearAppStorage();
     setState("hidden");
   }
 
@@ -135,7 +139,7 @@ export function LocalStorageMigrationPrompt() {
           disabled={state === "working"}
           className="h-10 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f]"
         >
-          今は移行しない
+          移行せず削除
         </button>
       </div>
     </div>

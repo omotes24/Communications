@@ -5,13 +5,19 @@ import type {
   ProfileFileImportRequest,
   ResearchCompanyRequest,
 } from "@/lib/schemas/interview";
-import { calculateAppTokens, estimateTextTokens, type AiFeature } from "@/lib/tokens/usage";
+import {
+  calculateAppTokens,
+  estimateTextTokens,
+  type AiFeature,
+} from "@/lib/tokens/usage";
 
 export function estimateClassifyTokens(body: ClassifyQuestionRequest): number {
   return estimateForText("classify-question", body.transcript, 180);
 }
 
-export function estimateGenerateAnswerTokens(body: GenerateAnswerRequest): number {
+export function estimateGenerateAnswerTokens(
+  body: GenerateAnswerRequest,
+): number {
   return estimateForText(
     "generate-answer",
     [
@@ -28,7 +34,9 @@ export function estimateGenerateAnswerTokens(body: GenerateAnswerRequest): numbe
   );
 }
 
-export function estimateResearchCompanyTokens(body: ResearchCompanyRequest): number {
+export function estimateResearchCompanyTokens(
+  body: ResearchCompanyRequest,
+): number {
   return estimateForText(
     "research-company",
     [
@@ -38,12 +46,14 @@ export function estimateResearchCompanyTokens(body: ResearchCompanyRequest): num
       body.desiredCourse,
       body.additionalNotes,
     ].join("\n"),
-    1200,
+    1800,
     1,
   );
 }
 
-export function estimateLearningTokens(body: LearnInterviewContextRequest): number {
+export function estimateLearningTokens(
+  body: LearnInterviewContextRequest,
+): number {
   return estimateForText(
     "learn-interview-context",
     [
@@ -52,20 +62,28 @@ export function estimateLearningTokens(body: LearnInterviewContextRequest): numb
       body.selfInfo,
       body.desiredCourse,
       body.additionalNotes,
+      body.learningLanguage,
     ].join("\n"),
     700,
   );
 }
 
-export function estimateProfileImportTokens(body: ProfileFileImportRequest): number {
+export function estimateProfileImportTokens(
+  body: ProfileFileImportRequest,
+): number {
   return estimateForText(
     "import-profile-file",
-    [body.fileName, body.fileText, JSON.stringify(body.currentProfile)].join("\n"),
+    [body.fileName, body.fileText, JSON.stringify(body.currentProfile)].join(
+      "\n",
+    ),
     700,
   );
 }
 
-export function estimateAudioTokens(audio: File): { amount: number; audioSeconds: number } {
+export function estimateAudioTokens(audio: File): {
+  amount: number;
+  audioSeconds: number;
+} {
   const estimatedSeconds = Math.max(1, Math.ceil(audio.size / 16000));
   return {
     amount: calculateAppTokens({ audioSeconds: estimatedSeconds }),

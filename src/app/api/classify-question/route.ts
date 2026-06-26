@@ -1,7 +1,6 @@
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { requireApiUser } from "@/lib/auth/server";
-import { checkRateLimit, rateLimitResponse } from "@/lib/api/rate-limit";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
 import {
@@ -35,14 +34,6 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const body = classifyQuestionRequestSchema.parse(await request.json());
     const env = getServerEnv();
-    const rateLimit = checkRateLimit({
-      key: `${auth.user.id}:classify-question`,
-      limit: 60,
-      windowMs: 60_000,
-    });
-    if (!rateLimit.ok) {
-      return rateLimitResponse(rateLimit.retryAfterSeconds);
-    }
 
     if (body.speaker === "local") {
       return Response.json(mockClassifyQuestion(body));

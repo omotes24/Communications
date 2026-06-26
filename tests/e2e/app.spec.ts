@@ -82,7 +82,13 @@ test("manual question flow with mock AI", async ({ page }) => {
 });
 
 test("public legal and help pages render", async ({ page }) => {
-  for (const path of ["/privacy", "/terms", "/account-deletion", "/help"]) {
+  for (const path of [
+    "/privacy",
+    "/terms",
+    "/account-deletion",
+    "/help",
+    "/pricing",
+  ]) {
     await page.goto(path);
     await expect(page.locator("main")).toBeVisible();
   }

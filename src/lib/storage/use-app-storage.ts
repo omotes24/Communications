@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   addSessionRecord,
@@ -11,10 +11,7 @@ import {
   getActiveCompanies,
   getActiveProfile,
   getActiveProfiles,
-  hasMeaningfulLocalStorage,
-  loadAppStorage,
   LOCAL_STORAGE_IMPORT_STATUS_KEY,
-  saveAppStorage,
   saveLearning,
   setActiveCompany,
   setActiveProfile,
@@ -33,33 +30,50 @@ import type {
   UserProfile,
 } from "@/lib/schemas/interview";
 
+const ACTIVE_COMPANY_SESSION_KEY =
+  "jp-interview-assistant:active-company-id:v1";
+
+function readPreferredActiveCompanyId(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.sessionStorage.getItem(ACTIVE_COMPANY_SESSION_KEY);
+}
+
+function writePreferredActiveCompanyId(id: string | null): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (id) {
+    window.sessionStorage.setItem(ACTIVE_COMPANY_SESSION_KEY, id);
+    return;
+  }
+  window.sessionStorage.removeItem(ACTIVE_COMPANY_SESSION_KEY);
+}
+
+function preferSessionActiveCompany(storage: AppStorage): AppStorage {
+  const preferredCompanyId = readPreferredActiveCompanyId();
+  if (!preferredCompanyId) {
+    return storage;
+  }
+  if (
+    storage.companies.some((company) => company.id === preferredCompanyId)
+  ) {
+    return setActiveCompany(storage, preferredCompanyId);
+  }
+  writePreferredActiveCompanyId(null);
+  return storage;
+}
+
 export function useAppStorage() {
   const [storage, setStorage] = useState<AppStorage>(defaultStorage);
   const [ready, setReady] = useState(false);
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
+  const storageRef = useRef<AppStorage>(defaultStorage);
 
-  useEffect(() => {
-    const loadLatestStorage = () => {
-      setStorage(loadAppStorage());
-      setReady(true);
-    };
-    const timer = window.setTimeout(() => {
-      loadLatestStorage();
-    }, 0);
-
-    const handleBrowserStorage = (event: StorageEvent) => {
-      if (!event.key || event.key === "jp-interview-assistant:v1") {
-        loadLatestStorage();
-      }
-    };
-
-    window.addEventListener(APP_STORAGE_EVENT, loadLatestStorage);
-    window.addEventListener("storage", handleBrowserStorage);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener(APP_STORAGE_EVENT, loadLatestStorage);
-      window.removeEventListener("storage", handleBrowserStorage);
-    };
+  const applyStorage = useCallback((next: AppStorage) => {
+    storageRef.current = next;
+    setStorage(next);
   }, []);
 
   useEffect(() => {
@@ -71,55 +85,44 @@ export function useAppStorage() {
           headers: { Accept: "application/json" },
         });
         if (!response.ok) {
+          applyStorage(defaultStorage);
+          setCloudSyncEnabled(false);
           return;
         }
         const data = (await response.json()) as {
           storage: AppStorage;
-          hasCloudData: boolean;
-          importedLocalStorage: boolean;
         };
         if (cancelled) {
           return;
         }
-
-        const local = loadAppStorage();
-        const importStatus = window.localStorage.getItem(
-          LOCAL_STORAGE_IMPORT_STATUS_KEY,
-        );
-        const localHasData = hasMeaningfulLocalStorage(local);
-        const canUseCloud =
-          data.hasCloudData ||
-          data.importedLocalStorage ||
-          importStatus === "accepted" ||
-          importStatus === "declined" ||
-          !localHasData;
-
-        if (canUseCloud) {
-          setStorage(data.storage);
-          saveAppStorage(data.storage);
-          setCloudSyncEnabled(true);
-        } else {
+        applyStorage(preferSessionActiveCompany(data.storage));
+        setCloudSyncEnabled(true);
+      } catch {
+        if (!cancelled) {
+          applyStorage(defaultStorage);
           setCloudSyncEnabled(false);
         }
-      } catch {
-        setCloudSyncEnabled(false);
+      } finally {
+        if (!cancelled) {
+          setReady(true);
+        }
       }
     }
 
-    if (ready) {
-      void loadCloudStorage();
-    }
+    void loadCloudStorage();
+    window.addEventListener(APP_STORAGE_EVENT, loadCloudStorage);
 
     return () => {
       cancelled = true;
+      window.removeEventListener(APP_STORAGE_EVENT, loadCloudStorage);
     };
-  }, [ready]);
+  }, [applyStorage]);
 
   const commit = useCallback(
     (buildNext: (current: AppStorage) => AppStorage) => {
-      const next = buildNext(loadAppStorage());
-      setStorage(next);
-      saveAppStorage(next);
+      const next = buildNext(storageRef.current);
+      writePreferredActiveCompanyId(next.activeCompanyId);
+      applyStorage(next);
       if (cloudSyncEnabled) {
         void fetch("/api/storage", {
           method: "PUT",
@@ -128,7 +131,7 @@ export function useAppStorage() {
         });
       }
     },
-    [cloudSyncEnabled],
+    [applyStorage, cloudSyncEnabled],
   );
 
   const actions = useMemo(
@@ -221,6 +224,7 @@ export function useAppStorage() {
       },
       clearAll() {
         clearAppStorage();
+        writePreferredActiveCompanyId(null);
         window.localStorage.setItem(LOCAL_STORAGE_IMPORT_STATUS_KEY, "declined");
         setCloudSyncEnabled(true);
         setStorage(defaultStorage);
@@ -228,7 +232,10 @@ export function useAppStorage() {
           void fetch("/api/storage", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(defaultStorage),
+            body: JSON.stringify({
+              storage: defaultStorage,
+              allowEmptyOverwrite: true,
+            }),
           });
         }
       },

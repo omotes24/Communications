@@ -21,7 +21,34 @@ const hardeningMigration = readFileSync(
   ),
   "utf8",
 );
-const allMigrations = `${migration}\n${hardeningMigration}`;
+const billingMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202606240003_stripe_billing.sql",
+  ),
+  "utf8",
+);
+const pricingMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202606240004_openai_pricing_rate_card.sql",
+  ),
+  "utf8",
+);
+const serviceRoleGrantsMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202606250001_service_role_table_grants.sql",
+  ),
+  "utf8",
+);
+const allMigrations = `${migration}\n${hardeningMigration}\n${billingMigration}\n${pricingMigration}\n${serviceRoleGrantsMigration}`;
 
 describe("Supabase migration", () => {
   it("enables RLS for user data tables and defines token functions", () => {
@@ -66,5 +93,59 @@ describe("Supabase migration", () => {
       "duplicate_request_id_for_different_user",
     );
     expect(hardeningMigration).toContain("for update skip locked");
+  });
+
+  it("keeps Stripe purchase grants idempotent and service-only", () => {
+    expect(billingMigration).toContain("public.stripe_checkout_grants");
+    expect(billingMigration).toContain(
+      "stripe_checkout_session_id text primary key",
+    );
+    expect(billingMigration).toContain(
+      "create or replace function public.grant_purchased_tokens",
+    );
+    expect(billingMigration).toContain(
+      "on conflict (stripe_checkout_session_id) do nothing",
+    );
+    expect(billingMigration).toContain(
+      "revoke execute on function public.grant_purchased_tokens",
+    );
+    expect(billingMigration).toContain(
+      "grant execute on function public.grant_purchased_tokens",
+    );
+  });
+
+  it("adds the OpenAI pricing rate card", () => {
+    expect(pricingMigration).toContain("'default-v2'");
+    expect(pricingMigration).toContain(
+      "('default-v2', '*', 'research-company', 1, 0.25, 4, 4, 0, 500, true)",
+    );
+    expect(pricingMigration).toContain(
+      "('default-v2', '*', 'transcribe-audio', 0, 0, 0, 0, 40, 0, true)",
+    );
+    expect(pricingMigration).toContain("set active = false");
+  });
+
+  it("grants service role access to server-managed tables", () => {
+    expect(serviceRoleGrantsMigration).toContain(
+      "grant usage on schema public to service_role",
+    );
+    for (const table of [
+      "profiles",
+      "personal_slots",
+      "company_slots",
+      "interview_sessions",
+      "interview_messages",
+      "user_settings",
+      "local_storage_imports",
+      "token_wallets",
+      "token_ledger",
+      "token_reservations",
+      "ai_usage_events",
+      "token_rate_cards",
+      "stripe_checkout_grants",
+    ]) {
+      expect(serviceRoleGrantsMigration).toContain(`public.${table}`);
+    }
+    expect(serviceRoleGrantsMigration).toContain("to service_role");
   });
 });

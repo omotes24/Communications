@@ -1,6 +1,7 @@
 import { requireApiUser } from "@/lib/auth/server";
-import { checkRateLimit, rateLimitResponse } from "@/lib/api/rate-limit";
 import { getServerEnv, assertOpenAIKey } from "@/lib/openai/env";
+import { japaneseInterviewTranscriptionPrompt } from "@/lib/openai/transcription";
+import { isRealtimeTranscriptionDelay } from "@/lib/openai/transcription-delay";
 import { jsonError, toPublicError } from "@/lib/privacy/logging";
 import { estimateRealtimeSessionTokens } from "@/lib/tokens/ai-estimates";
 import {
@@ -13,6 +14,16 @@ import {
 
 export const dynamic = "force-dynamic";
 
+async function readRequestedTranscriptionDelay(
+  request: Request,
+): Promise<string | null> {
+  const body = (await request.json().catch(() => null)) as {
+    transcriptionDelay?: unknown;
+  } | null;
+  const requestedDelay = body?.transcriptionDelay;
+  return isRealtimeTranscriptionDelay(requestedDelay) ? requestedDelay : null;
+}
+
 export async function POST(request: Request): Promise<Response> {
   const auth = await requireApiUser();
   if (!auth.ok) {
@@ -21,17 +32,25 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const env = getServerEnv();
-    const rateLimit = checkRateLimit({
-      key: `${auth.user.id}:realtime-session`,
-      limit: 10,
-      windowMs: 60_000,
-    });
-    if (!rateLimit.ok) {
-      return rateLimitResponse(rateLimit.retryAfterSeconds);
-    }
+    const requestedTranscriptionDelay =
+      await readRequestedTranscriptionDelay(request);
     const reservedSeconds = Number(
       process.env.APP_REALTIME_SESSION_RESERVATION_SECONDS ?? 180,
     );
+    const transcriptionConfig = {
+      model: env.TRANSCRIPTION_MODEL,
+      language: "ja",
+      ...(env.TRANSCRIPTION_MODEL === "gpt-realtime-whisper"
+        ? {
+            delay:
+              requestedTranscriptionDelay ?? env.OPENAI_TRANSCRIPTION_DELAY,
+          }
+        : {}),
+    };
+    const noiseReductionConfig =
+      env.OPENAI_AUDIO_NOISE_REDUCTION === "off"
+        ? null
+        : { type: env.OPENAI_AUDIO_NOISE_REDUCTION };
     const { requestId, operationId } = createRequestIds(request);
     const reservation = await reserveAiTokens({
       userId: auth.user.id,
@@ -66,9 +85,8 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     try {
-      const response = await fetch(
-        "https://api.openai.com/v1/realtime/client_secrets",
-        {
+      const createClientSecret = (options: { includePrompt: boolean }) =>
+        fetch("https://api.openai.com/v1/realtime/client_secrets", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${assertOpenAIKey(env)}`,
@@ -84,18 +102,23 @@ export async function POST(request: Request): Promise<Response> {
               type: "transcription",
               audio: {
                 input: {
+                  noise_reduction: noiseReductionConfig,
                   transcription: {
-                    model: env.TRANSCRIPTION_MODEL,
-                    language: "ja",
-                    delay: "low",
+                    ...transcriptionConfig,
+                    ...(options.includePrompt
+                      ? { prompt: japaneseInterviewTranscriptionPrompt }
+                      : {}),
                   },
                   turn_detection: null,
                 },
               },
             },
           }),
-        },
-      );
+        });
+      let response = await createClientSecret({ includePrompt: true });
+      if (!response.ok) {
+        response = await createClientSecret({ includePrompt: false });
+      }
 
       if (!response.ok) {
         await releaseAiTokenReservation(reservation, "realtime_failed");

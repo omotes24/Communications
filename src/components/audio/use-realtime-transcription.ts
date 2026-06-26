@@ -6,6 +6,7 @@ import {
   normalizeCommonTranscriptErrors,
   normalizeTranscriptForSubmit,
 } from "@/components/audio/transcript-auto-submit";
+import type { RealtimeTranscriptionDelay } from "@/lib/openai/transcription-delay";
 
 export type TranscriptItem = {
   id: string;
@@ -30,7 +31,13 @@ type RealtimeSessionResponse = {
   reservationSeconds?: number;
 };
 
+type RealtimeTranscriptionOptions = {
+  transcriptionDelay?: RealtimeTranscriptionDelay;
+};
+
 const groqSegmentMs = 2800;
+const realtimeCommitIntervalMs = 1800;
+const realtimeRenewalLeadMs = 15_000;
 
 function getSupportedAudioMimeType(): string | undefined {
   const candidates = [
@@ -95,17 +102,18 @@ export function useRealtimeTranscription() {
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const channelRef = useRef<RTCDataChannel | null>(null);
   const realtimeCommitIntervalRef = useRef<number | null>(null);
-  const realtimeExpiryTimerRef = useRef<number | null>(null);
+  const realtimeRenewalTimerRef = useRef<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunkSessionRef = useRef<{
     stopped: boolean;
     stream: MediaStream;
   } | null>(null);
 
-  const stop = useCallback(() => {
-    if (realtimeExpiryTimerRef.current) {
-      window.clearTimeout(realtimeExpiryTimerRef.current);
-      realtimeExpiryTimerRef.current = null;
+  const stop = useCallback((options: { stopTracks?: boolean } = {}) => {
+    const stopTracks = options.stopTracks ?? true;
+    if (realtimeRenewalTimerRef.current) {
+      window.clearTimeout(realtimeRenewalTimerRef.current);
+      realtimeRenewalTimerRef.current = null;
     }
     if (realtimeCommitIntervalRef.current) {
       window.clearInterval(realtimeCommitIntervalRef.current);
@@ -113,9 +121,11 @@ export function useRealtimeTranscription() {
     }
     if (chunkSessionRef.current) {
       chunkSessionRef.current.stopped = true;
-      chunkSessionRef.current.stream
-        .getTracks()
-        .forEach((track) => track.stop());
+      if (stopTracks) {
+        chunkSessionRef.current.stream
+          .getTracks()
+          .forEach((track) => track.stop());
+      }
     }
     if (
       mediaRecorderRef.current &&
@@ -124,7 +134,9 @@ export function useRealtimeTranscription() {
       mediaRecorderRef.current.stop();
     }
     channelRef.current?.close();
-    peerRef.current?.getSenders().forEach((sender) => sender.track?.stop());
+    if (stopTracks) {
+      peerRef.current?.getSenders().forEach((sender) => sender.track?.stop());
+    }
     peerRef.current?.close();
     channelRef.current = null;
     peerRef.current = null;
@@ -132,6 +144,73 @@ export function useRealtimeTranscription() {
     chunkSessionRef.current = null;
     setStatus("idle");
   }, []);
+
+  async function requestRealtimeSession(
+    options: RealtimeTranscriptionOptions = {},
+  ): Promise<RealtimeSessionResponse> {
+    const tokenResponse = await fetch("/api/realtime-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-operation-id": crypto.randomUUID(),
+        "x-request-id": crypto.randomUUID(),
+      },
+      body: JSON.stringify({
+        transcriptionDelay: options.transcriptionDelay,
+      }),
+    });
+    if (!tokenResponse.ok) {
+      throw new Error("Realtime セッションを作成できませんでした");
+    }
+    return (await tokenResponse.json()) as RealtimeSessionResponse;
+  }
+
+  function scheduleRealtimeReservationRenewal(
+    stream: MediaStream,
+    reservationSeconds: number | undefined,
+    options: RealtimeTranscriptionOptions,
+  ) {
+    if (realtimeRenewalTimerRef.current) {
+      window.clearTimeout(realtimeRenewalTimerRef.current);
+      realtimeRenewalTimerRef.current = null;
+    }
+    const reservationMs = Math.max(
+      1000,
+      Math.floor((reservationSeconds ?? 180) * 1000),
+    );
+    const renewalLeadMs = Math.min(
+      realtimeRenewalLeadMs,
+      Math.max(1000, Math.floor(reservationMs / 3)),
+    );
+    const renewalDelayMs = Math.max(1000, reservationMs - renewalLeadMs);
+
+    realtimeRenewalTimerRef.current = window.setTimeout(() => {
+      if (
+        stream.getAudioTracks().every((track) => track.readyState === "ended")
+      ) {
+        return;
+      }
+      void requestRealtimeSession(options)
+        .then((nextSession) => {
+          setError(null);
+          scheduleRealtimeReservationRenewal(
+            stream,
+            nextSession.reservationSeconds,
+            options,
+          );
+        })
+        .catch((caught) => {
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : "Realtime予約の更新に失敗しました。録音は継続中です。自動で再試行します。",
+          );
+          realtimeRenewalTimerRef.current = window.setTimeout(() => {
+            scheduleRealtimeReservationRenewal(stream, 30, options);
+          }, 10_000);
+        });
+    }, renewalDelayMs);
+  }
 
   const startChunkedTranscription = useCallback(
     async (stream: MediaStream, source: "local" | "remote") => {
@@ -198,186 +277,165 @@ export function useRealtimeTranscription() {
     [],
   );
 
-  const start = useCallback(
-    async (stream: MediaStream, source: "local" | "remote") => {
-      stop();
-      setStatus("connecting");
-      setError(null);
+  async function start(
+    stream: MediaStream,
+    source: "local" | "remote",
+    options: RealtimeTranscriptionOptions = {},
+  ) {
+    stop();
+    setStatus("connecting");
+    setError(null);
 
-      try {
-        const tokenResponse = await fetch("/api/realtime-session", {
-          method: "POST",
-          headers: {
-            "x-operation-id": crypto.randomUUID(),
-            "x-request-id": crypto.randomUUID(),
-          },
-        });
-        if (!tokenResponse.ok) {
-          throw new Error("Realtime セッションを作成できませんでした");
-        }
-        const tokenData =
-          (await tokenResponse.json()) as RealtimeSessionResponse;
-        const reservationMs = Math.max(
-          1000,
-          Math.floor((tokenData.reservationSeconds ?? 180) * 1000),
-        );
-        realtimeExpiryTimerRef.current = window.setTimeout(() => {
-          stop();
+    try {
+      const tokenData = await requestRealtimeSession(options);
+      scheduleRealtimeReservationRenewal(
+        stream,
+        tokenData.reservationSeconds,
+        options,
+      );
+      if (tokenData.provider === "groq") {
+        void startChunkedTranscription(stream, source).catch((caught) => {
           setError(
-            "Realtime予約時間が終了しました。続ける場合は再接続してください。",
+            caught instanceof Error ? caught.message : "音声文字起こしエラー",
           );
           setStatus("error");
-        }, reservationMs);
-        if (tokenData.provider === "groq") {
-          void startChunkedTranscription(stream, source).catch((caught) => {
-            setError(
-              caught instanceof Error ? caught.message : "音声文字起こしエラー",
-            );
-            setStatus("error");
-          });
-          return;
-        }
-
-        const token = tokenData.value;
-        if (!token || token.startsWith("mock-")) {
-          setItems((current) => [
-            {
-              id: crypto.randomUUID(),
-              source,
-              text: "モックモードでは実音声の文字起こしは行いません。手動入力を使用してください。",
-              final: true,
-              createdAt: Date.now(),
-            },
-            ...current,
-          ]);
-          setStatus("live");
-          return;
-        }
-
-        const peer = new RTCPeerConnection();
-        peerRef.current = peer;
-        stream
-          .getAudioTracks()
-          .forEach((track) => peer.addTrack(track, stream));
-        const channel = peer.createDataChannel("oai-events");
-        channelRef.current = channel;
-
-        channel.addEventListener("open", () => {
-          realtimeCommitIntervalRef.current = window.setInterval(() => {
-            if (channel.readyState !== "open") {
-              return;
-            }
-            channel.send(
-              JSON.stringify({
-                type: "input_audio_buffer.commit",
-              }),
-            );
-          }, 1800);
         });
-
-        channel.addEventListener("close", () => {
-          if (realtimeCommitIntervalRef.current) {
-            window.clearInterval(realtimeCommitIntervalRef.current);
-            realtimeCommitIntervalRef.current = null;
-          }
-        });
-
-        channel.addEventListener("message", (event) => {
-          const data = JSON.parse(event.data as string) as RealtimeEvent;
-          if (
-            data.type === "conversation.item.input_audio_transcription.delta"
-          ) {
-            setItems((current) => {
-              const id = data.item_id ?? "pending";
-              const delta = normalizeCommonTranscriptErrors(data.delta ?? "");
-              const existing = current.find((item) => item.id === id);
-              if (!existing) {
-                return [
-                  {
-                    id,
-                    source,
-                    text: delta,
-                    final: false,
-                    createdAt: Date.now(),
-                  },
-                  ...current,
-                ];
-              }
-              return current.map((item) =>
-                item.id === id
-                  ? {
-                      ...item,
-                      text: normalizeCommonTranscriptErrors(
-                        `${item.text}${data.delta ?? ""}`,
-                      ),
-                    }
-                  : item,
-              );
-            });
-          }
-          if (
-            data.type ===
-            "conversation.item.input_audio_transcription.completed"
-          ) {
-            setItems((current) => {
-              const id = data.item_id ?? crypto.randomUUID();
-              const transcript = normalizeTranscriptForSubmit(
-                data.transcript ?? "",
-              );
-              const existing = current.some((item) => item.id === id);
-              if (!existing) {
-                return [
-                  {
-                    id,
-                    source,
-                    text: transcript,
-                    final: true,
-                    createdAt: Date.now(),
-                  },
-                  ...current,
-                ];
-              }
-              return current.map((item) =>
-                item.id === id
-                  ? {
-                      ...item,
-                      text: transcript || item.text,
-                      final: true,
-                    }
-                  : item,
-              );
-            });
-          }
-        });
-
-        const offer = await peer.createOffer();
-        await peer.setLocalDescription(offer);
-        const sdpResponse = await fetch(
-          "https://api.openai.com/v1/realtime/calls",
-          {
-            method: "POST",
-            body: offer.sdp,
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/sdp",
-            },
-          },
-        );
-        if (!sdpResponse.ok) {
-          throw new Error("Realtime WebRTC 接続に失敗しました");
-        }
-        await peer.setRemoteDescription({
-          type: "answer",
-          sdp: await sdpResponse.text(),
-        });
-        setStatus("live");
-      } catch (caught) {
-        setError(caught instanceof Error ? caught.message : "音声接続エラー");
-        setStatus("error");
+        return;
       }
-    },
-    [startChunkedTranscription, stop],
-  );
+
+      const token = tokenData.value;
+      if (!token || token.startsWith("mock-")) {
+        setItems((current) => [
+          {
+            id: crypto.randomUUID(),
+            source,
+            text: "モックモードでは実音声の文字起こしは行いません。手動入力を使用してください。",
+            final: true,
+            createdAt: Date.now(),
+          },
+          ...current,
+        ]);
+        setStatus("live");
+        return;
+      }
+
+      const peer = new RTCPeerConnection();
+      peerRef.current = peer;
+      stream.getAudioTracks().forEach((track) => peer.addTrack(track, stream));
+      const channel = peer.createDataChannel("oai-events");
+      channelRef.current = channel;
+
+      channel.addEventListener("open", () => {
+        realtimeCommitIntervalRef.current = window.setInterval(() => {
+          if (channel.readyState !== "open") {
+            return;
+          }
+          channel.send(
+            JSON.stringify({
+              type: "input_audio_buffer.commit",
+            }),
+          );
+        }, realtimeCommitIntervalMs);
+      });
+
+      channel.addEventListener("close", () => {
+        if (realtimeCommitIntervalRef.current) {
+          window.clearInterval(realtimeCommitIntervalRef.current);
+          realtimeCommitIntervalRef.current = null;
+        }
+      });
+
+      channel.addEventListener("message", (event) => {
+        const data = JSON.parse(event.data as string) as RealtimeEvent;
+        if (data.type === "conversation.item.input_audio_transcription.delta") {
+          setItems((current) => {
+            const id = data.item_id ?? "pending";
+            const delta = normalizeCommonTranscriptErrors(data.delta ?? "");
+            const existing = current.find((item) => item.id === id);
+            if (!existing) {
+              return [
+                {
+                  id,
+                  source,
+                  text: delta,
+                  final: false,
+                  createdAt: Date.now(),
+                },
+                ...current,
+              ];
+            }
+            return current.map((item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    text: normalizeCommonTranscriptErrors(
+                      `${item.text}${data.delta ?? ""}`,
+                    ),
+                  }
+                : item,
+            );
+          });
+        }
+        if (
+          data.type === "conversation.item.input_audio_transcription.completed"
+        ) {
+          setItems((current) => {
+            const id = data.item_id ?? crypto.randomUUID();
+            const transcript = normalizeTranscriptForSubmit(
+              data.transcript ?? "",
+            );
+            const existing = current.some((item) => item.id === id);
+            if (!existing) {
+              return [
+                {
+                  id,
+                  source,
+                  text: transcript,
+                  final: true,
+                  createdAt: Date.now(),
+                },
+                ...current,
+              ];
+            }
+            return current.map((item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    text: transcript || item.text,
+                    final: true,
+                  }
+                : item,
+            );
+          });
+        }
+      });
+
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+      const sdpResponse = await fetch(
+        "https://api.openai.com/v1/realtime/calls",
+        {
+          method: "POST",
+          body: offer.sdp,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/sdp",
+          },
+        },
+      );
+      if (!sdpResponse.ok) {
+        throw new Error("Realtime WebRTC 接続に失敗しました");
+      }
+      await peer.setRemoteDescription({
+        type: "answer",
+        sdp: await sdpResponse.text(),
+      });
+      setStatus("live");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "音声接続エラー");
+      setStatus("error");
+    }
+  }
 
   return { status, error, items, start, stop, setItems };
 }

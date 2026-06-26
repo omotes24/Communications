@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BarChart3,
   CheckCircle2,
   Loader2,
   Plus,
@@ -27,22 +29,12 @@ import {
   type CompanyProfile,
   type UserProfile,
 } from "@/lib/schemas/interview";
-import { COMPANY_FORM_DRAFT_KEY } from "@/lib/storage/browser-store";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 import { cn } from "@/lib/utils";
 
-const estimatedResearchMs = 210_000;
+const estimatedResearchMs = 300_000;
 const maxInProgressResearchPercent = 96;
 const progressRangePercent = 92;
-
-type CompanyFormDraft = {
-  selfInfo: string;
-  companyName: string;
-  companyDetails: string;
-  companyWebsite?: string;
-  desiredCourse: string;
-  additionalNotes: string;
-};
 
 type ResearchProgress = {
   startedAt: number;
@@ -87,39 +79,6 @@ function profilesToSelfInfo(
         .join("\n"),
     )
     .join("\n\n---\n\n");
-}
-
-function readCompanyFormDraft(): CompanyFormDraft | null {
-  try {
-    const raw = window.localStorage.getItem(COMPANY_FORM_DRAFT_KEY);
-    if (!raw) {
-      return null;
-    }
-    const parsed = JSON.parse(raw) as Partial<CompanyFormDraft>;
-    return {
-      selfInfo: typeof parsed.selfInfo === "string" ? parsed.selfInfo : "",
-      companyName:
-        typeof parsed.companyName === "string" ? parsed.companyName : "",
-      companyDetails:
-        typeof parsed.companyDetails === "string"
-          ? parsed.companyDetails
-          : typeof parsed.companyWebsite === "string"
-            ? parsed.companyWebsite
-            : "",
-      desiredCourse:
-        typeof parsed.desiredCourse === "string" ? parsed.desiredCourse : "",
-      additionalNotes:
-        typeof parsed.additionalNotes === "string"
-          ? parsed.additionalNotes
-          : "",
-    };
-  } catch {
-    return null;
-  }
-}
-
-function writeCompanyFormDraft(draft: CompanyFormDraft): void {
-  window.localStorage.setItem(COMPANY_FORM_DRAFT_KEY, JSON.stringify(draft));
 }
 
 function createProgress(startedAt: number): ResearchProgress {
@@ -234,13 +193,6 @@ export function CompanyManager() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const savedDraft = readCompanyFormDraft();
-      if (savedDraft) {
-        setCompanyName(savedDraft.companyName);
-        setCompanyDetails(savedDraft.companyDetails);
-        setDesiredCourse(savedDraft.desiredCourse);
-        setAdditionalNotes(savedDraft.additionalNotes);
-      }
       setFormReady(true);
     }, 0);
     return () => window.clearTimeout(timer);
@@ -255,26 +207,6 @@ export function CompanyManager() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [formReady, suggestedSelfInfo]);
-
-  useEffect(() => {
-    if (!formReady) {
-      return;
-    }
-    writeCompanyFormDraft({
-      selfInfo,
-      companyName,
-      companyDetails,
-      desiredCourse,
-      additionalNotes,
-    });
-  }, [
-    formReady,
-    selfInfo,
-    companyName,
-    companyDetails,
-    desiredCourse,
-    additionalNotes,
-  ]);
 
   useEffect(() => {
     const companyToSelect = activeCompany;
@@ -433,14 +365,23 @@ export function CompanyManager() {
                 会社スロットを選ぶ
               </h2>
             </div>
-            <button
-              type="button"
-              onClick={reset}
-              className="inline-flex h-10 items-center gap-2 rounded-full bg-[#f5f5f7] px-4 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              新規
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={reset}
+                className="inline-flex h-10 items-center gap-2 rounded-full bg-[#f5f5f7] px-4 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                新規
+              </button>
+              <Link
+                href="/company/intelligence"
+                className="inline-flex h-10 items-center gap-2 rounded-full bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
+              >
+                <BarChart3 className="h-4 w-4" aria-hidden />
+                複数の会社を比較する
+              </Link>
+            </div>
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -461,7 +402,7 @@ export function CompanyManager() {
                 >
                   <button
                     type="button"
-                    onClick={() => selectCompany(company)}
+                    onClick={() => selectCompany(company, true)}
                     className="block w-full text-left"
                   >
                     <span className="flex items-center justify-between gap-2">

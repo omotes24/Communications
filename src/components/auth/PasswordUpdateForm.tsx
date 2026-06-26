@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
-import { translateAuthError } from "@/lib/auth/errors";
+import { isAuthThrottleError, translateAuthError } from "@/lib/auth/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function PasswordUpdateForm() {
@@ -10,6 +10,10 @@ export function PasswordUpdateForm() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
+  const lastAttemptRef = useRef<
+    { password: string; kind: "error" | "message"; text: string } | null
+  >(null);
   const supabase = useMemo(() => {
     try {
       return createSupabaseBrowserClient();
@@ -20,6 +24,21 @@ export function PasswordUpdateForm() {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (loading || submittingRef.current) {
+      return;
+    }
+
+    if (lastAttemptRef.current?.password === password) {
+      if (lastAttemptRef.current.kind === "message") {
+        setError("");
+        setMessage(lastAttemptRef.current.text);
+      } else {
+        setMessage("");
+        setError(lastAttemptRef.current.text);
+      }
+      return;
+    }
+
     setMessage("");
     setError("");
 
@@ -28,6 +47,7 @@ export function PasswordUpdateForm() {
       return;
     }
 
+    submittingRef.current = true;
     setLoading(true);
     try {
       const { error: updateError } = await supabase.auth.updateUser({
@@ -37,14 +57,37 @@ export function PasswordUpdateForm() {
         throw updateError;
       }
       setPassword("");
+      lastAttemptRef.current = {
+        password,
+        kind: "message",
+        text: "パスワードを更新しました。",
+      };
       setMessage("パスワードを更新しました。");
     } catch (authError) {
-      setError(
+      if (authError instanceof Error && isAuthThrottleError(authError.message)) {
+        const safeError =
+          "パスワードを更新できませんでした。入力内容を確認してください。";
+        lastAttemptRef.current = {
+          password,
+          kind: "error",
+          text: safeError,
+        };
+        setError(safeError);
+        return;
+      }
+
+      const safeError =
         authError instanceof Error
           ? translateAuthError(authError.message)
-          : "更新に失敗しました。",
-      );
+          : "更新に失敗しました。";
+      lastAttemptRef.current = {
+        password,
+        kind: "error",
+        text: safeError,
+      };
+      setError(safeError);
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   }

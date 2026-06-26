@@ -83,6 +83,31 @@ export function mockGenerateAnswer(
     ? `${request.answerLengthTarget}文字程度で、`
     : "";
 
+  if (request.answerLanguage === "en") {
+    return {
+      question: request.question,
+      talkingPoints: [
+        `Open with a clear conclusion based on the ${role} experience`,
+        `Connect ${strength} to the expectations of ${companyName}`,
+        `Use ${achievement} as concrete evidence`,
+      ],
+      answer: isFermiMode
+        ? `${targetText}I would start by **breaking the problem into a few simple drivers**: the target population, frequency of use, and unit price. Then I would make explicit assumptions, calculate a rough order of magnitude, and check whether the result feels realistic. Finally, I would explain which assumption has the largest impact, so the interviewer can see both my logic and my judgment.`
+        : `In short, I want to use the experience I built as ${role} to create practical impact at ${companyName}. In particular, I can contribute through **${strength}**, which I developed while working on ${achievement}. What attracts me to your company is ${attraction}. After joining, I would first understand the team and the business context deeply, then contribute through **specific proposals and reliable execution**.`,
+      evidenceUsed: [
+        profile?.currentRole ? `Current role: ${profile.currentRole}` : "",
+        profile?.affiliation ? `Affiliation: ${profile.affiliation}` : "",
+        profile?.strengths ? `Strengths: ${profile.strengths}` : "",
+        profile?.achievements ? `Achievements: ${profile.achievements}` : "",
+        company?.companyName ? `Company: ${company.companyName}` : "",
+        company?.attraction ? `Company attraction: ${company.attraction}` : "",
+      ].filter(Boolean),
+      missingInformation:
+        profile && company ? [] : ["Profile or company information"],
+      caution: null,
+    };
+  }
+
   return {
     question: request.question,
     talkingPoints: [
