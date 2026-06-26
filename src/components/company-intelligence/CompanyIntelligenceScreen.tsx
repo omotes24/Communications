@@ -103,7 +103,7 @@ function reportToCompanyProfile(report: CompanyIntelligenceReport): CompanyProfi
     attraction: inferences,
     reverseQuestions,
     researchInput: [
-      `企業研究・比較AI reportId: ${report.reportId}`,
+      `複数の会社を比較する reportId: ${report.reportId}`,
       `確認できた情報:\n${checkedFacts}`,
       `AI推定:\n${inferences}`,
       `要確認:\n${unknowns}`,
@@ -289,7 +289,7 @@ export function CompanyIntelligenceScreen() {
   return (
     <section>
       <PageHeader
-        title="企業研究・比較AI"
+        title="複数の会社を比較する"
         description="公開情報を根拠に、確認済み情報・AI推定・要確認事項を分けて企業研究を作ります。"
       />
 
