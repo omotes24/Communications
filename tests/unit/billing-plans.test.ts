@@ -1,24 +1,35 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  billingPlans,
-  getBillingPlan,
-  TOKEN_MULTIPLIER_PER_JPY,
-} from "@/lib/billing/plans";
+import { billingPlans, getBillingPlan } from "@/lib/billing/plans";
 
 describe("billing plans", () => {
-  it("grants 300 app tokens per yen", () => {
-    expect(TOKEN_MULTIPLIER_PER_JPY).toBe(300);
-    for (const plan of billingPlans) {
-      expect(plan.tokenAmount).toBe(plan.amountJpy * 300);
-    }
+  it("uses fixed token grants for each purchase plan", () => {
+    expect(billingPlans).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "starter",
+          amountJpy: 1000,
+          tokenAmount: 300000,
+        }),
+        expect.objectContaining({
+          id: "standard",
+          amountJpy: 3000,
+          tokenAmount: 1000000,
+        }),
+        expect.objectContaining({
+          id: "intensive",
+          amountJpy: 10000,
+          tokenAmount: 4000000,
+        }),
+      ]),
+    );
   });
 
   it("finds plans by id", () => {
     expect(getBillingPlan("standard")).toMatchObject({
       id: "standard",
       amountJpy: 3000,
-      tokenAmount: 900000,
+      tokenAmount: 1000000,
     });
     expect(getBillingPlan("missing")).toBeNull();
   });

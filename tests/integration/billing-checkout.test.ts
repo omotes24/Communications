@@ -55,7 +55,7 @@ describe("billing checkout route", () => {
         metadata: expect.objectContaining({
           userId: testUserId,
           planId: "standard",
-          tokenAmount: "900000",
+          tokenAmount: "1000000",
           amountJpy: "3000",
         }),
         line_items: [

@@ -109,7 +109,7 @@ supabase db push
 Web決済はStripe Checkoutで処理します。アプリはカード番号や銀行口座番号を保存しません。
 
 - 料金ページ: `/pricing`
-- token設定: `1円 = 300 app tokens`
+- token設定: `1,000円 = 300,000 tokens`, `3,000円 = 1,000,000 tokens`, `10,000円 = 4,000,000 tokens`
 - Checkout作成API: `/api/billing/checkout`
 - Webhook: `/api/stripe/webhook`
 - Webhook対象event:

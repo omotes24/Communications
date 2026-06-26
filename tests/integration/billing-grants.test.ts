@@ -32,7 +32,7 @@ const paidSession = {
   metadata: {
     userId,
     planId: "standard",
-    tokenAmount: "900000",
+    tokenAmount: "1000000",
     amountJpy: "3000",
   },
   currency: "jpy",
@@ -57,7 +57,7 @@ describe("billing checkout settlement", () => {
     expect(mocks.retrieveSession).toHaveBeenCalledWith("cs_test_123");
     expect(mocks.rpc).toHaveBeenCalledWith("grant_purchased_tokens", {
       p_user_id: userId,
-      p_amount: 900000,
+      p_amount: 1000000,
       p_request_id: "stripe:cs_test_123",
       p_plan_id: "standard",
       p_amount_jpy: 3000,

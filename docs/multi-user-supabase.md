@@ -69,7 +69,7 @@ npm run dev
 Web決済はStripe Checkoutで処理します。アプリはカード番号や銀行口座番号を保存しません。
 
 - 料金ページは `/pricing` です。
-- 支払額1円につき300 app tokensを付与します。
+- 購入プランごとに `1,000円 = 300,000 tokens`, `3,000円 = 1,000,000 tokens`, `10,000円 = 4,000,000 tokens` を付与します。
 - `/api/billing/checkout` はログイン済みユーザーだけがCheckout Sessionを作成できます。
 - `/api/stripe/webhook` はStripe署名をraw bodyで検証し、支払い済みCheckout Sessionだけを処理します。
 - `stripe_checkout_grants` はCheckout Session IDをprimary keyにして、webhook再送時の二重付与を防ぎます。
