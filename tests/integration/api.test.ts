@@ -251,4 +251,40 @@ describe("API routes in mock mode", () => {
     });
     expect(body.session.audio.input.turn_detection).toBeNull();
   });
+
+  it("falls back when realtime transcription prompt is rejected", async () => {
+    process.env.AI_MOCK_MODE = "false";
+    process.env.AI_PROVIDER = "openai";
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    process.env.OPENAI_TRANSCRIPTION_MODEL = "gpt-realtime-whisper";
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "unsupported prompt" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ value: "ephemeral-token" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    const response = await realtimeSession(
+      new Request("http://localhost/api/realtime-session", {
+        method: "POST",
+      }),
+    );
+
+    expect(response.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const firstBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const secondBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    expect(firstBody.session.audio.input.transcription.prompt).toContain(
+      "フェルミ推定",
+    );
+    expect(secondBody.session.audio.input.transcription.prompt).toBeUndefined();
+  });
 });

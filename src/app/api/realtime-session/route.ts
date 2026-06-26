@@ -27,7 +27,6 @@ export async function POST(request: Request): Promise<Response> {
     const transcriptionConfig = {
       model: env.TRANSCRIPTION_MODEL,
       language: "ja",
-      prompt: japaneseInterviewTranscriptionPrompt,
       ...(env.TRANSCRIPTION_MODEL === "gpt-realtime-whisper"
         ? { delay: env.OPENAI_TRANSCRIPTION_DELAY }
         : {}),
@@ -70,9 +69,8 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     try {
-      const response = await fetch(
-        "https://api.openai.com/v1/realtime/client_secrets",
-        {
+      const createClientSecret = (options: { includePrompt: boolean }) =>
+        fetch("https://api.openai.com/v1/realtime/client_secrets", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${assertOpenAIKey(env)}`,
@@ -91,14 +89,20 @@ export async function POST(request: Request): Promise<Response> {
                   noise_reduction: noiseReductionConfig,
                   transcription: {
                     ...transcriptionConfig,
+                    ...(options.includePrompt
+                      ? { prompt: japaneseInterviewTranscriptionPrompt }
+                      : {}),
                   },
                   turn_detection: null,
                 },
               },
             },
           }),
-        },
-      );
+        });
+      let response = await createClientSecret({ includePrompt: true });
+      if (!response.ok) {
+        response = await createClientSecret({ includePrompt: false });
+      }
 
       if (!response.ok) {
         await releaseAiTokenReservation(reservation, "realtime_failed");
