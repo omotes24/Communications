@@ -30,6 +30,41 @@ import type {
   UserProfile,
 } from "@/lib/schemas/interview";
 
+const ACTIVE_COMPANY_SESSION_KEY =
+  "jp-interview-assistant:active-company-id:v1";
+
+function readPreferredActiveCompanyId(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.sessionStorage.getItem(ACTIVE_COMPANY_SESSION_KEY);
+}
+
+function writePreferredActiveCompanyId(id: string | null): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (id) {
+    window.sessionStorage.setItem(ACTIVE_COMPANY_SESSION_KEY, id);
+    return;
+  }
+  window.sessionStorage.removeItem(ACTIVE_COMPANY_SESSION_KEY);
+}
+
+function preferSessionActiveCompany(storage: AppStorage): AppStorage {
+  const preferredCompanyId = readPreferredActiveCompanyId();
+  if (!preferredCompanyId) {
+    return storage;
+  }
+  if (
+    storage.companies.some((company) => company.id === preferredCompanyId)
+  ) {
+    return setActiveCompany(storage, preferredCompanyId);
+  }
+  writePreferredActiveCompanyId(null);
+  return storage;
+}
+
 export function useAppStorage() {
   const [storage, setStorage] = useState<AppStorage>(defaultStorage);
   const [ready, setReady] = useState(false);
@@ -60,7 +95,7 @@ export function useAppStorage() {
         if (cancelled) {
           return;
         }
-        applyStorage(data.storage);
+        applyStorage(preferSessionActiveCompany(data.storage));
         setCloudSyncEnabled(true);
       } catch {
         if (!cancelled) {
@@ -86,6 +121,7 @@ export function useAppStorage() {
   const commit = useCallback(
     (buildNext: (current: AppStorage) => AppStorage) => {
       const next = buildNext(storageRef.current);
+      writePreferredActiveCompanyId(next.activeCompanyId);
       applyStorage(next);
       if (cloudSyncEnabled) {
         void fetch("/api/storage", {
@@ -188,6 +224,7 @@ export function useAppStorage() {
       },
       clearAll() {
         clearAppStorage();
+        writePreferredActiveCompanyId(null);
         window.localStorage.setItem(LOCAL_STORAGE_IMPORT_STATUS_KEY, "declined");
         setCloudSyncEnabled(true);
         setStorage(defaultStorage);

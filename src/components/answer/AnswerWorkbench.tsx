@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import {
   AlertTriangle,
@@ -208,13 +208,15 @@ export function AnswerWorkbench({
   const quickDraftTimersRef = useRef<Map<string, number>>(new Map());
   const controllersRef = useRef<Map<string, AbortController>>(new Map());
   const isDark = tone === "dark";
+  const answerCompanies = useMemo(
+    () => (activeCompany ? [activeCompany] : activeCompanies),
+    [activeCompany, activeCompanies],
+  );
 
   const activeLearningBrief =
     storage.learning?.companyId &&
     storage.learning?.language === answerLanguage &&
-    activeCompanies.some(
-      (company) => company.id === storage.learning?.companyId,
-    )
+    storage.learning.companyId === activeCompany?.id
       ? storage.learning.brief
       : "";
 
@@ -283,7 +285,7 @@ export function AnswerWorkbench({
       const conversationContext = buildConversationContext(turns);
       const selfSlotSnapshot = selfSlot.trim();
       const profileSlotLabels = activeProfiles.map((profile) => profile.label);
-      const companySlotLabels = activeCompanies.map(
+      const companySlotLabels = answerCompanies.map(
         (company) => company.companyName || company.label,
       );
       const lengthTarget =
@@ -381,7 +383,7 @@ export function AnswerWorkbench({
             profile: activeProfile,
             company: activeCompany,
             profiles: activeProfiles,
-            companies: activeCompanies,
+            companies: answerCompanies,
             learningBrief: activeLearningBrief,
             conversationContext,
             answerModelMode,
@@ -447,10 +449,10 @@ export function AnswerWorkbench({
     },
     [
       activeCompany,
-      activeCompanies,
       activeLearningBrief,
       activeProfile,
       activeProfiles,
+      answerCompanies,
       answerLanguage,
       answerLengthTarget,
       answerModelMode,
