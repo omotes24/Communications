@@ -103,6 +103,35 @@ describe("transcript auto submit helpers", () => {
     ).toBe("");
   });
 
+  it("extracts the question from long unpunctuated interviewer speech", () => {
+    expect(
+      extractLikelyInterviewQuestion(
+        "本日はよろしくお願いします 今日は研究内容や学生時代の経験について順番に伺います まず最初に簡単な自己紹介からお願いします",
+      ),
+    ).toBe("簡単な自己紹介からお願いします");
+    expect(
+      extractLikelyInterviewQuestion(
+        "ここまでの説明はよく分かりました 研究ではデータの扱いや分析の工夫が多かったと思いますが その経験を当社でどう活かせると思いますか",
+      ),
+    ).toBe("その経験を当社でどう活かせると思いますか");
+  });
+
+  it("keeps the subject when a long question contains internal cue words", () => {
+    expect(
+      extractLikelyInterviewQuestion(
+        "ありがとうございます 続いてあなたの弱みとそれをどう改善しているかを教えてください",
+      ),
+    ).toBe("あなたの弱みとそれをどう改善しているかを教えてください");
+  });
+
+  it("does not include the candidate answer after an earlier detected question", () => {
+    expect(
+      extractLikelyInterviewQuestion(
+        "では自己紹介をお願いします。はい、表紘太朗と申します。慶應義塾大学で機械学習の研究をしています。",
+      ),
+    ).toBe("自己紹介をお願いします。");
+  });
+
   it("merges adjacent finalized transcript fragments for reading", () => {
     const merged = mergeTranscriptItemsForReading([
       {
