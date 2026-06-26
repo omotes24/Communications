@@ -1,13 +1,17 @@
 export const remoteTranscriptAutoSubmitDelayMs = 1200;
 export const remoteTranscriptQuestionCueDelayMs = 450;
 export const remoteTranscriptMinimumAutoSubmitGapMs = 900;
-export const remoteTranscriptDuplicateWindowMs = 15_000;
+export const remoteTranscriptDuplicateWindowMs = 60_000;
 
 const minimumTranscriptLength = 8;
 const maximumQuestionCandidateLength = 180;
 const trailingQuestionContextLength = 28;
 const nestedQuestionCueDistance = 14;
 const localQuestionIntroLookbackLength = 14;
+const minimumContainedFingerprintLength = 8;
+const minimumSimilarFingerprintLength = 18;
+const minimumSharedSuffixFingerprintLength = 12;
+const fingerprintSimilarityThreshold = 0.84;
 const directQuestionPatterns = [
   /[?？]/,
   /(?:ですか|ますか|でしょうか|ましたか|ありますか|できますか|なりますか|いましたか)/,
@@ -303,4 +307,94 @@ export function createTranscriptSubmitFingerprint(text: string): string {
   return trimLeadingFiller(text)
     .toLowerCase()
     .replace(/[、。！？?？\s.,!「」『』（）()[\]{}]/g, "");
+}
+
+function countCommonSuffixLength(left: string, right: string): number {
+  let length = 0;
+  while (
+    length < left.length &&
+    length < right.length &&
+    left[left.length - 1 - length] === right[right.length - 1 - length]
+  ) {
+    length += 1;
+  }
+  return length;
+}
+
+function createCharacterBigrams(text: string): Set<string> {
+  const bigrams = new Set<string>();
+  for (let index = 0; index < text.length - 1; index += 1) {
+    bigrams.add(text.slice(index, index + 2));
+  }
+  return bigrams;
+}
+
+function calculateBigramSimilarity(left: string, right: string): number {
+  const leftBigrams = createCharacterBigrams(left);
+  const rightBigrams = createCharacterBigrams(right);
+  if (!leftBigrams.size || !rightBigrams.size) {
+    return 0;
+  }
+  let overlap = 0;
+  leftBigrams.forEach((bigram) => {
+    if (rightBigrams.has(bigram)) {
+      overlap += 1;
+    }
+  });
+  return (2 * overlap) / (leftBigrams.size + rightBigrams.size);
+}
+
+export function areSimilarTranscriptSubmitFingerprints(
+  left: string,
+  right: string,
+): boolean {
+  if (!left || !right) {
+    return false;
+  }
+  if (left === right) {
+    return true;
+  }
+
+  const [shorter, longer] =
+    left.length <= right.length ? [left, right] : [right, left];
+  if (
+    shorter.length >= minimumContainedFingerprintLength &&
+    longer.includes(shorter)
+  ) {
+    return true;
+  }
+  if (
+    countCommonSuffixLength(left, right) >=
+    minimumSharedSuffixFingerprintLength
+  ) {
+    return true;
+  }
+  if (
+    shorter.length < minimumSimilarFingerprintLength ||
+    longer.length < minimumSimilarFingerprintLength
+  ) {
+    return false;
+  }
+
+  return (
+    calculateBigramSimilarity(left, right) >= fingerprintSimilarityThreshold
+  );
+}
+
+export function findRecentTranscriptSubmitFingerprint(
+  fingerprints: Map<string, number>,
+  fingerprint: string,
+  now: number,
+  windowMs: number,
+): string | null {
+  for (const [key, submittedAt] of fingerprints) {
+    if (now - submittedAt > windowMs) {
+      fingerprints.delete(key);
+      continue;
+    }
+    if (areSimilarTranscriptSubmitFingerprints(key, fingerprint)) {
+      return key;
+    }
+  }
+  return null;
 }

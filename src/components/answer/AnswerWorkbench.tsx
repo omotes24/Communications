@@ -28,7 +28,9 @@ import {
 } from "@/lib/schemas/interview";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 import {
+  areSimilarTranscriptSubmitFingerprints,
   createTranscriptSubmitFingerprint,
+  findRecentTranscriptSubmitFingerprint,
   normalizeCommonTranscriptErrors,
 } from "@/components/audio/transcript-auto-submit";
 import { cn } from "@/lib/utils";
@@ -70,7 +72,7 @@ const answerModelOptions: Array<{
         { mode: "fermi", label: "5.5", description: "高精度" },
       ];
 
-const remoteAnswerDuplicateWindowMs = 15_000;
+const remoteAnswerDuplicateWindowMs = 60_000;
 
 type AnswerTurn = {
   id: string;
@@ -210,6 +212,7 @@ export function AnswerWorkbench({
   const [manualNotice, setManualNotice] = useState<string | null>(null);
   const lastAutoRunRef = useRef<string | null>(null);
   const remoteQuestionKeysRef = useRef<Map<string, number>>(new Map());
+  const turnsRef = useRef<AnswerTurn[]>([]);
   const answerChatRef = useRef<HTMLElement | null>(null);
   const quickDraftTimersRef = useRef<Map<string, number>>(new Map());
   const controllersRef = useRef<Map<string, AbortController>>(new Map());
@@ -231,16 +234,52 @@ export function AnswerWorkbench({
       turnId: string,
       updater: Partial<AnswerTurn> | ((turn: AnswerTurn) => AnswerTurn),
     ) => {
-      setTurns((current) =>
-        current.map((turn) => {
+      setTurns((current) => {
+        const nextTurns = current.map((turn) => {
           if (turn.id !== turnId) {
             return turn;
           }
           return typeof updater === "function"
             ? updater(turn)
             : { ...turn, ...updater };
-        }),
-      );
+        });
+        turnsRef.current = nextTurns;
+        return nextTurns;
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    turnsRef.current = turns;
+  }, [turns]);
+
+  const hasSimilarRemoteQuestionTurn = useCallback(
+    (candidateQuestion: string, ignoredTurnId?: string): boolean => {
+      const candidateFingerprint =
+        createTranscriptSubmitFingerprint(candidateQuestion);
+      if (!candidateFingerprint) {
+        return false;
+      }
+
+      return turnsRef.current.some((turn) => {
+        if (turn.id === ignoredTurnId || turn.source !== "remote-audio") {
+          return false;
+        }
+        const turnQuestions = [
+          turn.question,
+          turn.classification?.question,
+          turn.draft.question,
+          turn.finalDraft?.question,
+        ].filter((value): value is string => Boolean(value));
+
+        return turnQuestions.some((turnQuestion) =>
+          areSimilarTranscriptSubmitFingerprints(
+            createTranscriptSubmitFingerprint(turnQuestion),
+            candidateFingerprint,
+          ),
+        );
+      });
     },
     [],
   );
@@ -283,19 +322,18 @@ export function AnswerWorkbench({
         return;
       }
 
-      if (source === "remote-audio" && requestedTurnId) {
+      if (source === "remote-audio") {
         const now = Date.now();
         const remoteQuestionKey =
           createTranscriptSubmitFingerprint(normalizedQuestion);
-        remoteQuestionKeysRef.current.forEach((submittedAt, key) => {
-          if (now - submittedAt > remoteAnswerDuplicateWindowMs) {
-            remoteQuestionKeysRef.current.delete(key);
-          }
-        });
-        const submittedAt = remoteQuestionKeysRef.current.get(remoteQuestionKey);
         if (
-          submittedAt &&
-          now - submittedAt <= remoteAnswerDuplicateWindowMs
+          hasSimilarRemoteQuestionTurn(normalizedQuestion) ||
+          findRecentTranscriptSubmitFingerprint(
+            remoteQuestionKeysRef.current,
+            remoteQuestionKey,
+            now,
+            remoteAnswerDuplicateWindowMs,
+          )
         ) {
           return;
         }
@@ -318,29 +356,33 @@ export function AnswerWorkbench({
       const fermiModeSnapshot = fermiEstimationMode;
       const operationId = crypto.randomUUID();
 
-      setTurns((current) => [
-        ...current,
-        {
-          id: turnId,
-          source,
-          answerModelMode,
-          answerLengthTarget: lengthTarget,
-          fermiEstimationMode: fermiModeSnapshot,
-          profileSlotLabels,
-          companySlotLabels,
-          selfSlotSnapshot,
-          question: normalizedQuestion,
-          classification: null,
-          category: turnCategory,
-          draft: {},
-          finalDraft: null,
-          loading: true,
-          error: null,
-          warning: null,
-          saved: false,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
+      setTurns((current) => {
+        const nextTurns = [
+          ...current,
+          {
+            id: turnId,
+            source,
+            answerModelMode,
+            answerLengthTarget: lengthTarget,
+            fermiEstimationMode: fermiModeSnapshot,
+            profileSlotLabels,
+            companySlotLabels,
+            selfSlotSnapshot,
+            question: normalizedQuestion,
+            classification: null,
+            category: turnCategory,
+            draft: {},
+            finalDraft: null,
+            loading: true,
+            error: null,
+            warning: null,
+            saved: false,
+            createdAt: new Date().toISOString(),
+          },
+        ];
+        turnsRef.current = nextTurns;
+        return nextTurns;
+      });
 
       const quickDraftTimer = window.setTimeout(() => {
         quickDraftTimersRef.current.delete(turnId);
@@ -388,6 +430,29 @@ export function AnswerWorkbench({
         turnCategory = classificationResult.category;
         const answerQuestion =
           classificationResult.question || normalizedQuestion;
+        if (
+          source === "remote-audio" &&
+          hasSimilarRemoteQuestionTurn(answerQuestion, turnId)
+        ) {
+          clearQuickDraftTimer(turnId);
+          controllersRef.current.delete(turnId);
+          remoteQuestionKeysRef.current.set(
+            createTranscriptSubmitFingerprint(answerQuestion),
+            Date.now(),
+          );
+          setTurns((current) => {
+            const nextTurns = current.filter((turn) => turn.id !== turnId);
+            turnsRef.current = nextTurns;
+            return nextTurns;
+          });
+          return;
+        }
+        if (source === "remote-audio") {
+          remoteQuestionKeysRef.current.set(
+            createTranscriptSubmitFingerprint(answerQuestion),
+            Date.now(),
+          );
+        }
         updateTurn(turnId, {
           classification: classificationResult,
           category: classificationResult.category,
@@ -484,6 +549,7 @@ export function AnswerWorkbench({
       autoSource,
       clearQuickDraftTimer,
       fermiEstimationMode,
+      hasSimilarRemoteQuestionTurn,
       question,
       ready,
       selfSlot,

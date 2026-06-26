@@ -15,6 +15,7 @@ import {
   createTranscriptSubmitKey,
   createTranscriptSubmitFingerprint,
   extractLikelyInterviewQuestion,
+  findRecentTranscriptSubmitFingerprint,
   isSubmittableTranscript,
   looksCompleteInterviewQuestion,
   looksLikeInterviewQuestion,
@@ -166,13 +167,14 @@ export function AudioCapturePanel({
       }
       const now = Date.now();
       const fingerprint = createTranscriptSubmitFingerprint(normalizedText);
-      submittedFingerprintsRef.current.forEach((submittedAt, key) => {
-        if (now - submittedAt > remoteTranscriptDuplicateWindowMs) {
-          submittedFingerprintsRef.current.delete(key);
-        }
-      });
-      const submittedAt = submittedFingerprintsRef.current.get(fingerprint);
-      if (submittedAt && now - submittedAt <= remoteTranscriptDuplicateWindowMs) {
+      if (
+        findRecentTranscriptSubmitFingerprint(
+          submittedFingerprintsRef.current,
+          fingerprint,
+          now,
+          remoteTranscriptDuplicateWindowMs,
+        )
+      ) {
         return;
       }
       const submitKey = createTranscriptSubmitKey(id, normalizedText);

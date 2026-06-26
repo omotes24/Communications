@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  areSimilarTranscriptSubmitFingerprints,
   createTranscriptSubmitFingerprint,
   createTranscriptSubmitKey,
   extractLikelyInterviewQuestion,
+  findRecentTranscriptSubmitFingerprint,
   isSubmittableTranscript,
   looksCompleteInterviewQuestion,
   looksLikeInterviewQuestion,
@@ -47,8 +49,45 @@ describe("transcript auto submit helpers", () => {
     expect(
       createTranscriptSubmitFingerprint("では 自己紹介をお願いします。"),
     ).toBe(createTranscriptSubmitFingerprint("自己紹介をお願いします"));
-    expect(remoteTranscriptDuplicateWindowMs).toBe(15_000);
+    expect(remoteTranscriptDuplicateWindowMs).toBe(60_000);
     expect(remoteTranscriptAutoSubmitDelayMs).toBeLessThanOrEqual(1500);
+  });
+
+  it("deduplicates repeated remote questions with noisy prefixes", () => {
+    const fullQuestion = createTranscriptSubmitFingerprint(
+      "学校ってさんの天才の志望動機を教えてください。",
+    );
+    const coreQuestion = createTranscriptSubmitFingerprint(
+      "志望動機を教えてください。",
+    );
+    expect(
+      areSimilarTranscriptSubmitFingerprints(fullQuestion, coreQuestion),
+    ).toBe(true);
+    expect(
+      areSimilarTranscriptSubmitFingerprints(
+        createTranscriptSubmitFingerprint("強みを教えてください。"),
+        createTranscriptSubmitFingerprint("弱みを教えてください。"),
+      ),
+    ).toBe(false);
+
+    const now = Date.now();
+    const fingerprints = new Map([[fullQuestion, now]]);
+    expect(
+      findRecentTranscriptSubmitFingerprint(
+        fingerprints,
+        coreQuestion,
+        now + 1000,
+        remoteTranscriptDuplicateWindowMs,
+      ),
+    ).toBe(fullQuestion);
+    expect(
+      findRecentTranscriptSubmitFingerprint(
+        fingerprints,
+        coreQuestion,
+        now + remoteTranscriptDuplicateWindowMs + 1,
+        remoteTranscriptDuplicateWindowMs,
+      ),
+    ).toBeNull();
   });
 
   it("detects interview question cues before the transcript is finalized", () => {
