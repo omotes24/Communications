@@ -129,16 +129,6 @@ export function AppShell({
                     <span className="hidden sm:inline">タブをしまう</span>
                   </button>
                 ) : null}
-                <span
-                  className={cn(
-                    "hidden rounded-full px-3 py-1.5 text-xs font-semibold sm:inline-flex",
-                    isDark
-                      ? "bg-white/10 text-white/70"
-                      : "bg-[var(--accent-soft)] text-[var(--accent)]",
-                  )}
-                >
-                  AI READY
-                </span>
                 <AccountMenu />
               </div>
             </div>

@@ -22,6 +22,8 @@ type CheckoutNotice = {
   message: string;
 };
 
+const japanTimeZone = "Asia/Tokyo";
+
 export default async function UsagePage({
   searchParams,
 }: {
@@ -252,6 +254,7 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("ja-JP", {
     dateStyle: "short",
     timeStyle: "short",
+    timeZone: japanTimeZone,
   }).format(new Date(value));
 }
 
@@ -259,17 +262,16 @@ function buildDailyUsageChart(
   usageEvents: Awaited<ReturnType<typeof listUsageEvents>>,
   days: number,
 ) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayKey = formatDateKey(new Date());
   const rows = Array.from({ length: days }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - (days - 1 - index));
+    const key = addDaysToDateKey(todayKey, -(days - 1 - index));
     return {
-      key: formatDateKey(date),
+      key,
       label: new Intl.DateTimeFormat("ja-JP", {
         month: "numeric",
         day: "numeric",
-      }).format(date),
+        timeZone: japanTimeZone,
+      }).format(dateFromTokyoDateKey(key)),
       total: 0,
     };
   });
@@ -287,9 +289,19 @@ function buildDailyUsageChart(
 
 function formatDateKey(value: Date) {
   return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Tokyo",
+    timeZone: japanTimeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(value);
+}
+
+function dateFromTokyoDateKey(key: string): Date {
+  return new Date(`${key}T03:00:00.000Z`);
+}
+
+function addDaysToDateKey(key: string, days: number): string {
+  const date = dateFromTokyoDateKey(key);
+  date.setUTCDate(date.getUTCDate() + days);
+  return formatDateKey(date);
 }
