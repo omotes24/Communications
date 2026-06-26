@@ -71,6 +71,30 @@ describe("billing checkout settlement", () => {
     });
   });
 
+  it("settles an existing Checkout Session created before a token grant change", async () => {
+    mocks.retrieveSession.mockResolvedValue({
+      ...paidSession,
+      metadata: {
+        ...paidSession.metadata,
+        tokenAmount: "900000",
+      },
+    });
+
+    await expect(
+      settleCheckoutSessionForUser("cs_test_123", userId),
+    ).resolves.toBe("settled");
+
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "grant_purchased_tokens",
+      expect.objectContaining({
+        p_user_id: userId,
+        p_amount: 900000,
+        p_plan_id: "standard",
+        p_amount_jpy: 3000,
+      }),
+    );
+  });
+
   it("does not settle a Checkout Session owned by another user", async () => {
     await expect(
       settleCheckoutSessionForUser(

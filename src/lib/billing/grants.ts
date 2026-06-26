@@ -3,7 +3,10 @@ import "server-only";
 import Stripe from "stripe";
 
 import { createStripeClient } from "@/lib/billing/stripe";
-import { getBillingPlan } from "@/lib/billing/plans";
+import {
+  getBillingPlan,
+  isAllowedTokenAmountForPlan,
+} from "@/lib/billing/plans";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 
 export type CheckoutSettlementResult = "settled" | "not_paid";
@@ -67,14 +70,18 @@ export async function grantTokensForCheckoutSession(
   }
 
   const metadataTokenAmount = Number(session.metadata?.tokenAmount);
-  if (metadataTokenAmount !== plan.tokenAmount) {
+  if (
+    !Number.isSafeInteger(metadataTokenAmount) ||
+    metadataTokenAmount <= 0 ||
+    !isAllowedTokenAmountForPlan(plan, metadataTokenAmount)
+  ) {
     throw new Error("Stripe Checkout Session token amount does not match.");
   }
 
   const supabase = createSupabaseServiceClient();
   const { error } = await supabase.rpc("grant_purchased_tokens", {
     p_user_id: userId,
-    p_amount: plan.tokenAmount,
+    p_amount: metadataTokenAmount,
     p_request_id: `stripe:${session.id}`,
     p_plan_id: plan.id,
     p_amount_jpy: plan.amountJpy,
