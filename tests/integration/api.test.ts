@@ -244,7 +244,7 @@ describe("API routes in mock mode", () => {
       delay: "low",
     });
     expect(body.session.audio.input.noise_reduction).toEqual({
-      type: "near_field",
+      type: "far_field",
     });
     expect(body.session.audio.input.turn_detection).toBeNull();
   });

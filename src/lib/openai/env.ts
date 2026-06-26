@@ -22,7 +22,7 @@ const serverEnvSchema = z.object({
     .default("low"),
   OPENAI_AUDIO_NOISE_REDUCTION: z
     .enum(["near_field", "far_field", "off"])
-    .default("near_field"),
+    .default("far_field"),
   OPENAI_CLASSIFIER_MODEL: z.string().default("gpt-5.4-nano"),
   OPENAI_ANSWER_MODEL: z.string().default("gpt-5.4-mini"),
   OPENAI_RESEARCH_MODEL: z.string().default("gpt-5.5"),

@@ -1,6 +1,7 @@
 export const remoteTranscriptAutoSubmitDelayMs = 1200;
 export const remoteTranscriptQuestionCueDelayMs = 450;
 export const remoteTranscriptMinimumAutoSubmitGapMs = 900;
+export const remoteTranscriptDuplicateWindowMs = 15_000;
 
 const minimumTranscriptLength = 8;
 const directQuestionPatterns = [
@@ -28,7 +29,7 @@ const questionStartPatterns = [
   /(?:入社|職種|職|コース|当社|弊社|将来|人材)/g,
 ];
 const leadingFillerPattern =
-  /^(?:(?:はい|では|それでは|じゃあ|次に|続いて|まず|最初に|最後に|ありがとうございます|承知しました|ちなみに)[、,\s。]*)+/;
+  /^(?:(?:はい|いいよ|よいです|うん|ええ|では|それでは|じゃあ|次に|続いて|まず|最初に|最後に|ありがとうございます|承知しました|ちなみに)[、,\s。]*)+/;
 const japaneseCharacterClass = "\u3040-\u30ff\u3400-\u9fff々〆〇ー";
 const japaneseInternalSpacePattern = new RegExp(
   `([${japaneseCharacterClass}])\\s+(?=[${japaneseCharacterClass}])`,
@@ -136,4 +137,10 @@ export function extractLikelyInterviewQuestion(text: string): string {
 
 export function createTranscriptSubmitKey(id: string, text: string): string {
   return `${id}:${normalizeTranscriptForSubmit(text)}`;
+}
+
+export function createTranscriptSubmitFingerprint(text: string): string {
+  return trimLeadingFiller(text)
+    .toLowerCase()
+    .replace(/[、。！？?？\s.,!「」『』（）()[\]{}]/g, "");
 }

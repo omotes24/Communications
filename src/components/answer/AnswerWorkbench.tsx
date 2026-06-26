@@ -27,7 +27,10 @@ import {
   type QuestionClassification,
 } from "@/lib/schemas/interview";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
-import { normalizeCommonTranscriptErrors } from "@/components/audio/transcript-auto-submit";
+import {
+  createTranscriptSubmitFingerprint,
+  normalizeCommonTranscriptErrors,
+} from "@/components/audio/transcript-auto-submit";
 import { cn } from "@/lib/utils";
 
 type SsePayload =
@@ -66,6 +69,8 @@ const answerModelOptions: Array<{
         { mode: "standard", label: "5.4 mini", description: "高速" },
         { mode: "fermi", label: "5.5", description: "高精度" },
       ];
+
+const remoteAnswerDuplicateWindowMs = 15_000;
 
 type AnswerTurn = {
   id: string;
@@ -204,6 +209,7 @@ export function AnswerWorkbench({
   const [selfSlot, setSelfSlot] = useState("");
   const [manualNotice, setManualNotice] = useState<string | null>(null);
   const lastAutoRunRef = useRef<string | null>(null);
+  const remoteQuestionKeysRef = useRef<Map<string, number>>(new Map());
   const answerChatRef = useRef<HTMLElement | null>(null);
   const quickDraftTimersRef = useRef<Map<string, number>>(new Map());
   const controllersRef = useRef<Map<string, AbortController>>(new Map());
@@ -275,6 +281,25 @@ export function AnswerWorkbench({
       if (!normalizedQuestion) {
         setManualNotice("質問を入力してください。");
         return;
+      }
+
+      if (source === "remote-audio" && requestedTurnId) {
+        const now = Date.now();
+        const remoteQuestionKey =
+          createTranscriptSubmitFingerprint(normalizedQuestion);
+        remoteQuestionKeysRef.current.forEach((submittedAt, key) => {
+          if (now - submittedAt > remoteAnswerDuplicateWindowMs) {
+            remoteQuestionKeysRef.current.delete(key);
+          }
+        });
+        const submittedAt = remoteQuestionKeysRef.current.get(remoteQuestionKey);
+        if (
+          submittedAt &&
+          now - submittedAt <= remoteAnswerDuplicateWindowMs
+        ) {
+          return;
+        }
+        remoteQuestionKeysRef.current.set(remoteQuestionKey, now);
       }
 
       const turnId = requestedTurnId ?? crypto.randomUUID();

@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createTranscriptSubmitFingerprint,
   createTranscriptSubmitKey,
   extractLikelyInterviewQuestion,
   isSubmittableTranscript,
   looksLikeInterviewQuestion,
   normalizeTranscriptForSubmit,
   remoteTranscriptAutoSubmitDelayMs,
+  remoteTranscriptDuplicateWindowMs,
   remoteTranscriptMinimumAutoSubmitGapMs,
   remoteTranscriptQuestionCueDelayMs,
 } from "@/components/audio/transcript-auto-submit";
@@ -38,6 +40,10 @@ describe("transcript auto submit helpers", () => {
     expect(createTranscriptSubmitKey("pending", "自己紹介")).not.toBe(
       createTranscriptSubmitKey("pending", "自己紹介をお願いします"),
     );
+    expect(
+      createTranscriptSubmitFingerprint("では 自己紹介をお願いします。"),
+    ).toBe(createTranscriptSubmitFingerprint("自己紹介をお願いします"));
+    expect(remoteTranscriptDuplicateWindowMs).toBe(15_000);
     expect(remoteTranscriptAutoSubmitDelayMs).toBeLessThanOrEqual(1500);
   });
 

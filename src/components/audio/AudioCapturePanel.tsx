@@ -13,10 +13,12 @@ import {
 } from "@/components/audio/transcript-items";
 import {
   createTranscriptSubmitKey,
+  createTranscriptSubmitFingerprint,
   extractLikelyInterviewQuestion,
   isSubmittableTranscript,
   looksLikeInterviewQuestion,
   normalizeTranscriptForSubmit,
+  remoteTranscriptDuplicateWindowMs,
   remoteTranscriptMinimumAutoSubmitGapMs,
   remoteTranscriptQuestionCueDelayMs,
 } from "@/components/audio/transcript-auto-submit";
@@ -57,6 +59,7 @@ export function AudioCapturePanel({
   const [error, setError] = useState<string | null>(null);
   const isDark = tone === "dark";
   const submittedIdsRef = useRef<Set<string>>(new Set());
+  const submittedFingerprintsRef = useRef<Map<string, number>>(new Map());
   const pendingQuestionCueSubmitTimerRef = useRef<number | null>(null);
   const lastAutoSubmittedAtRef = useRef(0);
   const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
@@ -160,6 +163,17 @@ export function AudioCapturePanel({
       if (!isSubmittableTranscript(normalizedText)) {
         return;
       }
+      const now = Date.now();
+      const fingerprint = createTranscriptSubmitFingerprint(normalizedText);
+      submittedFingerprintsRef.current.forEach((submittedAt, key) => {
+        if (now - submittedAt > remoteTranscriptDuplicateWindowMs) {
+          submittedFingerprintsRef.current.delete(key);
+        }
+      });
+      const submittedAt = submittedFingerprintsRef.current.get(fingerprint);
+      if (submittedAt && now - submittedAt <= remoteTranscriptDuplicateWindowMs) {
+        return;
+      }
       const submitKey = createTranscriptSubmitKey(id, normalizedText);
       if (submittedIdsRef.current.has(submitKey)) {
         return;
@@ -172,7 +186,8 @@ export function AudioCapturePanel({
         return;
       }
       submittedIdsRef.current.add(submitKey);
-      lastAutoSubmittedAtRef.current = Date.now();
+      submittedFingerprintsRef.current.set(fingerprint, now);
+      lastAutoSubmittedAtRef.current = now;
       resumeBaselineTextRef.current =
         latestRemoteTranscriptTextRef.current || normalizedText;
       onRemoteTranscript(normalizedText);
