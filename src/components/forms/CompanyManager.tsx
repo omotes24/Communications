@@ -402,7 +402,7 @@ export function CompanyManager() {
                 >
                   <button
                     type="button"
-                    onClick={() => selectCompany(company)}
+                    onClick={() => selectCompany(company, true)}
                     className="block w-full text-left"
                   >
                     <span className="flex items-center justify-between gap-2">

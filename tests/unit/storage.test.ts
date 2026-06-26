@@ -4,7 +4,10 @@ import {
   APP_STORAGE_EVENT,
   clearAppStorage,
   defaultStorage,
+  getActiveCompany,
   saveAppStorage,
+  setActiveCompany,
+  setSelectedCompanies,
   toggleSelectedCompany,
   toggleSelectedProfile,
   upsertCompany,
@@ -80,11 +83,57 @@ describe("browser storage helpers", () => {
       "company-a",
       "company-b",
     ]);
+    const companyAIsPrimary = toggleSelectedCompany(withCompanies, "company-a");
     const stillHasOneCompany = toggleSelectedCompany(
-      toggleSelectedCompany(withCompanies, "company-a"),
-      "company-b",
+      companyAIsPrimary,
+      "company-a",
     );
     expect(stillHasOneCompany.selectedCompanyIds).toEqual(["company-b"]);
+  });
+
+  it("uses the active company for interview even when multiple companies are selected", () => {
+    const companyA = {
+      ...createEmptyCompanyProfile(),
+      id: "company-a",
+      companyName: "A社",
+    };
+    const companyB = {
+      ...createEmptyCompanyProfile(),
+      id: "company-b",
+      companyName: "B社",
+    };
+    const withCompanies = upsertCompany(
+      upsertCompany(defaultStorage, companyA),
+      companyB,
+    );
+    const selectedForComparison = setSelectedCompanies(withCompanies, [
+      "company-a",
+      "company-b",
+    ]);
+
+    const next = setActiveCompany(selectedForComparison, "company-b");
+
+    expect(next.selectedCompanyIds).toEqual(["company-a", "company-b"]);
+    expect(next.activeCompanyId).toBe("company-b");
+    expect(getActiveCompany(next)?.companyName).toBe("B社");
+  });
+
+  it("makes a selected secondary company active instead of falling back to slot order", () => {
+    const companyA = { ...createEmptyCompanyProfile(), id: "company-a" };
+    const companyB = { ...createEmptyCompanyProfile(), id: "company-b" };
+    const withCompanies = setActiveCompany(
+      setSelectedCompanies(
+        upsertCompany(upsertCompany(defaultStorage, companyA), companyB),
+        ["company-a", "company-b"],
+      ),
+      "company-a",
+    );
+
+    const next = toggleSelectedCompany(withCompanies, "company-b");
+
+    expect(next.selectedCompanyIds).toEqual(["company-a", "company-b"]);
+    expect(next.activeCompanyId).toBe("company-b");
+    expect(getActiveCompany(next)?.id).toBe("company-b");
   });
 
   it("notifies same-tab subscribers when storage changes", () => {
