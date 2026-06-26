@@ -243,6 +243,9 @@ describe("API routes in mock mode", () => {
       language: "ja",
       delay: "low",
     });
+    expect(body.session.audio.input.transcription.prompt).toContain(
+      "フェルミ推定",
+    );
     expect(body.session.audio.input.noise_reduction).toEqual({
       type: "far_field",
     });

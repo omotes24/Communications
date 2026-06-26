@@ -12,8 +12,14 @@ const directQuestionPatterns = [
   /[?？]/,
   /(?:ですか|ますか|でしょうか|ましたか|ありますか|できますか|なりますか|いましたか)/,
 ];
+const completeQuestionEndPatterns = [
+  /[?？]\s*$/,
+  /(?:ですか|ますか|でしょうか|ましたか|ありますか|できますか|なりますか|いましたか)[。.!！?？\s]*$/,
+  /(?:教えて|聞かせて|話して|説明して|述べて|挙げて|推定して|見積もって|考えて|答えて)(?:みて)?(?:ください|下さい)[。.!！?？\s]*$/,
+  /(?:お願いします|お願いいたします)[。.!！?？\s]*$/,
+];
 const askVerbPatterns = [
-  /(?:教えて|聞かせて|話して|説明して|伺っても|お聞かせ|お話し|お伺い|述べて|挙げて)/,
+  /(?:教えて|聞かせて|話して|説明して|伺っても|お聞かせ|お話し|お伺い|述べて|挙げて|推定して|推定してみて|見積もって|考えて|答えて)/,
   /(?:お願いします|お願いいたします)/,
 ];
 const reasoningCuePatterns = [
@@ -24,13 +30,16 @@ const topicCuePatterns = [
   /(?:自己紹介|自己PR|自己ピーアール|志望動機|ガクチカ|学生時代|経験|実績|強み|弱み|長所|短所)/,
   /(?:挫折|苦労|研究|リーダー|チーム|困難|失敗|成功|学んだこと|取り組み|課題|工夫|役割|成果)/,
   /(?:あなた|ご自身|自身|キャリア|将来|価値観|人材|職種|職|コース|当社|弊社)/,
+  /(?:フェルミ|推定|概算|見積もり|見積り|市場規模|売上|人数|個数|店舗数|台数|本数|確率)/,
 ];
 const questionStartPatterns = [
   /(?:他社|競合|同業)[^。！？?？]{0,40}(?:比べて|比較して)/g,
   /(?:その経験|この経験|その強み|この強み|その弱み|この弱み)[^。！？?？]{0,40}(?:どう|活かせる|教えて)/g,
+  /(?:日本|国内|世界|ある|次の)?[^。！？?？]{0,30}(?:数|人数|個数|店舗数|台数|本数|市場規模|売上)[^。！？?？]{0,40}(?:推定|見積も)/g,
   /(?:なぜ|どうして|どのよう|どんな|何を|何が|何で|理由|きっかけ|どう)/g,
   /(?:自己紹介|自己PR|自己ピーアール|志望動機|ガクチカ|学生時代|経験|実績|強み|弱み|長所|短所)/g,
   /(?:挫折|苦労|研究|リーダー|チーム|困難|失敗|成功|学んだこと|取り組み|課題|工夫|役割|成果)/g,
+  /(?:フェルミ|推定|概算|見積もり|見積り|市場規模|売上|人数|個数|店舗数|台数|本数|確率)/g,
   /(?:入社|職種|職|コース|当社|弊社|将来|人材)/g,
 ];
 const leadingFillerPattern =
@@ -42,10 +51,16 @@ const japaneseInternalSpacePattern = new RegExp(
 );
 const spaceBeforeJapanesePunctuationPattern = /[\s　]+([、。！？?？])/g;
 const spaceAfterJapanesePunctuationPattern = /([、。！？?？])[\s　]+/g;
+const duplicatedRequestEndingPattern =
+  /(ください|下さい)([。.!！?？\s　]*)\1(?=($|[。.!！?？\s　]))/g;
 const localQuestionIntroPattern =
   /(?:では|それでは|じゃあ|次に|続いて|まず|最初に|最後に|ちなみに)/g;
 const contextQuestionStartPattern =
   /^(?:その経験|この経験|その強み|この強み|その弱み|この弱み)/;
+const nonInterviewMetaPatterns = [
+  /(?:質問|聞き方|言い方)[^。！？?？]{0,24}(?:簡潔|短く|短め|もう少し|もうちょっと|もう一度|言い直|噛み砕|トリガー|キーワード)/,
+  /(?:トリガーワード|MCテーマ|同じ質問でいい|もう一回言うわ|ごめん)/,
+];
 
 export function normalizeCommonTranscriptErrors(text: string): string {
   return text
@@ -62,6 +77,7 @@ export function normalizeTranscriptForSubmit(text: string): string {
     .replace(japaneseInternalSpacePattern, "$1")
     .replace(spaceBeforeJapanesePunctuationPattern, "$1")
     .replace(spaceAfterJapanesePunctuationPattern, "$1")
+    .replace(duplicatedRequestEndingPattern, "$1$2")
     .trim();
 }
 
@@ -71,6 +87,10 @@ export function isSubmittableTranscript(text: string): boolean {
 
 function hasDirectQuestionCue(text: string): boolean {
   return directQuestionPatterns.some((pattern) => pattern.test(text));
+}
+
+function looksLikeNonInterviewMeta(text: string): boolean {
+  return nonInterviewMetaPatterns.some((pattern) => pattern.test(text));
 }
 
 function questionCueScore(text: string): number {
@@ -92,7 +112,18 @@ export function looksLikeInterviewQuestion(text: string): boolean {
   if (!isSubmittableTranscript(normalized)) {
     return false;
   }
+  if (looksLikeNonInterviewMeta(normalized)) {
+    return false;
+  }
   return hasDirectQuestionCue(normalized) || questionCueScore(normalized) >= 3;
+}
+
+export function looksCompleteInterviewQuestion(text: string): boolean {
+  const normalized = normalizeTranscriptForSubmit(text);
+  if (!looksLikeInterviewQuestion(normalized)) {
+    return false;
+  }
+  return completeQuestionEndPatterns.some((pattern) => pattern.test(normalized));
 }
 
 function trimLeadingFiller(text: string): string {

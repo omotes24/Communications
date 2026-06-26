@@ -16,6 +16,7 @@ import {
   createTranscriptSubmitFingerprint,
   extractLikelyInterviewQuestion,
   isSubmittableTranscript,
+  looksCompleteInterviewQuestion,
   looksLikeInterviewQuestion,
   normalizeTranscriptForSubmit,
   remoteTranscriptDuplicateWindowMs,
@@ -214,9 +215,13 @@ export function AudioCapturePanel({
     const normalizedText = extractLikelyInterviewQuestion(
       getTextAfterResumeBaseline(latestRemoteItem.text),
     );
+    if (!isSubmittableTranscript(normalizedText)) {
+      return;
+    }
+    const isCompleteQuestion = looksCompleteInterviewQuestion(normalizedText);
     if (
-      !isSubmittableTranscript(normalizedText) ||
-      !looksLikeInterviewQuestion(normalizedText)
+      !looksLikeInterviewQuestion(normalizedText) ||
+      (!latestRemoteItem.final && !isCompleteQuestion)
     ) {
       return;
     }
@@ -226,13 +231,16 @@ export function AudioCapturePanel({
     };
 
     if (latestRemoteItem.final) {
+      if (!isCompleteQuestion) {
+        return;
+      }
       clearPendingRemoteSubmitTimers();
       submitRemoteTranscript(latestRemoteItem.id, normalizedText, false);
       return;
     }
 
     if (
-      looksLikeInterviewQuestion(normalizedText) &&
+      isCompleteQuestion &&
       !pendingQuestionCueSubmitTimerRef.current
     ) {
       const remainingGapMs =

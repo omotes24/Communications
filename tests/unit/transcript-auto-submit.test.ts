@@ -5,6 +5,7 @@ import {
   createTranscriptSubmitKey,
   extractLikelyInterviewQuestion,
   isSubmittableTranscript,
+  looksCompleteInterviewQuestion,
   looksLikeInterviewQuestion,
   normalizeTranscriptForSubmit,
   remoteTranscriptAutoSubmitDelayMs,
@@ -79,9 +80,23 @@ describe("transcript auto submit helpers", () => {
         "当社であなたの強みがどう生きるか教えてください",
       ),
     ).toBe(true);
+    expect(
+      looksLikeInterviewQuestion(
+        "日本にある次の数を推定してみてください",
+      ),
+    ).toBe(true);
     expect(looksLikeInterviewQuestion("本日はよろしくお願いいたします。")).toBe(
       false,
     );
+    expect(looksCompleteInterviewQuestion("どのような工夫をして")).toBe(false);
+    expect(
+      looksCompleteInterviewQuestion(
+        "どのような工夫をして生徒さんを集めましたか?",
+      ),
+    ).toBe(true);
+    expect(
+      looksLikeInterviewQuestion("質問をもうちょっと簡潔にしてください"),
+    ).toBe(false);
     expect(remoteTranscriptMinimumAutoSubmitGapMs).toBeLessThanOrEqual(1000);
   });
 
@@ -130,6 +145,19 @@ describe("transcript auto submit helpers", () => {
         "では自己紹介をお願いします。はい、表紘太朗と申します。慶應義塾大学で機械学習の研究をしています。",
       ),
     ).toBe("自己紹介をお願いします。");
+  });
+
+  it("ignores meta speech and extracts the latest complete question", () => {
+    expect(
+      normalizeTranscriptForSubmit(
+        "学生時代に取り組んだ経験を教えてください。ください",
+      ),
+    ).toBe("学生時代に取り組んだ経験を教えてください。");
+    expect(
+      extractLikelyInterviewQuestion(
+        "同じ質問でいい では学生時代中チームで取り組んだ経験を教えてください。ください トリガーワード ああ では塾事業を新しく始めるに当たって最初の生徒さんを確保する上でどのような工夫をして生徒さんを集めましたか? あれ? 質問もちょっともうちょっと簡潔に MCテーマで推定してください。時間は5分差し上げます。ごめん、もう一回言うわ。はいでは日本にある次の数を推定してみてください。考える時間は5分差し上げます。",
+      ),
+    ).toBe("日本にある次の数を推定してみてください。");
   });
 
   it("merges adjacent finalized transcript fragments for reading", () => {

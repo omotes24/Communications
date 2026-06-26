@@ -1,5 +1,6 @@
 import { requireApiUser } from "@/lib/auth/server";
 import { getServerEnv, assertOpenAIKey } from "@/lib/openai/env";
+import { japaneseInterviewTranscriptionPrompt } from "@/lib/openai/transcription";
 import { jsonError, toPublicError } from "@/lib/privacy/logging";
 import { estimateRealtimeSessionTokens } from "@/lib/tokens/ai-estimates";
 import {
@@ -26,6 +27,7 @@ export async function POST(request: Request): Promise<Response> {
     const transcriptionConfig = {
       model: env.TRANSCRIPTION_MODEL,
       language: "ja",
+      prompt: japaneseInterviewTranscriptionPrompt,
       ...(env.TRANSCRIPTION_MODEL === "gpt-realtime-whisper"
         ? { delay: env.OPENAI_TRANSCRIPTION_DELAY }
         : {}),

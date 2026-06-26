@@ -1,6 +1,7 @@
 import { requireApiUser } from "@/lib/auth/server";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
+import { japaneseInterviewTranscriptionPrompt } from "@/lib/openai/transcription";
 import { jsonError, toPublicError } from "@/lib/privacy/logging";
 import { estimateAudioTokens } from "@/lib/tokens/ai-estimates";
 import {
@@ -52,6 +53,7 @@ export async function POST(request: Request): Promise<Response> {
         file: audio,
         model: env.TRANSCRIPTION_MODEL,
         language: "ja",
+        prompt: japaneseInterviewTranscriptionPrompt,
       });
 
       await settleAiTokens(reservation, { audioSeconds: estimate.audioSeconds });
