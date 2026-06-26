@@ -53,6 +53,35 @@ describe("auth confirmation routes", () => {
     );
   });
 
+  it("redirects recovery links to the password reset page", async () => {
+    const response = await confirmGET(
+      request(
+        "https://communications-umber.vercel.app/auth/confirm?token_hash=hash&type=recovery&next=/account",
+      ),
+    );
+
+    expect(authMocks.verifyOtp).toHaveBeenCalledWith({
+      token_hash: "hash",
+      type: "recovery",
+    });
+    expect(response.headers.get("location")).toBe(
+      "https://communications-umber.vercel.app/auth/reset-password",
+    );
+  });
+
+  it("keeps old password reset code links off the protected account page", async () => {
+    const response = await confirmGET(
+      request(
+        "https://communications-umber.vercel.app/auth/confirm?code=abc&next=/account",
+      ),
+    );
+
+    expect(authMocks.exchangeCodeForSession).toHaveBeenCalledWith("abc");
+    expect(response.headers.get("location")).toBe(
+      "https://communications-umber.vercel.app/auth/reset-password",
+    );
+  });
+
   it("falls back to the profile page for unsafe next paths", async () => {
     const response = await confirmGET(
       request(
