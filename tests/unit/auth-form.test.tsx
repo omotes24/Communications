@@ -148,4 +148,25 @@ describe("AuthForm", () => {
       },
     });
   });
+
+  it("sends password reset emails to the dedicated reset password page", async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://communications-umber.vercel.app/";
+    authMocks.resetPasswordForEmail.mockResolvedValue({ error: null });
+
+    render(<AuthForm mode="forgot-password" />);
+    fireEvent.change(screen.getByLabelText("メールアドレス"), {
+      target: { value: "user@example.com" },
+    });
+
+    submitForm("再設定メールを送る");
+    await screen.findByText("再設定メールを送信しました。");
+
+    expect(authMocks.resetPasswordForEmail).toHaveBeenCalledWith(
+      "user@example.com",
+      {
+        redirectTo:
+          "https://communications-umber.vercel.app/auth/reset-password",
+      },
+    );
+  });
 });

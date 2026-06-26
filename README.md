@@ -75,8 +75,10 @@ AuthのURL設定:
 - Redirect URLs:
   - `https://communications-umber.vercel.app/auth/confirm`
   - `https://communications-umber.vercel.app/auth/callback`
+  - `https://communications-umber.vercel.app/auth/reset-password`
   - `http://localhost:3000/auth/confirm`
   - `http://localhost:3000/auth/callback`
+  - `http://localhost:3000/auth/reset-password`
 
 Confirm signupメールテンプレートのボタンURLは、標準テンプレートの場合は `{{ .ConfirmationURL }}` を使います。独自リンクにする場合は `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/profile` にします。
 

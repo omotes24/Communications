@@ -78,6 +78,7 @@ ProductionのSupabase Dashboardで、Auth -> URL Configurationを次のように
 - Redirect URLs:
   - `https://communications-umber.vercel.app/auth/confirm`
   - `https://communications-umber.vercel.app/auth/callback`
+  - `https://communications-umber.vercel.app/auth/reset-password`
 
 Confirm signupメールテンプレートは、標準の `{{ .ConfirmationURL }}` を使うか、独自リンクの場合は `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/profile` を使います。空のhref、`about:blank`、`{{ .RedirectTo }}` だけのリンクは使わないでください。
 

@@ -54,6 +54,10 @@ export async function completeAuthRedirect(
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const type = getEmailOtpType(url.searchParams.get("type"));
+  const successNext =
+    type === "recovery" || (code && next === "/account")
+      ? "/auth/reset-password"
+      : next;
 
   try {
     const supabase = await createSupabaseServerClient();
@@ -63,7 +67,7 @@ export async function completeAuthRedirect(
       if (error) {
         return redirectToAuthError(request);
       }
-      return redirectTo(request, next);
+      return redirectTo(request, successNext);
     }
 
     if (tokenHash && type) {
@@ -74,7 +78,7 @@ export async function completeAuthRedirect(
       if (error) {
         return redirectToAuthError(request);
       }
-      return redirectTo(request, next);
+      return redirectTo(request, successNext);
     }
   } catch {
     return redirectToAuthError(request);
