@@ -108,6 +108,10 @@ export function estimateGroupDiscussionTopicTokens(
     [
       body.category,
       body.difficulty,
+      body.topicType,
+      body.practiceMode,
+      String(body.durationMinutes),
+      JSON.stringify(body.evaluationFocus),
       body.companyContext,
       body.profileContext,
     ].join("\n"),
@@ -122,6 +126,8 @@ export function estimateGroupDiscussionAiTurnTokens(
     "group-discussion",
     [
       body.session.topic,
+      body.session.currentPhase,
+      body.remainingSeconds === undefined ? "" : String(body.remainingSeconds),
       JSON.stringify(body.session.participants),
       JSON.stringify(body.session.utterances.slice(-8)),
     ].join("\n"),
@@ -138,6 +144,8 @@ export function estimateGroupDiscussionFinalizeTokens(
       body.session.topic,
       JSON.stringify(body.session.participants),
       JSON.stringify(body.session.utterances),
+      body.finalAnswer ?? body.session.finalAnswer,
+      body.presentationText ?? body.session.presentationText,
     ].join("\n"),
     2400,
   );
