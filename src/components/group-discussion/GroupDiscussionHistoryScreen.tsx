@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, MessageSquareText, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, MessageSquareText, RotateCcw, Target, Trash2 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
   deleteLocalGroupDiscussionSession,
   loadLocalGroupDiscussionSessions,
+  saveLocalGroupDiscussionSession,
 } from "@/lib/group-discussion/local-store";
 import type { GroupDiscussionSessionRecord } from "@/lib/schemas/groupDiscussion";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
@@ -22,7 +24,40 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
+function scoreDeltaLabel(
+  session: GroupDiscussionSessionRecord,
+  sessions: GroupDiscussionSessionRecord[],
+): string | null {
+  const currentScore = session.finalEvaluation?.totalScore;
+  if (typeof currentScore !== "number") {
+    return null;
+  }
+  const currentTime = new Date(session.createdAt).getTime();
+  const previous = sessions
+    .filter(
+      (item) =>
+        item.id !== session.id &&
+        item.topic === session.topic &&
+        typeof item.finalEvaluation?.totalScore === "number" &&
+        new Date(item.createdAt).getTime() < currentTime,
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )[0];
+  const previousScore = previous?.finalEvaluation?.totalScore;
+  if (typeof previousScore !== "number") {
+    return null;
+  }
+  const delta = currentScore - previousScore;
+  if (delta === 0) {
+    return "前回比 ±0";
+  }
+  return `前回比 ${delta > 0 ? "+" : ""}${delta}`;
+}
+
 export function GroupDiscussionHistoryScreen() {
+  const router = useRouter();
   const { ready, storage, actions } = useAppStorage();
   const [localSessions, setLocalSessions] = useState<
     GroupDiscussionSessionRecord[]
@@ -48,6 +83,91 @@ export function GroupDiscussionHistoryScreen() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   }, [localSessions, storage.groupDiscussionSessions]);
+
+  function retrySameTheme(session: GroupDiscussionSessionRecord) {
+    const now = new Date().toISOString();
+    const next: GroupDiscussionSessionRecord = {
+      ...session,
+      id: crypto.randomUUID(),
+      status: "active",
+      utterances: [],
+      discussionMap: {
+        nodes: [
+          {
+            id: "topic",
+            type: "topic",
+            label: session.topic,
+            evidenceUtteranceIds: [],
+          },
+        ],
+        edges: [],
+      },
+      metrics: null,
+      finalEvaluation: null,
+      currentPhase: "intro",
+      phaseHistory: [{ phase: "intro", startedAt: now, endedAt: null }],
+      whiteboardNotes: "",
+      finalAnswer: "",
+      presentationText: "",
+      createdAt: now,
+      startedAt: now,
+      endedAt: null,
+      updatedAt: now,
+    };
+    actions.saveGroupDiscussionSession(next);
+    setLocalSessions(saveLocalGroupDiscussionSession(next));
+    router.push(`/group-discussion/session/${next.id}`);
+  }
+
+  function retryWeaknessDrill(session: GroupDiscussionSessionRecord) {
+    const drill = (session.recommendedDrills ?? [])[0];
+    if (!drill) {
+      retrySameTheme(session);
+      return;
+    }
+    const now = new Date().toISOString();
+    const next: GroupDiscussionSessionRecord = {
+      ...session,
+      id: crypto.randomUUID(),
+      mode: "solo",
+      practiceMode: "one_person_drill",
+      status: "active",
+      topic: `${drill}：${session.topic}`,
+      durationMinutes: 10,
+      participants: session.participants.filter(
+        (participant) => participant.type === "user",
+      ),
+      aiParticipantCount: 0,
+      aiPersonas: [],
+      utterances: [],
+      discussionMap: {
+        nodes: [
+          {
+            id: "topic",
+            type: "topic",
+            label: `${drill}：${session.topic}`,
+            evidenceUtteranceIds: [],
+          },
+        ],
+        edges: [],
+      },
+      metrics: null,
+      finalEvaluation: null,
+      currentPhase: "intro",
+      phaseHistory: [{ phase: "intro", startedAt: now, endedAt: null }],
+      whiteboardNotes: "",
+      finalAnswer: "",
+      presentationText: "",
+      recommendedDrills: [],
+      createdAt: now,
+      startedAt: now,
+      endedAt: null,
+      updatedAt: now,
+    };
+    actions.saveGroupDiscussionSession(next);
+    setLocalSessions(saveLocalGroupDiscussionSession(next));
+    router.push(`/group-discussion/session/${next.id}`);
+  }
 
   return (
     <div className="grid gap-5">
@@ -97,18 +217,48 @@ export function GroupDiscussionHistoryScreen() {
                     ? `総合${session.finalEvaluation.totalScore}`
                     : "評価未作成"}
                 </p>
+                {scoreDeltaLabel(session, sessions) ? (
+                  <p className="mt-2 text-xs font-semibold text-[var(--accent)]">
+                    {scoreDeltaLabel(session, sessions)}
+                  </p>
+                ) : null}
+                {(session.recommendedDrills ?? []).length > 0 ? (
+                  <p className="mt-2 text-xs font-semibold text-[#86868b]">
+                    次ドリル: {session.recommendedDrills[0]}
+                  </p>
+                ) : null}
               </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  actions.deleteGroupDiscussionSession(session.id);
-                  setLocalSessions(deleteLocalGroupDiscussionSession(session.id));
-                }}
-                className="inline-flex h-10 w-fit items-center gap-2 rounded-full bg-red-50 px-4 text-sm font-semibold text-red-700"
-              >
-                <Trash2 className="h-4 w-4" aria-hidden />
-                削除
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => retrySameTheme(session)}
+                  className="inline-flex h-10 w-fit items-center gap-2 rounded-full bg-[#1d1d1f] px-4 text-sm font-semibold text-white"
+                >
+                  <RotateCcw className="h-4 w-4" aria-hidden />
+                  同じテーマ
+                </button>
+                {(session.recommendedDrills ?? []).length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => retryWeaknessDrill(session)}
+                    className="inline-flex h-10 w-fit items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[#1d1d1f] ring-1 ring-black/[0.08]"
+                  >
+                    <Target className="h-4 w-4" aria-hidden />
+                    弱点ドリル
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    actions.deleteGroupDiscussionSession(session.id);
+                    setLocalSessions(deleteLocalGroupDiscussionSession(session.id));
+                  }}
+                  className="inline-flex h-10 w-fit items-center gap-2 rounded-full bg-red-50 px-4 text-sm font-semibold text-red-700"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  削除
+                </button>
+              </div>
             </article>
           ))}
         </div>

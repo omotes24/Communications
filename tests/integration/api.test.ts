@@ -207,23 +207,44 @@ describe("API routes in mock mode", () => {
         method: "POST",
         body: JSON.stringify({
           category: "金融",
+          topicType: "problem_solving",
           difficulty: "standard",
+          durationMinutes: 20,
+          practiceMode: "realistic",
+          evaluationFocus: ["logical_thinking", "decision_making"],
           companyContext: "金融インフラの安全性を重視する企業",
           profileContext: "研究で仮説検証を行った",
         }),
       }),
     );
     expect(topicResponse.ok).toBe(true);
-    const topic = (await topicResponse.json()) as { topic: string };
+    const topic = (await topicResponse.json()) as {
+      topic: string;
+      title: string;
+      topic_type: "problem_solving";
+      background: string;
+      constraints: string[];
+      deliverable: string;
+      evaluation_focus: string[];
+      suggested_time_allocation: string[];
+      sample_good_direction: string;
+      common_traps: string[];
+      assumed_company_or_industry: string;
+      assumptions: string[];
+      expectedIssues: string[];
+    };
     expect(topic.topic).toContain("金融");
 
     const now = new Date().toISOString();
     const session: GroupDiscussionSessionRecord = {
       id: "gd-test-session",
       mode: "ai-participants",
+      practiceMode: "realistic",
       status: "active",
       topic: topic.topic,
       topicCategory: "金融",
+      topicType: topic.topic_type,
+      difficulty: "standard",
       durationMinutes: 20,
       userRole: "参加者",
       participants: [
@@ -236,6 +257,32 @@ describe("API routes in mock mode", () => {
         },
         ...createDefaultAiParticipants(),
       ],
+      aiParticipantCount: 2,
+      aiPersonas: ["balanced", "logical"],
+      evaluationFocus: ["logical_thinking", "decision_making"],
+      profileSlotIds: [],
+      companySlotIds: [],
+      topicDetails: {
+        title: topic.title,
+        background: topic.background,
+        constraints: [...topic.constraints, ...topic.assumptions],
+        deliverable: topic.deliverable,
+        evaluationFocus: topic.evaluation_focus,
+        suggestedTimeAllocation: topic.suggested_time_allocation,
+        sampleGoodDirection: topic.sample_good_direction,
+        commonTraps: [...topic.common_traps, ...topic.expectedIssues],
+        assumedCompanyOrIndustry: topic.assumed_company_or_industry,
+      },
+      currentPhase: "intro",
+      phaseHistory: [{ phase: "intro", startedAt: now, endedAt: null }],
+      whiteboardNotes: "",
+      finalAnswer: "",
+      presentationText: "",
+      recommendedDrills: [],
+      estimatedTokenRange: {
+        min: 800,
+        max: 1400,
+      },
       utterances: [
         {
           id: "utt-1",

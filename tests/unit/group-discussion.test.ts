@@ -11,9 +11,12 @@ function createSession(): GroupDiscussionSessionRecord {
   return {
     id: "gd-unit",
     mode: "solo",
+    practiceMode: "one_person_drill",
     status: "active",
     topic: "新規サービスの優先施策を決める",
     topicCategory: "ビジネス",
+    topicType: "problem_solving",
+    difficulty: "standard",
     durationMinutes: 20,
     userRole: "参加者",
     participants: [
@@ -25,6 +28,29 @@ function createSession(): GroupDiscussionSessionRecord {
         type: "user",
       },
     ],
+    aiParticipantCount: 0,
+    aiPersonas: [],
+    evaluationFocus: ["logical_thinking", "decision_making"],
+    profileSlotIds: [],
+    companySlotIds: [],
+    topicDetails: {
+      title: "新規サービス",
+      background: "",
+      constraints: [],
+      deliverable: "",
+      evaluationFocus: [],
+      suggestedTimeAllocation: [],
+      sampleGoodDirection: "",
+      commonTraps: [],
+      assumedCompanyOrIndustry: "",
+    },
+    currentPhase: "intro",
+    phaseHistory: [{ phase: "intro", startedAt: now, endedAt: null }],
+    whiteboardNotes: "",
+    finalAnswer: "",
+    presentationText: "",
+    recommendedDrills: [],
+    estimatedTokenRange: null,
     utterances: [
       {
         id: "utt-1",
@@ -76,6 +102,8 @@ describe("group discussion analysis", () => {
     expect(analysis.isQuestion).toBe(true);
     expect(analysis.issueOrganization).toBe(true);
     expect(analysis.progress).toBe("advance");
+    expect(analysis.tags).toContain("premise_setting");
+    expect(analysis.tags).toContain("question");
   });
 
   it("creates metrics and evidence-backed map nodes", () => {

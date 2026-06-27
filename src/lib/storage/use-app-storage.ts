@@ -273,6 +273,7 @@ export function useAppStorage() {
   return {
     ready,
     storage,
+    cloudSyncEnabled,
     activeCompany: getActiveCompany(storage),
     activeCompanies: getActiveCompanies(storage),
     activeProfile: getActiveProfile(storage),
