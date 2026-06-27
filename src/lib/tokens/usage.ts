@@ -5,7 +5,8 @@ export type AiFeature =
   | "learn-interview-context"
   | "transcribe-audio"
   | "import-profile-file"
-  | "realtime-session";
+  | "realtime-session"
+  | "group-discussion";
 
 export type TokenRateCard = {
   version: string;

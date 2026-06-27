@@ -71,6 +71,52 @@ describe("useAppStorage", () => {
     expect(result.current.storage.profiles[0]?.id).toBe("cloud-profile");
   });
 
+  it("keeps a save made before initial cloud storage finishes loading", async () => {
+    const profile = {
+      ...createEmptyUserProfile(),
+      id: "new-profile",
+      label: "入力中の保存",
+    };
+    let resolveCloudLoad!: (response: Response) => void;
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((_input, init) => {
+        if (init?.method === "PUT") {
+          return Promise.resolve(jsonResponse({ ok: true }));
+        }
+        return new Promise<Response>((resolve) => {
+          resolveCloudLoad = resolve;
+        });
+      });
+
+    const { result } = renderHook(() => useAppStorage());
+
+    act(() => {
+      result.current.actions.saveProfile(profile);
+    });
+
+    expect(result.current.storage.profiles[0]?.id).toBe("new-profile");
+
+    act(() => {
+      resolveCloudLoad(
+        jsonResponse({
+          storage: defaultStorage,
+          hasCloudData: false,
+          importedLocalStorage: false,
+        }),
+      );
+    });
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.storage.profiles[0]?.id).toBe("new-profile");
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/storage",
+        expect.objectContaining({ method: "PUT" }),
+      ),
+    );
+  });
+
   it("keeps the newly selected company active during same-session navigation", async () => {
     const companyA = {
       ...createEmptyCompanyProfile(),

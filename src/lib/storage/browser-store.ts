@@ -6,6 +6,7 @@ import {
   type SessionRecord,
   type UserProfile,
 } from "@/lib/schemas/interview";
+import type { GroupDiscussionSessionRecord } from "@/lib/schemas/groupDiscussion";
 
 export const STORAGE_KEY = "jp-interview-assistant:v1";
 export const COMPANY_FORM_DRAFT_KEY =
@@ -23,6 +24,7 @@ export const defaultStorage: AppStorage = {
   selectedProfileIds: [],
   selectedCompanyIds: [],
   history: [],
+  groupDiscussionSessions: [],
   learning: null,
   privacy: {
     saveHistoryByDefault: false,
@@ -126,6 +128,7 @@ export function hasMeaningfulLocalStorage(storage: AppStorage): boolean {
     storage.profiles.length > 0 ||
     storage.companies.length > 0 ||
     storage.history.length > 0 ||
+    storage.groupDiscussionSessions.length > 0 ||
     Boolean(storage.learning)
   );
 }
@@ -329,6 +332,32 @@ export function addSessionRecord(
   record: SessionRecord,
 ): AppStorage {
   return { ...storage, history: [record, ...storage.history].slice(0, 50) };
+}
+
+export function upsertGroupDiscussionSession(
+  storage: AppStorage,
+  session: GroupDiscussionSessionRecord,
+): AppStorage {
+  const sessions = storage.groupDiscussionSessions.some(
+    (item) => item.id === session.id,
+  )
+    ? storage.groupDiscussionSessions.map((item) =>
+        item.id === session.id ? session : item,
+      )
+    : [session, ...storage.groupDiscussionSessions];
+  return { ...storage, groupDiscussionSessions: sessions.slice(0, 50) };
+}
+
+export function deleteGroupDiscussionSession(
+  storage: AppStorage,
+  id: string,
+): AppStorage {
+  return {
+    ...storage,
+    groupDiscussionSessions: storage.groupDiscussionSessions.filter(
+      (session) => session.id !== id,
+    ),
+  };
 }
 
 export function saveLearning(

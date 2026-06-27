@@ -5,9 +5,12 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  BarChart3,
   BriefcaseBusiness,
+  ChevronDown,
   ChevronUp,
   Languages,
+  MoreHorizontal,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -22,6 +25,19 @@ const navItems = [
   { href: "/company", label: "会社", icon: BriefcaseBusiness },
   { href: "/support", label: "面接", icon: UsersRound },
   { href: "/english-interview", label: "英語", icon: Languages },
+];
+
+const moreNavItems = [
+  {
+    href: "/company/intelligence",
+    label: "複数の会社を比較する",
+    icon: BarChart3,
+  },
+  {
+    href: "/group-discussion",
+    label: "グループディスカッション",
+    icon: UsersRound,
+  },
 ];
 
 const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.2";
@@ -51,10 +67,22 @@ export function AppShell({
   const tabsHidden = canCollapseTabs && tabsCollapsed;
 
   useEffect(() => {
-    for (const item of navItems) {
+    for (const item of [...navItems, ...moreNavItems]) {
       router.prefetch(item.href);
     }
   }, [router]);
+
+  function isNavItemActive(href: string) {
+    if (href === "/company") {
+      return displayedPathname === "/company";
+    }
+    return (
+      displayedPathname === href ||
+      (href !== "/" && displayedPathname.startsWith(`${href}/`))
+    );
+  }
+
+  const moreActive = moreNavItems.some((item) => isNavItemActive(item.href));
 
   function markNavigationIntent(href: string) {
     if (href === displayedPathname) {
@@ -136,7 +164,7 @@ export function AppShell({
             <nav
               aria-label="主要画面"
               className={cn(
-                "mt-3 grid grid-cols-4 overflow-hidden rounded-full p-1 shadow-sm ring-1",
+                "relative z-30 mt-3 grid grid-cols-5 rounded-full p-1 shadow-sm ring-1",
                 isDark
                   ? "bg-white/5 ring-white/10"
                   : "bg-white/75 ring-black/[0.06]",
@@ -144,10 +172,7 @@ export function AppShell({
             >
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const active =
-                  displayedPathname === item.href ||
-                  (item.href !== "/" &&
-                    displayedPathname.startsWith(item.href));
+                const active = isNavItemActive(item.href);
                 return (
                   <Link
                     key={item.href}
@@ -173,6 +198,72 @@ export function AppShell({
                   </Link>
                 );
               })}
+              <div className="group relative">
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={moreActive}
+                  className={cn(
+                    "flex h-10 w-full items-center justify-center gap-1.5 rounded-full px-2 text-sm font-semibold tracking-tight",
+                    moreActive
+                      ? isDark
+                        ? "bg-white text-neutral-950 shadow-sm"
+                        : "bg-[var(--accent)] text-white shadow-sm"
+                      : isDark
+                        ? "text-white/60 hover:bg-white/10 hover:text-white"
+                        : "text-[#6e6e73] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
+                  )}
+                >
+                  <MoreHorizontal aria-hidden className="h-4 w-4 shrink-0" />
+                  <span className="truncate">その他</span>
+                  <ChevronDown aria-hidden className="h-3.5 w-3.5 shrink-0" />
+                </button>
+                <div
+                  role="menu"
+                  className={cn(
+                    "invisible absolute right-0 top-full z-50 min-w-64 pt-2 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "rounded-3xl p-2 shadow-xl ring-1",
+                      isDark
+                        ? "bg-neutral-950 ring-white/10"
+                        : "bg-white ring-black/[0.08]",
+                    )}
+                  >
+                    {moreNavItems.map((item) => {
+                      const Icon = item.icon;
+                      const active = isNavItemActive(item.href);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          prefetch
+                          role="menuitem"
+                          onMouseEnter={() => router.prefetch(item.href)}
+                          onFocus={() => router.prefetch(item.href)}
+                          onPointerDown={() => markNavigationIntent(item.href)}
+                          onClick={() => markNavigationIntent(item.href)}
+                          className={cn(
+                            "flex min-h-11 items-center gap-2 rounded-2xl px-3 text-sm font-semibold transition",
+                            active
+                              ? isDark
+                                ? "bg-white text-neutral-950"
+                                : "bg-[var(--accent)] text-white"
+                              : isDark
+                                ? "text-white/70 hover:bg-white/10 hover:text-white"
+                                : "text-[#6e6e73] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </nav>
           </div>
         </header>

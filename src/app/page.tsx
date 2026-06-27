@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, Languages } from "lucide-react";
+import { BarChart3, Languages, UsersRound } from "lucide-react";
 
 import { ChromeStartButton } from "@/components/home/ChromeStartButton";
 import { TypingHeadline } from "@/components/home/TypingHeadline";
@@ -47,6 +47,13 @@ export default function Home() {
             >
               <BarChart3 className="h-4 w-4" aria-hidden />
               複数の会社を比較する
+            </Link>
+            <Link
+              href="/group-discussion"
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-[#1d1d1f] shadow-sm ring-1 ring-black/[0.08] transition hover:bg-[#fdfdfd]"
+            >
+              <UsersRound className="h-4 w-4" aria-hidden />
+              グループディスカッション
             </Link>
           </div>
         </div>

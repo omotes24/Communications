@@ -5,6 +5,11 @@ import type {
   ProfileFileImportRequest,
   ResearchCompanyRequest,
 } from "@/lib/schemas/interview";
+import type {
+  GroupDiscussionAiTurnRequest,
+  GroupDiscussionFinalizeRequest,
+  GroupDiscussionTopicRequest,
+} from "@/lib/schemas/groupDiscussion";
 import {
   calculateAppTokens,
   estimateTextTokens,
@@ -93,6 +98,49 @@ export function estimateAudioTokens(audio: File): {
 
 export function estimateRealtimeSessionTokens(seconds = 180): number {
   return calculateAppTokens({ audioSeconds: seconds });
+}
+
+export function estimateGroupDiscussionTopicTokens(
+  body: GroupDiscussionTopicRequest,
+): number {
+  return estimateForText(
+    "group-discussion",
+    [
+      body.category,
+      body.difficulty,
+      body.companyContext,
+      body.profileContext,
+    ].join("\n"),
+    700,
+  );
+}
+
+export function estimateGroupDiscussionAiTurnTokens(
+  body: GroupDiscussionAiTurnRequest,
+): number {
+  return estimateForText(
+    "group-discussion",
+    [
+      body.session.topic,
+      JSON.stringify(body.session.participants),
+      JSON.stringify(body.session.utterances.slice(-8)),
+    ].join("\n"),
+    260,
+  );
+}
+
+export function estimateGroupDiscussionFinalizeTokens(
+  body: GroupDiscussionFinalizeRequest,
+): number {
+  return estimateForText(
+    "group-discussion",
+    [
+      body.session.topic,
+      JSON.stringify(body.session.participants),
+      JSON.stringify(body.session.utterances),
+    ].join("\n"),
+    2400,
+  );
 }
 
 function estimateForText(

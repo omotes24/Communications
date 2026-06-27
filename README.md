@@ -12,6 +12,7 @@
 - OpenAI APIを使ったAI処理
 - OpenAI web searchによる企業・採用情報の調査
 - 複数の会社を比較する: URL/企業名から企業研究を作成し、会社スロットへ保存
+- グループディスカッション練習: AI参加者との実戦練習、発話ログ、議論マップ、根拠付き評価
 - アプリ内トークン残高、予約、消費履歴
 - Stripe Checkoutによるトークン購入
 - Stripe webhook検証後のトークン付与
@@ -43,6 +44,8 @@ OPENAI_AUDIO_NOISE_REDUCTION=far_field
 OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
 OPENAI_ANSWER_MODEL=gpt-5.4-mini
 OPENAI_RESEARCH_MODEL=gpt-5.5
+OPENAI_GROUP_DISCUSSION_MODEL=gpt-5.5
+OPENAI_GD_MOCK_MODE=false
 COMPANY_INTELLIGENCE_STRICT_MODE=true
 COMPANY_INTELLIGENCE_MOCK_MODE=false
 COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL=o4-mini-deep-research
@@ -98,6 +101,8 @@ supabase db push
 - `company_research_jobs`
 - `company_research_reports`
 - `company_research_audits`
+- `group_discussion_sessions`
+- `group_discussion_utterances`
 - `reserve_tokens`
 - `settle_tokens`
 - `release_token_reservation`
@@ -174,6 +179,54 @@ OpenAIへ送信される情報:
 - 口コミ・第三者情報は断定材料ではなく参考情報として扱います。
 - 比較や適合度はAI推定であり、内定・入社判断を保証しません。
 
+## グループディスカッション練習
+
+`/group-discussion` では、1人練習またはAI参加者付き練習でGDの発言・論点整理・結論形成を練習できます。
+
+Phase 1で実装済み:
+
+- ホーム画面からの導線
+- `/group-discussion`, `/group-discussion/session/[sessionId]`, `/group-discussion/result/[sessionId]`, `/group-discussion/history`
+- AIテーマ生成
+- 1人練習モード
+- AI参加者付き練習モード
+- テキスト入力による発話追加
+- 既存Realtime transcriptionパネルによるマイク/タブ音声文字起こし
+- 確定文字起こしの発話ログ取り込み
+- 発言時間、発言回数、質問回数、他者発言への接続、議論前進/後退、論点整理、遮り候補、結論形成、時間管理の軽量分析
+- 議論マップ表示
+- セッション終了後の最終評価
+- 評価項目と議論マップへの根拠発話ID付与
+- 履歴保存と結果再表示
+- `AI_MOCK_MODE=true` または `OPENAI_GD_MOCK_MODE=true` でOpenAI APIを呼ばない動作確認
+
+OpenAIへ送信される情報:
+
+- GDテーマ、参加者設定、直近発話ログ
+- AIテーマ生成時のカテゴリ、難易度、選択中プロフィール・会社情報の要約
+- 最終評価時の発話ログ
+
+追加環境変数:
+
+- `OPENAI_GROUP_DISCUSSION_MODEL`: GDテーマ生成、AI参加者、最終評価で使うモデル。既定は `gpt-5.5` です。
+- `OPENAI_GD_MOCK_MODE`: GD機能だけをモックにします。
+
+保存とプライバシー:
+
+- 生音声は標準保存しません。
+- 文字起こしと手動入力の発話ログは、議論マップ、評価、履歴再表示のためにアプリストレージへ保存されます。
+- ログイン済みの場合、既存の `/api/storage` 経由でSupabaseへ同期されます。
+- 実選考での無断録音、隠れた支援、第三者の同意なしの利用は想定していません。
+
+未実装:
+
+- 招待リンク付きの複数人ルーム
+- 参加者ごとのマイク分離
+- 複数人の同意フロー
+- ルーム内リアルタイム同期
+- 参加者別評価
+- 過去セッション比較と弱点トレンド
+
 ## Vercelデプロイ
 
 PreviewとProductionで環境変数を分けます。
@@ -216,6 +269,7 @@ Google Meetの相手側音声を拾う場合は、SafariではなくChromeまた
 - セッション終了時に取得済みMediaStreamTrackを停止します。
 - 文字起こし結果は画面表示と質問判定に使われます。
 - ユーザーが履歴保存した場合だけ、関連する質問・回答がSupabaseへ保存されます。
+- グループディスカッション練習では、ユーザーが開始した練習の発話ログ、議論マップ、評価結果を履歴再表示のために保存します。
 - アカウント削除時はSupabase Authユーザー、DBデータ、設定済みStorage bucket内のユーザーprefix配下ファイルを削除します。
 - Stripe側の取引記録はStripeの保持ポリシーに従います。
 

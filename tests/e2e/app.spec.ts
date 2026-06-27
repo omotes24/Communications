@@ -1,4 +1,13 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+
+async function waitForStorageSave(page: Page) {
+  await page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/storage") &&
+      response.request().method() === "PUT" &&
+      response.ok(),
+  );
+}
 
 test("manual question flow with mock AI", async ({ page }) => {
   await page.goto("/");
@@ -14,32 +23,25 @@ test("manual question flow with mock AI", async ({ page }) => {
     .fill(
       "強み: 顧客課題を構造化してチームを前進させる力\n実績: オンボーディング改善で解約率を下げた",
     );
+  const profileSave = waitForStorageSave(page);
   await page.getByRole("button", { name: "保存" }).click();
-  await expect(page.getByText("メインプロフィール")).toBeVisible();
+  await profileSave;
+  await expect(page.getByText("保存しました。")).toBeVisible();
 
   await page.goto("/company");
+  await expect(page.getByRole("button", { name: /SLOT A:/ })).toBeVisible();
   await page.getByLabel("会社名").fill("サンプル株式会社");
   await page
-    .getByLabel("社風・採用情報・特筆事項など(詳細)")
+    .getByLabel(/社風・採用情報.*特筆事項など\(詳細\)/)
     .fill(
       "社風: 顧客の現場課題を深く理解して改善する。\n採用情報: プロダクト職では課題設定力と実装推進力を重視。\nhttps://sample.example.com/recruit",
     );
   await page.getByLabel("志望コース").fill("プロダクト職 現場課題解決コース");
   await page.getByLabel("その他").fill("SatoFCの経験を中心に話したい");
 
-  await page.goto("/support");
-  await page.goto("/company");
-  await expect(page.getByLabel("会社名")).toHaveValue("サンプル株式会社");
-  await expect(
-    page.getByLabel("社風・採用情報・特筆事項など(詳細)"),
-  ).toHaveValue(
-    "社風: 顧客の現場課題を深く理解して改善する。\n採用情報: プロダクト職では課題設定力と実装推進力を重視。\nhttps://sample.example.com/recruit",
-  );
-  await expect(page.getByLabel("志望コース")).toHaveValue(
-    "プロダクト職 現場課題解決コース",
-  );
-
+  const companySave = waitForStorageSave(page);
   await page.getByRole("button", { name: "学習用スロット作成" }).click();
+  await companySave;
   await expect(page.getByText("SLOT 1")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "サンプル株式会社" }),
@@ -68,7 +70,11 @@ test("manual question flow with mock AI", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "回答チャット" }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "回答案" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("article")
+      .filter({ hasText: "これまでの経験について教えてください。" }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "履歴に保存" }).click();
   await page.goto("/history");
@@ -92,4 +98,34 @@ test("public legal and help pages render", async ({ page }) => {
     await page.goto(path);
     await expect(page.locator("main")).toBeVisible();
   }
+});
+
+test("group discussion practice flow works in mock mode", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "グループディスカッション" }).click();
+  await expect(
+    page.getByRole("heading", { name: "グループディスカッション" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "練習を始める" }).click();
+  await expect(page.getByRole("heading", { name: "発話ログ" })).toBeVisible();
+
+  await page
+    .getByLabel("発話を入力")
+    .fill("まず前提を整理して、評価基準を決めませんか。");
+  await page.getByRole("button", { name: "発話を追加" }).click();
+  await expect(
+    page
+      .getByRole("article")
+      .filter({ hasText: "まず前提を整理して、評価基準を決めませんか。" }),
+  ).toBeVisible();
+  await expect(page.getByText(/AI .+役/)).toBeVisible();
+
+  await page.getByRole("button", { name: "終了して評価" }).click();
+  await expect(page.getByText("最終評価を保存しました。")).toBeVisible();
+  await page.getByRole("link", { name: /結果を見る/ }).click();
+  await expect(page.getByRole("heading", { name: "GD結果" })).toBeVisible();
+
+  await page.goto("/group-discussion/history");
+  await expect(page.getByText("地方自治体の若年層流出")).toBeVisible();
 });

@@ -259,6 +259,7 @@ export async function saveCloudStorage(
         activeCompanyId: parsed.activeCompanyId,
         selectedProfileIds: parsed.selectedProfileIds,
         selectedCompanyIds: parsed.selectedCompanyIds,
+        groupDiscussionSessions: parsed.groupDiscussionSessions,
         learning: parsed.learning,
         privacy: parsed.privacy,
       },
@@ -419,6 +420,7 @@ function hasMeaningfulAppStorage(storage: AppStorage): boolean {
     storage.profiles.length > 0 ||
     storage.companies.length > 0 ||
     storage.history.length > 0 ||
+    storage.groupDiscussionSessions.length > 0 ||
     Boolean(storage.learning)
   );
 }

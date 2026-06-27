@@ -27,6 +27,8 @@ const serverEnvSchema = z.object({
   OPENAI_CLASSIFIER_MODEL: z.string().default("gpt-5.4-nano"),
   OPENAI_ANSWER_MODEL: z.string().default("gpt-5.4-mini"),
   OPENAI_RESEARCH_MODEL: z.string().default("gpt-5.5"),
+  OPENAI_GROUP_DISCUSSION_MODEL: z.string().default("gpt-5.5"),
+  OPENAI_GD_MOCK_MODE: booleanEnvSchema,
   COMPANY_INTELLIGENCE_STRICT_MODE: enabledBooleanEnvSchema,
   COMPANY_INTELLIGENCE_MOCK_MODE: booleanEnvSchema,
   COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL: z
@@ -50,6 +52,7 @@ export type ServerEnv = RawServerEnv & {
   FAST_ANSWER_MODEL: string;
   ANSWER_MODEL: string;
   RESEARCH_MODEL: string;
+  GROUP_DISCUSSION_MODEL: string;
 };
 
 export function getServerEnv(): ServerEnv {
@@ -64,6 +67,9 @@ export function getServerEnv(): ServerEnv {
     OPENAI_CLASSIFIER_MODEL: process.env.OPENAI_CLASSIFIER_MODEL,
     OPENAI_ANSWER_MODEL: process.env.OPENAI_ANSWER_MODEL,
     OPENAI_RESEARCH_MODEL: process.env.OPENAI_RESEARCH_MODEL,
+    OPENAI_GROUP_DISCUSSION_MODEL:
+      process.env.OPENAI_GROUP_DISCUSSION_MODEL,
+    OPENAI_GD_MOCK_MODE: process.env.OPENAI_GD_MOCK_MODE,
     COMPANY_INTELLIGENCE_STRICT_MODE:
       process.env.COMPANY_INTELLIGENCE_STRICT_MODE,
     COMPANY_INTELLIGENCE_MOCK_MODE: process.env.COMPANY_INTELLIGENCE_MOCK_MODE,
@@ -102,6 +108,10 @@ export function getServerEnv(): ServerEnv {
       parsed.AI_PROVIDER === "groq"
         ? parsed.GROQ_RESEARCH_MODEL
         : parsed.OPENAI_RESEARCH_MODEL,
+    GROUP_DISCUSSION_MODEL:
+      parsed.AI_PROVIDER === "groq"
+        ? parsed.GROQ_ANSWER_MODEL
+        : parsed.OPENAI_GROUP_DISCUSSION_MODEL,
   };
 }
 

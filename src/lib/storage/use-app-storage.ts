@@ -7,6 +7,7 @@ import {
   APP_STORAGE_EVENT,
   clearAppStorage,
   defaultStorage,
+  deleteGroupDiscussionSession,
   getActiveCompany,
   getActiveCompanies,
   getActiveProfile,
@@ -19,9 +20,11 @@ import {
   setSelectedProfiles,
   toggleSelectedCompany,
   toggleSelectedProfile,
+  upsertGroupDiscussionSession,
   upsertCompany,
   upsertProfile,
 } from "@/lib/storage/browser-store";
+import type { GroupDiscussionSessionRecord } from "@/lib/schemas/groupDiscussion";
 import type {
   AppStorage,
   CompanyProfile,
@@ -70,10 +73,19 @@ export function useAppStorage() {
   const [ready, setReady] = useState(false);
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
   const storageRef = useRef<AppStorage>(defaultStorage);
+  const pendingCloudSaveRef = useRef(false);
 
   const applyStorage = useCallback((next: AppStorage) => {
     storageRef.current = next;
     setStorage(next);
+  }, []);
+
+  const persistCloudStorage = useCallback((next: AppStorage) => {
+    void fetch("/api/storage", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    });
   }, []);
 
   useEffect(() => {
@@ -85,7 +97,9 @@ export function useAppStorage() {
           headers: { Accept: "application/json" },
         });
         if (!response.ok) {
-          applyStorage(defaultStorage);
+          if (!pendingCloudSaveRef.current) {
+            applyStorage(defaultStorage);
+          }
           setCloudSyncEnabled(false);
           return;
         }
@@ -95,11 +109,19 @@ export function useAppStorage() {
         if (cancelled) {
           return;
         }
+        if (pendingCloudSaveRef.current) {
+          pendingCloudSaveRef.current = false;
+          setCloudSyncEnabled(true);
+          persistCloudStorage(storageRef.current);
+          return;
+        }
         applyStorage(preferSessionActiveCompany(data.storage));
         setCloudSyncEnabled(true);
       } catch {
         if (!cancelled) {
-          applyStorage(defaultStorage);
+          if (!pendingCloudSaveRef.current) {
+            applyStorage(defaultStorage);
+          }
           setCloudSyncEnabled(false);
         }
       } finally {
@@ -116,7 +138,7 @@ export function useAppStorage() {
       cancelled = true;
       window.removeEventListener(APP_STORAGE_EVENT, loadCloudStorage);
     };
-  }, [applyStorage]);
+  }, [applyStorage, persistCloudStorage]);
 
   const commit = useCallback(
     (buildNext: (current: AppStorage) => AppStorage) => {
@@ -124,14 +146,12 @@ export function useAppStorage() {
       writePreferredActiveCompanyId(next.activeCompanyId);
       applyStorage(next);
       if (cloudSyncEnabled) {
-        void fetch("/api/storage", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(next),
-        });
+        persistCloudStorage(next);
+      } else {
+        pendingCloudSaveRef.current = true;
       }
     },
-    [applyStorage, cloudSyncEnabled],
+    [applyStorage, cloudSyncEnabled, persistCloudStorage],
   );
 
   const actions = useMemo(
@@ -204,6 +224,12 @@ export function useAppStorage() {
       saveSession(record: SessionRecord) {
         commit((current) => addSessionRecord(current, record));
       },
+      saveGroupDiscussionSession(session: GroupDiscussionSessionRecord) {
+        commit((current) => upsertGroupDiscussionSession(current, session));
+      },
+      deleteGroupDiscussionSession(id: string) {
+        commit((current) => deleteGroupDiscussionSession(current, id));
+      },
       saveLearning(learning: PreInterviewLearning) {
         commit((current) => saveLearning(current, learning));
       },
@@ -227,7 +253,8 @@ export function useAppStorage() {
         writePreferredActiveCompanyId(null);
         window.localStorage.setItem(LOCAL_STORAGE_IMPORT_STATUS_KEY, "declined");
         setCloudSyncEnabled(true);
-        setStorage(defaultStorage);
+        applyStorage(defaultStorage);
+        pendingCloudSaveRef.current = false;
         if (cloudSyncEnabled) {
           void fetch("/api/storage", {
             method: "PUT",
@@ -240,7 +267,7 @@ export function useAppStorage() {
         }
       },
     }),
-    [cloudSyncEnabled, commit],
+    [applyStorage, cloudSyncEnabled, commit],
   );
 
   return {

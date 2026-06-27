@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { getCompanyInputCopy } from "@/lib/company-input-mode";
+import { groupDiscussionSessionRecordSchema } from "@/lib/schemas/groupDiscussion";
 
 export const questionCategorySchema = z.enum([
   "introduction",
@@ -278,6 +279,9 @@ export const appStorageSchema = z.object({
   selectedProfileIds: z.array(z.string()).default([]),
   selectedCompanyIds: z.array(z.string()).default([]),
   history: z.array(sessionRecordSchema),
+  groupDiscussionSessions: z
+    .array(groupDiscussionSessionRecordSchema)
+    .default([]),
   learning: preInterviewLearningSchema.nullable().default(null),
   privacy: z.object({
     saveHistoryByDefault: z.boolean(),
