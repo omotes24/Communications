@@ -712,12 +712,10 @@ export function GroupDiscussionSetup() {
 
         <div className="grid gap-3 rounded-3xl bg-white p-4 ring-1 ring-black/[0.08]">
           <p className="text-sm font-semibold">
-            目安: {durationMinutes}分・
-            {activeMode === "ai-participants"
-              ? `AI参加者${participantCount}名`
-              : "1人練習"}
-            の場合、約{tokenEstimate.min.toLocaleString()}〜
-            {tokenEstimate.max.toLocaleString()} tokens
+            消費トークンは固定ではありません。学習内容、発話量、AI参加者数、採点レポートの量に応じて変動します。
+          </p>
+          <p className="text-xs font-semibold leading-5 text-[#86868b]">
+            練習開始時に概算分を一時予約し、実際のAI利用量に合わせて精算します。
           </p>
           <p className="text-xs font-semibold leading-5 text-[#86868b]">
             練習履歴、発言ログ、AI分析結果は、ログイン中のアカウントに紐づけて保存されます。削除はデータ設定画面から実行できます。
