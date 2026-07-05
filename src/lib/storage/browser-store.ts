@@ -15,6 +15,7 @@ export const APP_STORAGE_EVENT = "jp-interview-assistant:storage-updated";
 export const LOCAL_STORAGE_IMPORT_STATUS_KEY =
   "jp-interview-assistant:local-import-status:v1";
 export const LOCAL_STORAGE_IMPORT_VERSION = "app-storage-v1-to-supabase-v1";
+export const MAX_PROFILE_SLOTS = 26;
 
 export const defaultStorage: AppStorage = {
   profiles: [],
@@ -79,8 +80,7 @@ function normalizeStorage(storage: AppStorage): AppStorage {
         ? [fallbackCompanyId]
         : [];
   const companyIdsWithActive =
-    validActiveCompanyId &&
-    !normalizedCompanyIds.includes(validActiveCompanyId)
+    validActiveCompanyId && !normalizedCompanyIds.includes(validActiveCompanyId)
       ? [validActiveCompanyId, ...normalizedCompanyIds]
       : normalizedCompanyIds;
 
@@ -137,13 +137,23 @@ export function upsertProfile(
   storage: AppStorage,
   profile: UserProfile,
 ): AppStorage {
-  const profiles = storage.profiles.some((item) => item.id === profile.id)
+  const exists = storage.profiles.some((item) => item.id === profile.id);
+  if (!exists && storage.profiles.length >= MAX_PROFILE_SLOTS) {
+    return storage;
+  }
+
+  const profiles = exists
     ? storage.profiles.map((item) => (item.id === profile.id ? profile : item))
     : [...storage.profiles, profile];
   const selectedProfileIds = storage.selectedProfileIds.includes(profile.id)
     ? storage.selectedProfileIds
     : [...storage.selectedProfileIds, profile.id];
-  return { ...storage, profiles, activeProfileId: profile.id, selectedProfileIds };
+  return {
+    ...storage,
+    profiles,
+    activeProfileId: profile.id,
+    selectedProfileIds,
+  };
 }
 
 export function setActiveProfile(
@@ -155,10 +165,11 @@ export function setActiveProfile(
   if (!activeProfileId) {
     return { ...storage, activeProfileId: null, selectedProfileIds: [] };
   }
-  const selectedProfileIds =
-    !storage.selectedProfileIds.includes(activeProfileId)
-      ? [...storage.selectedProfileIds, activeProfileId]
-      : storage.selectedProfileIds;
+  const selectedProfileIds = !storage.selectedProfileIds.includes(
+    activeProfileId,
+  )
+    ? [...storage.selectedProfileIds, activeProfileId]
+    : storage.selectedProfileIds;
   return { ...storage, activeProfileId, selectedProfileIds };
 }
 
@@ -206,7 +217,12 @@ export function upsertCompany(
   const selectedCompanyIds = storage.selectedCompanyIds.includes(company.id)
     ? storage.selectedCompanyIds
     : [...storage.selectedCompanyIds, company.id];
-  return { ...storage, companies, activeCompanyId: company.id, selectedCompanyIds };
+  return {
+    ...storage,
+    companies,
+    activeCompanyId: company.id,
+    selectedCompanyIds,
+  };
 }
 
 export function setActiveCompany(
@@ -260,7 +276,7 @@ export function toggleSelectedCompany(
       : storage.selectedCompanyIds
     : [...storage.selectedCompanyIds, id];
   const activeCompanyId = storage.selectedCompanyIds.includes(id)
-    ? selectedCompanyIds[0] ?? null
+    ? (selectedCompanyIds[0] ?? null)
     : id;
   return {
     ...storage,
@@ -276,7 +292,9 @@ export function getActiveCompanies(storage: AppStorage): CompanyProfile[] {
   if (selected.length > 0) {
     return selected;
   }
-  return getActiveCompany(storage) ? [getActiveCompany(storage) as CompanyProfile] : [];
+  return getActiveCompany(storage)
+    ? [getActiveCompany(storage) as CompanyProfile]
+    : [];
 }
 
 export function getActiveCompany(storage: AppStorage): CompanyProfile | null {
@@ -308,7 +326,9 @@ export function getActiveProfiles(storage: AppStorage): UserProfile[] {
   if (selected.length > 0) {
     return selected;
   }
-  return getActiveProfile(storage) ? [getActiveProfile(storage) as UserProfile] : [];
+  return getActiveProfile(storage)
+    ? [getActiveProfile(storage) as UserProfile]
+    : [];
 }
 
 export function getActiveProfile(storage: AppStorage): UserProfile | null {

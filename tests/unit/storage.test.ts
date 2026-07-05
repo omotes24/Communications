@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   APP_STORAGE_EVENT,
+  MAX_PROFILE_SLOTS,
   clearAppStorage,
   defaultStorage,
   getActiveCompany,
@@ -65,10 +66,7 @@ describe("browser storage helpers", () => {
       upsertProfile(defaultStorage, profileA),
       profileB,
     );
-    expect(withProfiles.selectedProfileIds).toEqual([
-      "profile-a",
-      "profile-b",
-    ]);
+    expect(withProfiles.selectedProfileIds).toEqual(["profile-a", "profile-b"]);
     const stillHasOneProfile = toggleSelectedProfile(
       toggleSelectedProfile(withProfiles, "profile-a"),
       "profile-b",
@@ -89,6 +87,37 @@ describe("browser storage helpers", () => {
       "company-a",
     );
     expect(stillHasOneCompany.selectedCompanyIds).toEqual(["company-b"]);
+  });
+
+  it("caps profile folders at 26 while allowing existing profiles to be edited", () => {
+    let storage = defaultStorage;
+
+    for (let index = 0; index < MAX_PROFILE_SLOTS; index += 1) {
+      storage = upsertProfile(storage, {
+        ...createEmptyUserProfile(),
+        id: `profile-${index}`,
+        label: `プロフィール${index + 1}`,
+      });
+    }
+
+    const blocked = upsertProfile(storage, {
+      ...createEmptyUserProfile(),
+      id: "profile-overflow",
+      label: "プロフィール27",
+    });
+
+    expect(blocked.profiles).toHaveLength(MAX_PROFILE_SLOTS);
+    expect(
+      blocked.profiles.some((profile) => profile.id === "profile-overflow"),
+    ).toBe(false);
+
+    const updated = upsertProfile(blocked, {
+      ...blocked.profiles[0]!,
+      label: "更新済みプロフィール",
+    });
+
+    expect(updated.profiles).toHaveLength(MAX_PROFILE_SLOTS);
+    expect(updated.profiles[0]?.label).toBe("更新済みプロフィール");
   });
 
   it("uses the active company for interview even when multiple companies are selected", () => {

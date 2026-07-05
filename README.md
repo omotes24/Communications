@@ -48,7 +48,7 @@ OPENAI_GROUP_DISCUSSION_MODEL=gpt-5.5
 OPENAI_GD_MOCK_MODE=false
 COMPANY_INTELLIGENCE_STRICT_MODE=true
 COMPANY_INTELLIGENCE_MOCK_MODE=false
-COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL=o4-mini-deep-research
+COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL=gpt-5.5
 COMPANY_INTELLIGENCE_SYNTHESIS_MODEL=gpt-5.5
 
 AI_MOCK_MODE=false
@@ -143,7 +143,7 @@ Phase 1で実装済み:
 
 - ホーム画面と会社スロット画面からの導線
 - URL入力と安全性チェック
-- OpenAI Deep Research modelによる公開情報調査
+- OpenAI web searchによる公開情報調査
 - Deep Research raw reportの別モデルによる正規化
 - 確認できた情報、AI推定、要確認、情報源、調査上の制約の分離表示
 - Hallucination監査と `safeToDisplay=false` 時の表示停止
@@ -162,7 +162,7 @@ OpenAIへ送信される情報:
 
 - `COMPANY_INTELLIGENCE_STRICT_MODE`: `true` の場合、根拠なしの高速プレビューを表示しません。
 - `COMPANY_INTELLIGENCE_MOCK_MODE`: 複数の会社を比較する機能だけをモックにします。
-- `COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL`: Deep Research用モデル。既定は `o4-mini-deep-research` です。
+- `COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL`: 複数の会社を比較する調査用モデル。既定は `gpt-5.5` です。Organization認証が必要な `*-deep-research` 系モデルや `mini` 系モデルを設定している場合も、実行時は `OPENAI_RESEARCH_MODEL` へフォールバックします。
 - `COMPANY_INTELLIGENCE_SYNTHESIS_MODEL`: 正規化用モデル。既定は `gpt-5.5` です。
 
 未実装:
@@ -174,7 +174,7 @@ OpenAIへ送信される情報:
 
 注意:
 
-- Deep Research modelは `search_context_size=medium` を使います。
+- 企業研究のWeb検索は `search_context_size=high` を使います。
 - ログインが必要な採用サイトやPDF/画像中心ページは精度が落ちる場合があります。
 - 口コミ・第三者情報は断定材料ではなく参考情報として扱います。
 - 比較や適合度はAI推定であり、内定・入社判断を保証しません。

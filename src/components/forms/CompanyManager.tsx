@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  BarChart3,
   CheckCircle2,
   Loader2,
   Plus,
@@ -60,7 +58,10 @@ function profileToSelfInfo(profile: UserProfile): string {
     .join("\n\n");
 }
 
-function profileSlotName(profile: UserProfile, profiles: UserProfile[]): string {
+function profileSlotName(
+  profile: UserProfile,
+  profiles: UserProfile[],
+): string {
   const index = profiles.findIndex((item) => item.id === profile.id);
   return index >= 0 ? `SLOT ${String.fromCharCode(65 + index)}` : "SLOT";
 }
@@ -144,13 +145,8 @@ function extractCompanyInputFromProfile(
 export function CompanyManager() {
   const companyInputMode = getCompanyInputMode();
   const companyInputCopy = getCompanyInputCopy(companyInputMode);
-  const {
-    storage,
-    activeCompany,
-    activeCompanies,
-    activeProfiles,
-    actions,
-  } = useAppStorage();
+  const { storage, activeCompany, activeCompanies, activeProfiles, actions } =
+    useAppStorage();
   const suggestedSelfInfo = useMemo(
     () => profilesToSelfInfo(activeProfiles, storage.profiles),
     [activeProfiles, storage.profiles],
@@ -374,13 +370,6 @@ export function CompanyManager() {
                 <Plus className="h-4 w-4" aria-hidden />
                 新規
               </button>
-              <Link
-                href="/company/intelligence"
-                className="inline-flex h-10 items-center gap-2 rounded-full bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
-              >
-                <BarChart3 className="h-4 w-4" aria-hidden />
-                複数の会社を比較する
-              </Link>
             </div>
           </div>
 
@@ -409,7 +398,9 @@ export function CompanyManager() {
                       <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
                         SLOT {index + 1}
                       </span>
-                      {activeCompanies.some((item) => item.id === company.id) ? (
+                      {activeCompanies.some(
+                        (item) => item.id === company.id,
+                      ) ? (
                         <CheckCircle2
                           className="h-4 w-4 text-emerald-600"
                           aria-hidden
@@ -440,7 +431,9 @@ export function CompanyManager() {
                             : "text-[#86868b]",
                         )}
                       >
-                        {activeCompanies.some((item) => item.id === company.id) ? (
+                        {activeCompanies.some(
+                          (item) => item.id === company.id,
+                        ) ? (
                           <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
                         ) : null}
                         {activeCompanies.some((item) => item.id === company.id)
@@ -465,7 +458,9 @@ export function CompanyManager() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => actions.toggleSelectedCompany(company.id)}
+                        onClick={() =>
+                          actions.toggleSelectedCompany(company.id)
+                        }
                         className={cn(
                           "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition",
                           activeCompanies.some((item) => item.id === company.id)
@@ -473,7 +468,9 @@ export function CompanyManager() {
                             : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e8e8ed]",
                         )}
                       >
-                        {activeCompanies.some((item) => item.id === company.id) ? (
+                        {activeCompanies.some(
+                          (item) => item.id === company.id,
+                        ) ? (
                           <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
                         ) : null}
                         {activeCompanies.some((item) => item.id === company.id)

@@ -13,27 +13,29 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import {
-  FormField,
-  inputClassName,
-  textareaClassName,
-} from "@/components/forms/FormField";
+import { FormField, textareaClassName } from "@/components/forms/FormField";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
   type CompanyIntelligenceReport,
   companyIntelligenceStartResponseSchema,
   type HallucinationAuditResult,
 } from "@/lib/company-intelligence/schemas";
+import { describeCompanyResearchUrl } from "@/lib/company-intelligence/url-validation";
 import {
-  describeCompanyResearchUrl,
-  inferCompanyNameFromUrl,
-  validateCompanyResearchUrls,
-} from "@/lib/company-intelligence/url-validation";
+  MAX_COMPANY_INTELLIGENCE_TARGETS,
+  parseCompanyResearchTargets,
+  type CompanyResearchTarget,
+} from "@/lib/company-intelligence/targets";
 import { type CompanyProfile } from "@/lib/schemas/interview";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 import { cn } from "@/lib/utils";
 
-type ResearchStatus = "idle" | "researching" | "completed" | "blocked" | "error";
+type ResearchStatus =
+  | "idle"
+  | "researching"
+  | "completed"
+  | "blocked"
+  | "error";
 
 const researchSteps = [
   "公開情報を調査中",
@@ -68,7 +70,9 @@ function buildProfileContext(
   );
 }
 
-function reportToCompanyProfile(report: CompanyIntelligenceReport): CompanyProfile {
+function reportToCompanyProfile(
+  report: CompanyIntelligenceReport,
+): CompanyProfile {
   const now = new Date().toISOString();
   const checkedFacts = report.checkedFacts
     .map((item) => `【${item.title}】${item.claim}`)
@@ -77,7 +81,9 @@ function reportToCompanyProfile(report: CompanyIntelligenceReport): CompanyProfi
     .map((item) => `【${item.title}】${item.claim}\n根拠: ${item.basis}`)
     .join("\n");
   const unknowns = report.unknowns
-    .map((item) => `【${item.topic}】${item.reason}\n確認: ${item.suggestedCheck}`)
+    .map(
+      (item) => `【${item.topic}】${item.reason}\n確認: ${item.suggestedCheck}`,
+    )
     .join("\n");
   const reverseQuestions = report.unknowns
     .map((item) => item.suggestedCheck)
@@ -135,9 +141,7 @@ function summarizeReport(report: CompanyIntelligenceReport): string {
 
 export function CompanyIntelligenceScreen() {
   const { storage, activeProfiles, actions } = useAppStorage();
-  const [companyName, setCompanyName] = useState("");
-  const [jobTitle, setJobTitle] = useState("");
-  const [urlInput, setUrlInput] = useState("");
+  const [targetInput, setTargetInput] = useState("");
   const [interest, setInterest] = useState("成長重視");
   const [status, setStatus] = useState<ResearchStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -150,100 +154,160 @@ export function CompanyIntelligenceScreen() {
   >([]);
 
   const selectedCompanies = useMemo(
-    () => storage.companies.slice(-5).reverse(),
+    () => storage.companies.slice(-10).reverse(),
     [storage.companies],
   );
 
-  const validation = useMemo(
-    () => validateCompanyResearchUrls(urlInput),
-    [urlInput],
+  const parsedTargets = useMemo(
+    () => parseCompanyResearchTargets(targetInput),
+    [targetInput],
   );
   const pageTypes = useMemo(
-    () => Array.from(new Set(validation.urls.map(describeCompanyResearchUrl))),
-    [validation.urls],
+    () =>
+      Array.from(
+        new Set(
+          parsedTargets.targets.flatMap((target) =>
+            target.urls.map(describeCompanyResearchUrl),
+          ),
+        ),
+      ),
+    [parsedTargets.targets],
   );
-  const companyNameGuess =
-    companyName.trim() ||
-    (validation.urls[0] ? inferCompanyNameFromUrl(validation.urls[0]) : "");
   const canResearch =
-    status !== "researching" && (companyName.trim() || urlInput.trim());
+    status !== "researching" &&
+    parsedTargets.targets.length > 0 &&
+    parsedTargets.errors.length === 0;
+
+  async function researchTarget(
+    target: CompanyResearchTarget,
+  ): Promise<CompanyIntelligenceReport> {
+    const response = await fetch("/api/company-intelligence/research/start", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-request-id": crypto.randomUUID(),
+        "x-operation-id": crypto.randomUUID(),
+      },
+      body: JSON.stringify({
+        companyName: target.companyName,
+        jobTitle: target.jobTitle,
+        urls: target.urls,
+        interest,
+        selfInfo: buildProfileContext(activeProfiles),
+      }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      const blockedAudit =
+        data && typeof data === "object" && "audit" in data
+          ? (data.audit as HallucinationAuditResult)
+          : null;
+      if (blockedAudit) {
+        setAudit(blockedAudit);
+      }
+      throw new Error(
+        data && typeof data === "object" && "error" in data
+          ? String(data.error)
+          : `${target.companyName}の企業研究に失敗しました。`,
+      );
+    }
+
+    const parsed = companyIntelligenceStartResponseSchema.parse(data);
+    if (parsed.status !== "completed") {
+      throw new Error(
+        `${target.companyName}の企業研究ジョブが完了していません。`,
+      );
+    }
+    if (!parsed.audit.safeToDisplay) {
+      setAudit(parsed.audit);
+      throw new Error(
+        `${target.companyName}は根拠不足のため表示を止めました。`,
+      );
+    }
+    return parsed.report;
+  }
 
   async function startResearch() {
-    const trimmedCompanyName = companyName.trim();
-    const trimmedJobTitle = jobTitle.trim();
-    const currentValidation = validateCompanyResearchUrls(urlInput);
+    const targetsResult = parseCompanyResearchTargets(targetInput);
 
-    if (!trimmedCompanyName && currentValidation.urls.length === 0) {
+    if (targetsResult.targets.length === 0) {
       setStatus("error");
-      setMessage("企業名またはURLを入力してください。");
+      setMessage("会社名、応募職種、URLのいずれかを入力してください。");
       return;
     }
-    if (currentValidation.errors.length > 0) {
+    if (targetsResult.errors.length > 0) {
       setStatus("error");
-      setMessage(currentValidation.errors[0] ?? "URLを確認してください。");
+      setMessage(targetsResult.errors[0] ?? "URLを確認してください。");
       return;
     }
 
     setReport(null);
     setAudit(null);
     setSaved(false);
+    setComparisonReports([]);
     setStatus("researching");
     setStepIndex(0);
-    setMessage("Deep Researchを実行しています。数分かかることがあります。");
+    setMessage(
+      `${targetsResult.targets.length}社のDeep Researchを実行しています。数分かかることがあります。`,
+    );
 
     const stepTimer = window.setInterval(() => {
-      setStepIndex((current) => Math.min(current + 1, researchSteps.length - 1));
+      setStepIndex((current) =>
+        Math.min(current + 1, researchSteps.length - 1),
+      );
     }, 10_000);
 
     try {
-      const response = await fetch("/api/company-intelligence/research/start", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-request-id": crypto.randomUUID(),
-          "x-operation-id": crypto.randomUUID(),
-        },
-        body: JSON.stringify({
-          companyName: trimmedCompanyName || companyNameGuess,
-          jobTitle: trimmedJobTitle,
-          urls: currentValidation.urls,
-          interest,
-          selfInfo: buildProfileContext(activeProfiles),
-        }),
-      });
-      const data = await response.json().catch(() => null);
-      if (!response.ok) {
-        const blockedAudit =
-          data && typeof data === "object" && "audit" in data
-            ? (data.audit as HallucinationAuditResult)
-            : null;
-        if (blockedAudit) {
-          setAudit(blockedAudit);
-          setStatus("blocked");
-        } else {
-          setStatus("error");
+      const completedReports: CompanyIntelligenceReport[] = [];
+      const failedTargets: Array<{ companyName: string; message: string }> = [];
+
+      for (const [index, target] of targetsResult.targets.entries()) {
+        setMessage(
+          `${index + 1}/${targetsResult.targets.length}社目: ${target.companyName}を調査中です。`,
+        );
+        try {
+          const completedReport = await researchTarget(target);
+          completedReports.push(completedReport);
+          setReport(completedReport);
+          setAudit(null);
+          setComparisonReports(
+            completedReports.slice(-MAX_COMPANY_INTELLIGENCE_TARGETS),
+          );
+        } catch (error) {
+          failedTargets.push({
+            companyName: target.companyName,
+            message:
+              error instanceof Error
+                ? error.message
+                : `${target.companyName}の企業研究に失敗しました。`,
+          });
+          if (targetsResult.targets.length === 1) {
+            throw error;
+          }
         }
+      }
+
+      if (completedReports.length === 0) {
+        setStatus("error");
+        const detail = failedTargets
+          .slice(0, 3)
+          .map((item) => `${item.companyName}: ${item.message}`)
+          .join(" / ");
         throw new Error(
-          data && typeof data === "object" && "error" in data
-            ? String(data.error)
-            : "企業研究に失敗しました。",
+          detail
+            ? `すべての企業研究に失敗しました。${detail}`
+            : "すべての企業研究に失敗しました。",
         );
       }
 
-      const parsed = companyIntelligenceStartResponseSchema.parse(data);
-      if (parsed.status !== "completed") {
-        throw new Error("企業研究ジョブが完了していません。");
-      }
-      if (!parsed.audit.safeToDisplay) {
-        setAudit(parsed.audit);
-        setStatus("blocked");
-        setMessage("根拠が不足しているため表示を止めました。");
-        return;
-      }
-      setReport(parsed.report);
-      setAudit(parsed.audit);
       setStatus("completed");
-      setMessage("企業研究が完了しました。会社スロットへ保存できます。");
+      setMessage(
+        failedTargets.length > 0
+          ? `${completedReports.length}社の比較を作成しました。失敗: ${failedTargets
+              .map((item) => item.companyName)
+              .join("、")}`
+          : `${completedReports.length}社の比較を作成しました。会社スロットへ保存できます。`,
+      );
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -275,7 +339,7 @@ export function CompanyIntelligenceScreen() {
       if (current.some((item) => item.reportId === report.reportId)) {
         return current;
       }
-      return [...current, report].slice(-5);
+      return [...current, report].slice(-MAX_COMPANY_INTELLIGENCE_TARGETS);
     });
     setMessage("比較リストに追加しました。別の企業も調査して追加できます。");
   }
@@ -290,7 +354,7 @@ export function CompanyIntelligenceScreen() {
     <section>
       <PageHeader
         title="複数の会社を比較する"
-        description="公開情報を根拠に、確認済み情報・AI推定・要確認事項を分けて企業研究を作ります。"
+        description="会社名・応募職種・URLをまとめて入力し、最大10社を比較できます。"
       />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -307,33 +371,49 @@ export function CompanyIntelligenceScreen() {
           </div>
 
           <div className="mt-5 grid gap-4">
-            <FormField label="URL">
+            <FormField label="企業名・応募職種・URL">
               <textarea
-                className={`${textareaClassName} min-h-32`}
-                value={urlInput}
-                onChange={(event) => setUrlInput(event.target.value)}
-                placeholder="採用ページ、求人票、説明会ページ、IR、ニュースなどのURLを貼り付け"
+                className={`${textareaClassName} min-h-44`}
+                value={targetInput}
+                onChange={(event) => setTargetInput(event.target.value)}
+                placeholder={[
+                  "例:",
+                  "三菱UFJ信託銀行 / 総合職 https://www.tr.mufg.jp/recruit/",
+                  "みずほ銀行 / システム・デジタルコース",
+                  "三井住友銀行 / リテール職",
+                ].join("\n")}
               />
             </FormField>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField label="企業名 optional">
-                <input
-                  className={inputClassName}
-                  value={companyName}
-                  onChange={(event) => setCompanyName(event.target.value)}
-                  placeholder="例: 三菱UFJ信託銀行"
-                />
-              </FormField>
-              <FormField label="応募職種 optional">
-                <input
-                  className={inputClassName}
-                  value={jobTitle}
-                  onChange={(event) => setJobTitle(event.target.value)}
-                  placeholder="例: 総合職、データサイエンス職"
-                />
-              </FormField>
-            </div>
+            {parsedTargets.targets.length > 0 ? (
+              <div className="rounded-2xl bg-[#f5f5f7] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold">検出した会社</p>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#6e6e73]">
+                    {parsedTargets.targets.length}/
+                    {MAX_COMPANY_INTELLIGENCE_TARGETS}社
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {parsedTargets.targets.map((target, index) => (
+                    <div
+                      key={`${target.companyName}-${target.jobTitle}-${index}`}
+                      className="rounded-2xl bg-white px-4 py-3"
+                    >
+                      <p className="text-sm font-semibold">
+                        {index + 1}. {target.companyName}
+                      </p>
+                      <p className="mt-1 text-xs font-medium leading-5 text-[#6e6e73]">
+                        {target.jobTitle || "応募職種未指定"}
+                        {target.urls.length > 0
+                          ? ` / URL ${target.urls.length}件`
+                          : ""}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div>
               <p className="text-sm font-semibold tracking-tight">
@@ -365,7 +445,7 @@ export function CompanyIntelligenceScreen() {
               </div>
             </div>
 
-            {pageTypes.length > 0 || validation.warnings.length > 0 ? (
+            {pageTypes.length > 0 || parsedTargets.warnings.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {pageTypes.map((item) => (
                   <span
@@ -375,7 +455,7 @@ export function CompanyIntelligenceScreen() {
                     {item}
                   </span>
                 ))}
-                {validation.warnings.map((warning) => (
+                {parsedTargets.warnings.map((warning) => (
                   <span
                     key={warning}
                     className="inline-flex rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900"
@@ -402,11 +482,11 @@ export function CompanyIntelligenceScreen() {
               </button>
               <button
                 type="button"
-                onClick={() => setUrlInput((current) => `${current}\n`)}
+                onClick={() => setTargetInput((current) => `${current}\n`)}
                 className="inline-flex h-11 items-center gap-2 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
               >
                 <Plus className="h-4 w-4" aria-hidden />
-                URL追加
+                会社を追加
               </button>
             </div>
 
@@ -427,9 +507,7 @@ export function CompanyIntelligenceScreen() {
                       key={step}
                       className={cn(
                         "h-1.5 rounded-full",
-                        index <= stepIndex
-                          ? "bg-[var(--accent)]"
-                          : "bg-white",
+                        index <= stepIndex ? "bg-[var(--accent)]" : "bg-white",
                       )}
                     />
                   ))}
@@ -682,9 +760,7 @@ export function CompanyIntelligenceScreen() {
               </section>
 
               <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <h3 className="text-sm font-semibold text-amber-950">
-                  要確認
-                </h3>
+                <h3 className="text-sm font-semibold text-amber-950">要確認</h3>
                 <div className="mt-3 grid gap-3">
                   {report.unknowns.map((item) => (
                     <div key={item.id} className="rounded-2xl bg-white p-4">
@@ -735,7 +811,6 @@ export function CompanyIntelligenceScreen() {
             </div>
           </section>
         ) : null}
-
       </div>
     </section>
   );

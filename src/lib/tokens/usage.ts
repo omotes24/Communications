@@ -6,7 +6,8 @@ export type AiFeature =
   | "transcribe-audio"
   | "import-profile-file"
   | "realtime-session"
-  | "group-discussion";
+  | "group-discussion"
+  | "solve-question";
 
 export type TokenRateCard = {
   version: string;
@@ -34,7 +35,7 @@ export const fallbackRateCard: TokenRateCard = {
   outputTokenMultiplier: 4,
   reasoningTokenMultiplier: 4,
   audioSecondMultiplier: 40,
-  webSearchMultiplier: 500,
+  webSearchMultiplier: 550,
 };
 
 export function estimateTextTokens(text: string): number {

@@ -3,12 +3,14 @@ import { cn } from "@/lib/utils";
 export function PageHeader({
   title,
   description,
+  descriptionClassName,
   tone = "light",
   compact = false,
   dense = false,
 }: {
   title: string;
   description?: string;
+  descriptionClassName?: string;
   tone?: "light" | "dark";
   compact?: boolean;
   dense?: boolean;
@@ -52,6 +54,7 @@ export function PageHeader({
           className={cn(
             "mt-4 max-w-3xl text-base font-medium leading-8",
             isDark ? "text-white/60" : "text-[#6e6e73]",
+            descriptionClassName,
           )}
         >
           {description}

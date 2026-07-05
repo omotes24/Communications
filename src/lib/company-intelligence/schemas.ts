@@ -17,13 +17,15 @@ export type CompanyIntelligenceResearchRequest = z.infer<
   typeof companyIntelligenceResearchRequestSchema
 >;
 
+const companyIntelligenceOutputUrlSchema = z.string().min(1);
+
 export const companyIntelligenceSourceSchema = z.object({
-  url: z.string().url(),
+  url: companyIntelligenceOutputUrlSchema,
   title: z.string().trim().default(""),
   sourceType: z
     .enum(["official", "recruiting", "ir", "news", "job-board", "other"])
     .default("other"),
-  checkedAt: z.string().datetime().optional(),
+  checkedAt: z.string().nullable(),
 });
 
 export type CompanyIntelligenceSource = z.infer<
@@ -34,7 +36,7 @@ export const supportedClaimSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   claim: z.string().min(1),
-  sourceUrls: z.array(z.string().url()).min(1),
+  sourceUrls: z.array(companyIntelligenceOutputUrlSchema).min(1),
   confidence: z.enum(["high", "medium", "low"]).default("medium"),
 });
 
@@ -45,7 +47,7 @@ export const inferenceClaimSchema = z.object({
   title: z.string().min(1),
   claim: z.string().min(1),
   basis: z.string().min(1),
-  sourceUrls: z.array(z.string().url()).default([]),
+  sourceUrls: z.array(companyIntelligenceOutputUrlSchema).default([]),
   confidence: z.enum(["medium", "low"]).default("low"),
 });
 
@@ -73,11 +75,14 @@ export const comparisonSignalSchema = z.object({
   label: z.string().min(1),
   value: z.string().min(1),
   rationale: z.string().min(1),
-  sourceUrls: z.array(z.string().url()).default([]),
+  sourceUrls: z.array(companyIntelligenceOutputUrlSchema).default([]),
 });
 
 export const companyIntelligenceReportSchema = z.object({
-  reportId: z.string().min(1).default(() => crypto.randomUUID()),
+  reportId: z
+    .string()
+    .min(1)
+    .default(() => crypto.randomUUID()),
   companyName: z.string().min(1),
   jobTitle: z.string().default(""),
   statusSummary: z.string().min(1),
@@ -88,7 +93,7 @@ export const companyIntelligenceReportSchema = z.object({
   sources: z.array(companyIntelligenceSourceSchema).default([]),
   comparisonSignals: z.array(comparisonSignalSchema).default([]),
   researchLimitations: z.array(z.string().min(1)).default([]),
-  generatedAt: z.string().datetime().default(() => new Date().toISOString()),
+  generatedAt: z.string().default(() => new Date().toISOString()),
 });
 
 export type CompanyIntelligenceReport = z.infer<

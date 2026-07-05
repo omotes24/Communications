@@ -133,15 +133,29 @@ export async function saveCloudStorage(
 ): Promise<void> {
   const supabase = createSupabaseServiceClient();
   const parsed = appStorageSchema.parse(storage);
+  const existing = options.allowEmptyOverwrite
+    ? null
+    : await loadCloudStorage(userId);
 
   if (!options.allowEmptyOverwrite && !hasMeaningfulAppStorage(parsed)) {
-    const existing = await loadCloudStorage(userId);
-    if (hasMeaningfulAppStorage(existing.storage)) {
+    if (existing && hasMeaningfulAppStorage(existing.storage)) {
       throw new Error(
         "既存のクラウドデータがあるため、空のデータでは上書きしません。",
       );
     }
   }
+  assertNoBlankProfileOverwrite(
+    existing?.storage ?? null,
+    parsed,
+    Boolean(options.allowEmptyOverwrite),
+  );
+
+  const profilesToPersist = options.allowEmptyOverwrite
+    ? parsed.profiles
+    : mergeById(parsed.profiles, existing?.storage.profiles ?? []);
+  const companiesToPersist = options.allowEmptyOverwrite
+    ? parsed.companies
+    : mergeById(parsed.companies, existing?.storage.companies ?? []);
 
   const { error: profileError } = await supabase
     .from("profiles")
@@ -160,11 +174,13 @@ export async function saveCloudStorage(
     throw profileError;
   }
 
-  await deleteUserRows(userId);
+  if (options.allowEmptyOverwrite) {
+    await deleteUserRows(userId);
+  }
 
-  if (parsed.profiles.length > 0) {
-    const { error } = await supabase.from("personal_slots").insert(
-      parsed.profiles.map((profile) => ({
+  if (profilesToPersist.length > 0) {
+    const { error } = await supabase.from("personal_slots").upsert(
+      profilesToPersist.map((profile) => ({
         id: profile.id,
         user_id: userId,
         name: profile.label,
@@ -173,15 +189,16 @@ export async function saveCloudStorage(
         created_at: profile.createdAt,
         updated_at: profile.updatedAt,
       })),
+      { onConflict: "id" },
     );
     if (error) {
       throw error;
     }
   }
 
-  if (parsed.companies.length > 0) {
-    const { error } = await supabase.from("company_slots").insert(
-      parsed.companies.map((company) => ({
+  if (companiesToPersist.length > 0) {
+    const { error } = await supabase.from("company_slots").upsert(
+      companiesToPersist.map((company) => ({
         id: company.id,
         user_id: userId,
         company_name: company.companyName,
@@ -194,6 +211,7 @@ export async function saveCloudStorage(
         created_at: company.createdAt,
         updated_at: company.updatedAt,
       })),
+      { onConflict: "id" },
     );
     if (error) {
       throw error;
@@ -203,7 +221,7 @@ export async function saveCloudStorage(
   if (parsed.history.length > 0) {
     const { error: sessionsError } = await supabase
       .from("interview_sessions")
-      .insert(
+      .upsert(
         parsed.history.map((record) => ({
           id: record.id,
           user_id: userId,
@@ -214,9 +232,20 @@ export async function saveCloudStorage(
           created_at: record.createdAt,
           updated_at: record.createdAt,
         })),
+        { onConflict: "id" },
       );
     if (sessionsError) {
       throw sessionsError;
+    }
+
+    const sessionIds = parsed.history.map((record) => record.id);
+    const { error: deleteMessagesError } = await supabase
+      .from("interview_messages")
+      .delete()
+      .eq("user_id", userId)
+      .in("session_id", sessionIds);
+    if (deleteMessagesError) {
+      throw deleteMessagesError;
     }
 
     const { error: messagesError } = await supabase
@@ -423,4 +452,57 @@ function hasMeaningfulAppStorage(storage: AppStorage): boolean {
     storage.groupDiscussionSessions.length > 0 ||
     Boolean(storage.learning)
   );
+}
+
+function mergeById<T extends { id: string }>(primary: T[], fallback: T[]): T[] {
+  const ids = new Set(primary.map((item) => item.id));
+  return [...primary, ...fallback.filter((item) => !ids.has(item.id))];
+}
+
+function assertNoBlankProfileOverwrite(
+  existing: AppStorage | null,
+  next: AppStorage,
+  allowEmptyOverwrite: boolean,
+): void {
+  if (allowEmptyOverwrite || !existing?.profiles.length) {
+    return;
+  }
+  const nextProfiles = new Map(
+    next.profiles.map((profile) => [profile.id, profile]),
+  );
+  for (const existingProfile of existing.profiles) {
+    const nextProfile = nextProfiles.get(existingProfile.id);
+    if (!nextProfile) {
+      continue;
+    }
+    if (
+      hasMeaningfulProfileContent(existingProfile) &&
+      !hasMeaningfulProfileContent(nextProfile)
+    ) {
+      throw new Error(
+        "既存の自分フォルダを空の内容で上書きしないよう停止しました。ページを再読み込みしてください。",
+      );
+    }
+  }
+}
+
+function hasMeaningfulProfileContent(profile: UserProfile): boolean {
+  return [
+    profile.nameOrAlias,
+    profile.affiliation,
+    profile.currentRole,
+    profile.careerSummary,
+    profile.workHistory,
+    profile.skills,
+    profile.strengths,
+    profile.weaknesses,
+    profile.achievements,
+    profile.metrics,
+    profile.successStories,
+    profile.failureStories,
+    profile.managementExperience,
+    profile.careerChangeReason,
+    profile.motivationMaterials,
+    profile.forbiddenInformation,
+  ].some((value) => value.trim().length > 0);
 }

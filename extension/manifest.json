@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Yell for You Webテストを自動で解く",
+  "version": "0.1.0",
+  "permissions": ["activeTab", "scripting", "storage", "sidePanel"],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background/serviceWorker.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "action": {
+    "default_title": "Webテストを自動で解く"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": ["content/index.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}

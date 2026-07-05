@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  BarChart3,
+  BookOpenCheck,
   BriefcaseBusiness,
   ChevronDown,
   ChevronUp,
@@ -29,14 +29,14 @@ const navItems = [
 
 const moreNavItems = [
   {
-    href: "/company/intelligence",
-    label: "複数の会社を比較する",
-    icon: BarChart3,
-  },
-  {
     href: "/group-discussion",
     label: "グループディスカッション",
     icon: UsersRound,
+  },
+  {
+    href: "/question-solver",
+    label: "Webテストを自動で解く",
+    icon: BookOpenCheck,
   },
 ];
 

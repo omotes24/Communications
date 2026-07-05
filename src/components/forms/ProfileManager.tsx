@@ -12,6 +12,7 @@ import {
 import {
   CheckCircle2,
   Download,
+  Pencil,
   FileUp,
   Loader2,
   Plus,
@@ -30,6 +31,11 @@ import {
   type ProfileFileImportOutput,
   type UserProfile,
 } from "@/lib/schemas/interview";
+import {
+  APP_STORAGE_EVENT,
+  loadAppStorage,
+  MAX_PROFILE_SLOTS,
+} from "@/lib/storage/browser-store";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 import { cn } from "@/lib/utils";
 
@@ -66,14 +72,70 @@ const collapsedProfilePreviewStyle: CSSProperties = {
   overflow: "hidden",
 };
 
+function profileCopyBase(label: string): string {
+  const trimmed = label.trim() || "メインプロフィール";
+  const match = trimmed.match(/^(.*)\((\d+)\)$/);
+  if (!match?.[1]) {
+    return trimmed;
+  }
+  return match[1].trim() || trimmed;
+}
+
+function nextProfileCopyLabel(label: string, profiles: UserProfile[]): string {
+  const base = profileCopyBase(label);
+  const usedNumbers = new Set<number>();
+
+  for (const profile of profiles) {
+    const profileLabel = profile.label.trim();
+    if (profileLabel === base) {
+      usedNumbers.add(1);
+      continue;
+    }
+
+    const match = profileLabel.match(/^(.*)\((\d+)\)$/);
+    if (match?.[1]?.trim() === base && match[2]) {
+      usedNumbers.add(Number(match[2]));
+    }
+  }
+
+  let nextNumber = 2;
+  while (usedNumbers.has(nextNumber)) {
+    nextNumber += 1;
+  }
+  return `${base}(${nextNumber})`;
+}
+
+function hasProfileContent(profile: UserProfile): boolean {
+  return [
+    profile.nameOrAlias,
+    profile.affiliation,
+    profile.careerSummary,
+    profile.workHistory,
+    profile.skills,
+    profile.strengths,
+    profile.weaknesses,
+    profile.achievements,
+    profile.metrics,
+    profile.successStories,
+    profile.failureStories,
+    profile.managementExperience,
+    profile.careerChangeReason,
+    profile.motivationMaterials,
+    profile.forbiddenInformation,
+  ].some((value) => value.trim().length > 0);
+}
+
 export function ProfileManager() {
   const {
+    ready,
     storage,
     activeProfile: storedActiveProfile,
     activeProfiles,
     actions,
   } = useAppStorage();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const profileNameInputRef = useRef<HTMLInputElement | null>(null);
   const didLoadInitialProfileRef = useRef(false);
   const [draft, setDraft] = useState<UserProfile>(createEmptyUserProfile());
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -82,6 +144,8 @@ export function ProfileManager() {
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [fileImportLoading, setFileImportLoading] = useState(false);
   const [expandedProfileIds, setExpandedProfileIds] = useState<string[]>([]);
+  const [localBackupProfileCount, setLocalBackupProfileCount] = useState(0);
+  const [localRestoreLoading, setLocalRestoreLoading] = useState(false);
 
   const firstProfile = storage.profiles[0] ?? null;
   const initialProfile = storedActiveProfile ?? firstProfile;
@@ -92,6 +156,12 @@ export function ProfileManager() {
   const isSavedDraft = storage.profiles.some(
     (profile) => profile.id === draft.id,
   );
+  const hasMeaningfulCloudProfiles = useMemo(
+    () => storage.profiles.some((profile) => hasProfileContent(profile)),
+    [storage.profiles],
+  );
+  const profileLimitReached = storage.profiles.length >= MAX_PROFILE_SLOTS;
+  const profileLimitMessage = `自分フォルダは最大${MAX_PROFILE_SLOTS}件まで保存できます。新規作成するには不要なスロットを削除してください。`;
 
   useEffect(() => {
     if (didLoadInitialProfileRef.current || !initialProfile) {
@@ -107,20 +177,54 @@ export function ProfileManager() {
     return () => window.clearTimeout(timer);
   }, [initialProfile]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (!ready || hasMeaningfulCloudProfiles) {
+        setLocalBackupProfileCount(0);
+        return;
+      }
+
+      try {
+        const local = loadAppStorage();
+        setLocalBackupProfileCount(local.profiles.length);
+      } catch {
+        setLocalBackupProfileCount(0);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [hasMeaningfulCloudProfiles, ready]);
+
+  const focusProfileForm = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      profileNameInputRef.current?.focus({ preventScroll: true });
+    });
+  }, []);
+
   const selectProfile = useCallback(
-    (profile: UserProfile) => {
+    (
+      profile: UserProfile,
+      options: { announce?: boolean; focus?: boolean } = {},
+    ) => {
       setSelectedId(profile.id);
       setDraft(profile);
       setSelfText(profileToSelfText(profile));
       setForbiddenInformation(profile.forbiddenInformation);
-      setImportStatus(null);
+      setImportStatus(
+        options.announce
+          ? `${profile.label} を編集中です。上書き保存できます。別名で残す場合は新規作成を使ってください。`
+          : null,
+      );
+      if (options.focus) {
+        focusProfileForm();
+      }
     },
-    [],
+    [focusProfileForm],
   );
 
-  function save() {
+  function buildSavedProfile(): UserProfile {
     const now = new Date().toISOString();
-    const next: UserProfile = {
+    return {
       ...draft,
       label: draft.label.trim() || "メインプロフィール",
       nameOrAlias: draft.nameOrAlias.trim(),
@@ -136,13 +240,83 @@ export function ProfileManager() {
       forbiddenInformation,
       updatedAt: now,
     };
+  }
+
+  function save() {
+    if (!ready) {
+      setImportStatus("自分フォルダを読み込み中です。読み込み後に保存してください。");
+      return;
+    }
+    if (isSavedDraft) {
+      overwriteProfile();
+      return;
+    }
+    if (profileLimitReached) {
+      setImportStatus(profileLimitMessage);
+      return;
+    }
+
+    const next = buildSavedProfile();
     actions.saveProfile(next);
     setDraft(next);
     setSelectedId(next.id);
-    setImportStatus("保存しました。");
+    setImportStatus("新規作成しました。");
+  }
+
+  function overwriteProfile() {
+    const next = buildSavedProfile();
+    const existing = storage.profiles.find((profile) => profile.id === next.id);
+    if (
+      existing &&
+      hasProfileContent(existing) &&
+      !hasProfileContent(next)
+    ) {
+      setImportStatus(
+        "内容が空のため上書きしませんでした。ページを再読み込みしてから編集してください。",
+      );
+      return;
+    }
+    actions.saveProfile(next);
+    setDraft(next);
+    setSelectedId(next.id);
+    setImportStatus("上書き保存しました。");
+  }
+
+  function saveAsNewProfile() {
+    if (!ready) {
+      setImportStatus("自分フォルダを読み込み中です。読み込み後に保存してください。");
+      return;
+    }
+    if (profileLimitReached) {
+      setImportStatus(profileLimitMessage);
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const baseProfile = buildSavedProfile();
+    const next: UserProfile = {
+      ...baseProfile,
+      id: crypto.randomUUID(),
+      label: nextProfileCopyLabel(baseProfile.label, storage.profiles),
+      createdAt: now,
+      updatedAt: now,
+    };
+    actions.saveProfile(next);
+    setDraft(next);
+    setSelectedId(next.id);
+    setImportStatus(`${next.label} として新規作成しました。`);
   }
 
   function createNew() {
+    if (!ready) {
+      setImportStatus("自分フォルダを読み込み中です。読み込み後に操作してください。");
+      return;
+    }
+    if (profileLimitReached) {
+      setImportStatus(profileLimitMessage);
+      return;
+    }
+
     const empty = createEmptyUserProfile();
     setDraft(empty);
     setSelectedId(null);
@@ -240,6 +414,13 @@ export function ProfileManager() {
         setImportStatus("ローカル下書きは見つかりませんでした。");
         return;
       }
+      if (
+        profileLimitReached &&
+        !storage.profiles.some((profile) => profile.id === data.profile?.id)
+      ) {
+        setImportStatus(profileLimitMessage);
+        return;
+      }
       actions.saveProfile(data.profile);
       selectProfile(data.profile);
       setImportStatus("ローカル下書きを取り込みました。");
@@ -250,15 +431,129 @@ export function ProfileManager() {
           : "ローカル下書きの取り込みに失敗しました。",
       );
     }
-  }, [actions, selectProfile]);
+  }, [
+    actions,
+    profileLimitMessage,
+    profileLimitReached,
+    selectProfile,
+    storage.profiles,
+  ]);
+
+  async function restoreLocalProfiles() {
+    if (!ready) {
+      setImportStatus("自分フォルダを読み込み中です。読み込み後に復元してください。");
+      return;
+    }
+
+    let local;
+    try {
+      local = loadAppStorage();
+    } catch {
+      setImportStatus("このブラウザの復元データを読み込めませんでした。");
+      return;
+    }
+
+    if (local.profiles.length === 0) {
+      setImportStatus("このブラウザに復元できる自分フォルダはありません。");
+      setLocalBackupProfileCount(0);
+      return;
+    }
+
+    const restoredProfiles = local.profiles.slice(0, MAX_PROFILE_SLOTS);
+    const restoredProfileIds = restoredProfiles.map((profile) => profile.id);
+    const nextStorage = {
+      ...storage,
+      profiles: restoredProfiles,
+      selectedProfileIds:
+        local.selectedProfileIds.filter((id) =>
+          restoredProfileIds.includes(id),
+        ).length > 0
+          ? local.selectedProfileIds.filter((id) =>
+              restoredProfileIds.includes(id),
+            )
+          : restoredProfiles[0]
+            ? [restoredProfiles[0].id]
+            : [],
+      activeProfileId:
+        local.activeProfileId &&
+        restoredProfileIds.includes(local.activeProfileId)
+          ? local.activeProfileId
+          : restoredProfiles[0]?.id ?? null,
+    };
+
+    try {
+      setLocalRestoreLoading(true);
+      setImportStatus("このブラウザに残っている自分フォルダを復元中です。");
+      const response = await fetch("/api/storage", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storage: nextStorage,
+          allowEmptyOverwrite: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("復元に失敗しました。ログイン状態を確認してください。");
+      }
+
+      window.dispatchEvent(new Event(APP_STORAGE_EVENT));
+      const activeId = nextStorage.activeProfileId;
+      const activeProfile =
+        restoredProfiles.find((profile) => profile.id === activeId) ??
+        restoredProfiles[0];
+      if (activeProfile) {
+        selectProfile(activeProfile);
+      }
+      setLocalBackupProfileCount(0);
+      setImportStatus(
+        `${restoredProfiles.length}件の自分フォルダを復元しました。`,
+      );
+    } catch (error) {
+      setImportStatus(
+        error instanceof Error ? error.message : "自分フォルダの復元に失敗しました。",
+      );
+    } finally {
+      setLocalRestoreLoading(false);
+    }
+  }
 
   return (
     <section>
       <PageHeader title="自分スロット" />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <form className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06] sm:p-6">
+        <form
+          ref={formRef}
+          className="rounded-[30px] bg-white p-5 shadow-sm ring-1 ring-black/[0.06] sm:p-6"
+        >
           <div className="grid gap-5">
+            {localBackupProfileCount > 0 ? (
+              <div className="rounded-[24px] bg-amber-50 p-4 ring-1 ring-amber-200">
+                <p className="text-sm font-semibold text-amber-950">
+                  このブラウザに自分フォルダが{localBackupProfileCount}
+                  件残っています。
+                </p>
+                <p className="mt-1 text-xs font-medium leading-5 text-amber-900">
+                  現在のクラウド保存が空または未入力のため、ここから復元できます。
+                  会社情報や履歴は変更しません。
+                </p>
+                <button
+                  type="button"
+                  onClick={restoreLocalProfiles}
+                  disabled={localRestoreLoading}
+                  className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-amber-950 px-4 text-xs font-semibold text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {localRestoreLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Download className="h-4 w-4" aria-hidden />
+                  )}
+                  このブラウザから復元
+                </button>
+              </div>
+            ) : null}
+
             <div className="rounded-[26px] bg-[#f5f5f7] p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -301,6 +596,7 @@ export function ProfileManager() {
 
             <FormField label="プロフィール名">
               <input
+                ref={profileNameInputRef}
                 className={inputClassName}
                 value={draft.label}
                 onChange={(event) =>
@@ -374,11 +670,22 @@ export function ProfileManager() {
               <button
                 type="button"
                 onClick={save}
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)]"
+                disabled={!ready}
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-[var(--accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:bg-[#86868b]"
               >
                 <Save className="h-4 w-4" aria-hidden />
-                {isSavedDraft ? "保存" : "新規スロット保存"}
+                {isSavedDraft ? "上書き保存" : "新規スロット保存"}
               </button>
+              {isSavedDraft ? (
+                <button
+                  type="button"
+                  onClick={saveAsNewProfile}
+                  disabled={!ready || profileLimitReached}
+                  className="inline-flex h-11 items-center rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed] disabled:cursor-not-allowed disabled:text-[#86868b]"
+                >
+                  別名で新規作成
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={importLocalSeed}
@@ -390,7 +697,8 @@ export function ProfileManager() {
               <button
                 type="button"
                 onClick={createNew}
-                className="h-11 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed]"
+                disabled={!ready || profileLimitReached}
+                className="h-11 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f] transition hover:bg-[#e8e8ed] disabled:cursor-not-allowed disabled:text-[#86868b]"
               >
                 新規
               </button>
@@ -401,6 +709,7 @@ export function ProfileManager() {
                 {importStatus}
               </p>
             ) : null}
+
           </div>
         </form>
 
@@ -416,11 +725,15 @@ export function ProfileManager() {
               <p className="mt-1 text-xs font-semibold text-[#86868b]">
                 {activeProfiles.length}件を回答に使用
               </p>
+              <p className="mt-1 text-xs font-semibold text-[#86868b]">
+                保存: {storage.profiles.length}/{MAX_PROFILE_SLOTS}件
+              </p>
             </div>
             <button
               type="button"
               onClick={createNew}
-              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-[#1d1d1f] px-3 text-xs font-semibold text-white transition hover:bg-[#424245]"
+              disabled={!ready || profileLimitReached}
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-[#1d1d1f] px-3 text-xs font-semibold text-white transition hover:bg-[#424245] disabled:cursor-not-allowed disabled:bg-[#86868b]"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden />
               追加
@@ -437,6 +750,7 @@ export function ProfileManager() {
                 const inUse = activeProfiles.some(
                   (item) => item.id === profile.id,
                 );
+                const isSelected = selectedProfile?.id === profile.id;
                 const profileText = profile.careerSummary || "内容未入力";
                 const canExpand = needsExpansion(profileText);
                 const expanded = expandedProfileIds.includes(profile.id);
@@ -444,104 +758,129 @@ export function ProfileManager() {
                   <div
                     key={profile.id}
                     className={cn(
-                      "rounded-2xl p-2.5 ring-1 ring-black/[0.06] transition",
-                      selectedProfile?.id === profile.id
-                        ? "bg-[#f5f5f7] text-[#1d1d1f]"
-                        : "bg-white text-[#1d1d1f] hover:bg-[#fbfbfd]",
+                      "rounded-2xl p-2.5 ring-1 transition",
+                      isSelected
+                        ? "bg-[#f5f5f7] text-[#1d1d1f] ring-[var(--accent)]"
+                        : "bg-white text-[#1d1d1f] ring-black/[0.06] hover:bg-[#fbfbfd]",
                     )}
                   >
-                  <button
-                    type="button"
-                    onClick={() => selectProfile(profile)}
-                    className="block w-full text-left"
-                  >
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-                        SLOT {String.fromCharCode(65 + index)}
+                    <button
+                      type="button"
+                      onClick={() => selectProfile(profile, { announce: true })}
+                      className="block w-full text-left"
+                    >
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+                          SLOT {String.fromCharCode(65 + index)}
+                        </span>
+                        {inUse ? (
+                          <CheckCircle2
+                            className="h-4 w-4 text-emerald-600"
+                            aria-hidden
+                          />
+                        ) : null}
                       </span>
-                      {inUse ? (
-                        <CheckCircle2
-                          className="h-4 w-4 text-emerald-600"
-                          aria-hidden
-                        />
+                      <span className="mt-0.5 block truncate text-sm font-semibold">
+                        {profile.label}
+                      </span>
+                      {expanded &&
+                      (profile.nameOrAlias || profile.affiliation) ? (
+                        <span className="mt-1 block whitespace-pre-wrap text-xs font-semibold text-[#6e6e73]">
+                          {[profile.nameOrAlias, profile.affiliation]
+                            .filter(Boolean)
+                            .join(" / ")}
+                        </span>
                       ) : null}
-                    </span>
-                    <span className="mt-0.5 block truncate text-sm font-semibold">
-                      {profile.label}
-                    </span>
-                    {expanded && (profile.nameOrAlias || profile.affiliation) ? (
-                      <span className="mt-1 block whitespace-pre-wrap text-xs font-semibold text-[#6e6e73]">
-                        {[profile.nameOrAlias, profile.affiliation]
-                          .filter(Boolean)
-                          .join(" / ")}
-                      </span>
-                    ) : null}
-                    <span
-                      className={cn(
-                        "mt-1.5 block text-[11px] leading-4",
-                        expanded ? "whitespace-pre-wrap" : "whitespace-normal",
-                        selectedProfile?.id === profile.id
-                          ? "text-[#6e6e73]"
-                          : "text-[#86868b]",
-                      )}
-                      style={expanded ? undefined : collapsedProfilePreviewStyle}
-                    >
-                      {profileText}
-                    </span>
-                  </button>
-                  {canExpand ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleExpandedProfile(profile.id)}
-                      className="mt-1.5 inline-flex h-6 items-center rounded-full bg-[#f5f5f7] px-2.5 text-[11px] font-semibold text-[#6e6e73] transition hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
-                      aria-expanded={expanded}
-                    >
-                      {expanded ? "閉じる" : "全文"}
-                    </button>
-                  ) : null}
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => actions.toggleSelectedProfile(profile.id)}
-                      aria-pressed={inUse}
-                      className={cn(
-                        "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold transition",
-                        inUse
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e8e8ed]",
-                      )}
-                    >
-                      {inUse ? (
-                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                      ) : (
-                        <span
-                          className="h-3.5 w-3.5 rounded-full ring-1 ring-[#c7c7cc]"
-                          aria-hidden
-                        />
-                      )}
-                      {inUse ? "チェック中" : "チェック"}
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-neutral-500">
-                        {new Date(profile.updatedAt).toLocaleDateString(
-                          "ja-JP",
+                      <span
+                        className={cn(
+                          "mt-1.5 block text-[11px] leading-4",
+                          expanded
+                            ? "whitespace-pre-wrap"
+                            : "whitespace-normal",
+                          isSelected ? "text-[#6e6e73]" : "text-[#86868b]",
                         )}
+                        style={
+                          expanded ? undefined : collapsedProfilePreviewStyle
+                        }
+                      >
+                        {profileText}
                       </span>
+                    </button>
+                    {canExpand ? (
                       <button
                         type="button"
-                        aria-label={`${profile.label}を削除`}
-                        onClick={() => actions.deleteProfile(profile.id)}
-                        className={cn(
-                          "rounded-full p-1.5 transition",
-                          selectedProfile?.id === profile.id
-                            ? "text-red-600 hover:bg-red-50"
-                            : "text-[#86868b] hover:bg-red-50 hover:text-red-600",
-                        )}
+                        onClick={() => toggleExpandedProfile(profile.id)}
+                        className="mt-1.5 inline-flex h-6 items-center rounded-full bg-[#f5f5f7] px-2.5 text-[11px] font-semibold text-[#6e6e73] transition hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
+                        aria-expanded={expanded}
                       >
-                        <Trash2 className="h-4 w-4" aria-hidden />
+                        {expanded ? "閉じる" : "全文"}
                       </button>
+                    ) : null}
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            selectProfile(profile, {
+                              announce: true,
+                              focus: true,
+                            })
+                          }
+                          className={cn(
+                            "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold transition",
+                            isSelected
+                              ? "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]"
+                              : "bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#e8e8ed]",
+                          )}
+                        >
+                          <Pencil className="h-3.5 w-3.5" aria-hidden />
+                          {isSelected ? "編集中" : "編集"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            actions.toggleSelectedProfile(profile.id)
+                          }
+                          aria-pressed={inUse}
+                          className={cn(
+                            "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold transition",
+                            inUse
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e8e8ed]",
+                          )}
+                        >
+                          {inUse ? (
+                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                          ) : (
+                            <span
+                              className="h-3.5 w-3.5 rounded-full ring-1 ring-[#c7c7cc]"
+                              aria-hidden
+                            />
+                          )}
+                          {inUse ? "チェック中" : "チェック"}
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-neutral-500">
+                          {new Date(profile.updatedAt).toLocaleDateString(
+                            "ja-JP",
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`${profile.label}を削除`}
+                          onClick={() => actions.deleteProfile(profile.id)}
+                          className={cn(
+                            "rounded-full p-1.5 transition",
+                            isSelected
+                              ? "text-red-600 hover:bg-red-50"
+                              : "text-[#86868b] hover:bg-red-50 hover:text-red-600",
+                          )}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                        </button>
+                      </div>
                     </div>
-                  </div>
                   </div>
                 );
               })

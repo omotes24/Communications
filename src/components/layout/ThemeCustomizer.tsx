@@ -1,13 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Palette } from "lucide-react";
+import { Check, Moon, Palette, Sun } from "lucide-react";
 
 import {
+  appColorModeOptions,
+  appColorModeStorageKey,
   appThemeOptions,
   appThemeStorageKey,
+  defaultAppColorMode,
   defaultAppTheme,
+  isAppColorMode,
   isAppTheme,
+  type AppColorMode,
   type AppTheme,
 } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -19,19 +24,30 @@ export function ThemeCustomizer({
 }) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<AppTheme>(defaultAppTheme);
+  const [colorMode, setColorMode] =
+    useState<AppColorMode>(defaultAppColorMode);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const currentTheme = document.documentElement.dataset.appTheme;
     const storedTheme = window.localStorage.getItem(appThemeStorageKey);
+    const currentColorMode = document.documentElement.dataset.appMode;
+    const storedColorMode = window.localStorage.getItem(appColorModeStorageKey);
     const nextTheme = isAppTheme(storedTheme)
       ? storedTheme
       : isAppTheme(currentTheme)
         ? currentTheme
         : defaultAppTheme;
+    const nextColorMode = isAppColorMode(storedColorMode)
+      ? storedColorMode
+      : isAppColorMode(currentColorMode)
+        ? currentColorMode
+        : defaultAppColorMode;
     document.documentElement.setAttribute("data-app-theme", nextTheme);
+    document.documentElement.setAttribute("data-app-mode", nextColorMode);
     const frame = window.requestAnimationFrame(() => {
       setTheme(nextTheme);
+      setColorMode(nextColorMode);
     });
     return () => window.cancelAnimationFrame(frame);
   }, []);
@@ -67,6 +83,12 @@ export function ThemeCustomizer({
     setTheme(nextTheme);
   }
 
+  function selectColorMode(nextColorMode: AppColorMode) {
+    document.documentElement.setAttribute("data-app-mode", nextColorMode);
+    window.localStorage.setItem(appColorModeStorageKey, nextColorMode);
+    setColorMode(nextColorMode);
+  }
+
   return (
     <div ref={rootRef} className="relative">
       <button
@@ -88,8 +110,48 @@ export function ThemeCustomizer({
       {open ? (
         <div
           id="theme-customizer"
-          className="absolute bottom-full left-0 z-30 mb-3 w-[18.5rem] rounded-[24px] bg-white p-3 shadow-lg ring-1 ring-black/[0.08]"
+          className={cn(
+            "absolute bottom-full left-0 z-30 mb-3 w-[18.5rem] rounded-[24px] p-3 shadow-lg ring-1",
+            colorMode === "dark"
+              ? "bg-neutral-950 text-white ring-white/10"
+              : "bg-white text-[#1d1d1f] ring-black/[0.08]",
+          )}
         >
+          <div
+            className={cn(
+              "mb-3 grid grid-cols-2 gap-2 rounded-full p-1",
+              colorMode === "dark" ? "bg-white/10" : "bg-[#f5f5f7]",
+            )}
+            role="radiogroup"
+            aria-label="表示テーマ"
+          >
+            {appColorModeOptions.map((option) => {
+              const selected = option.id === colorMode;
+              const Icon = option.id === "dark" ? Moon : Sun;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => selectColorMode(option.id)}
+                  className={cn(
+                    "flex h-9 items-center justify-center gap-1.5 rounded-full text-xs font-semibold transition",
+                    selected
+                      ? colorMode === "dark"
+                        ? "bg-[var(--foreground)] text-[var(--background)] shadow-sm"
+                        : "bg-[#1d1d1f] text-white shadow-sm"
+                      : colorMode === "dark"
+                        ? "text-white/60 hover:bg-white/10 hover:text-white"
+                        : "text-[#6e6e73] hover:bg-white hover:text-[#1d1d1f]",
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
           <div
             className="grid grid-cols-7 gap-2"
             role="radiogroup"

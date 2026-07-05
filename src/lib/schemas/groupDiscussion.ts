@@ -211,7 +211,7 @@ export const gdEvaluationScoreSchema = z.object({
   time_management: z.number().min(1).max(5),
   output_quality: z.number().min(1).max(5),
   presentation: z.number().min(1).max(5),
-  company_fit: z.number().min(1).max(5).optional(),
+  company_fit: z.number().min(1).max(5),
 });
 export type GDEvaluationScore = z.infer<typeof gdEvaluationScoreSchema>;
 

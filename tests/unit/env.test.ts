@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { getServerEnv } from "@/lib/openai/env";
+import {
+  getServerEnv,
+  resolveCompanyIntelligenceResearchModel,
+} from "@/lib/openai/env";
 
 const originalEnv = process.env;
 
@@ -10,6 +13,10 @@ describe("server env", () => {
     delete process.env.AI_PROVIDER;
     delete process.env.OPENAI_API_KEY;
     delete process.env.GROQ_API_KEY;
+    delete process.env.OPENAI_RESEARCH_MODEL;
+    delete process.env.COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL;
+    delete process.env.OPENAI_TRANSCRIPTION_DELAY;
+    delete process.env.OPENAI_AUDIO_NOISE_REDUCTION;
   });
 
   afterEach(() => {
@@ -25,6 +32,7 @@ describe("server env", () => {
     expect(env.CLASSIFIER_MODEL).toBe("gpt-5.4-nano");
     expect(env.OPENAI_TRANSCRIPTION_DELAY).toBe("high");
     expect(env.OPENAI_AUDIO_NOISE_REDUCTION).toBe("far_field");
+    expect(env.COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL).toBe("gpt-5.5");
   });
 
   it("reads realtime transcription tuning from environment variables", () => {
@@ -45,5 +53,24 @@ describe("server env", () => {
 
     expect(env.AI_PROVIDER).toBe("groq");
     expect(env.ANSWER_MODEL).toBe("openai/gpt-oss-120b");
+  });
+
+  it("avoids gated deep research models for company intelligence", () => {
+    process.env.OPENAI_RESEARCH_MODEL = "gpt-5.5";
+    process.env.COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL =
+      "o4-mini-deep-research";
+
+    const env = getServerEnv();
+
+    expect(resolveCompanyIntelligenceResearchModel(env)).toBe("gpt-5.5");
+  });
+
+  it("avoids mini models for company intelligence research", () => {
+    process.env.OPENAI_RESEARCH_MODEL = "gpt-5.5";
+    process.env.COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL = "gpt-5.4-mini";
+
+    const env = getServerEnv();
+
+    expect(resolveCompanyIntelligenceResearchModel(env)).toBe("gpt-5.5");
   });
 });
