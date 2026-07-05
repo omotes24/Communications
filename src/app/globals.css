@@ -2,8 +2,14 @@
 
 :root,
 html[data-app-theme="blue"] {
+  color-scheme: light;
   --background: #f5f5f7;
   --foreground: #1d1d1f;
+  --surface: #ffffff;
+  --surface-muted: #f5f5f7;
+  --surface-subtle: #fbfbfd;
+  --muted: #6e6e73;
+  --border: rgb(0 0 0 / 0.08);
   --accent: #0071e3;
   --accent-hover: #147ce5;
   --accent-soft: #e8f2ff;
@@ -59,6 +65,20 @@ html[data-app-theme="black"] {
   --accent-ring-strong: rgb(29 29 31 / 0.15);
 }
 
+html[data-app-mode="dark"] {
+  color-scheme: dark;
+  --background: #101011;
+  --foreground: #f5f5f7;
+  --surface: #18181b;
+  --surface-muted: #232326;
+  --surface-subtle: #151518;
+  --muted: #a1a1aa;
+  --border: rgb(255 255 255 / 0.12);
+  --accent-soft: rgb(255 255 255 / 0.08);
+  --accent-ring: rgb(255 255 255 / 0.12);
+  --accent-ring-strong: rgb(255 255 255 / 0.18);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -85,6 +105,103 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+html[data-app-mode="dark"] input,
+html[data-app-mode="dark"] textarea,
+html[data-app-mode="dark"] select {
+  background-color: var(--surface);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+html[data-app-mode="dark"] input::placeholder,
+html[data-app-mode="dark"] textarea::placeholder {
+  color: rgb(161 161 170 / 0.7);
+}
+
+html[data-app-mode="dark"] [class~="bg-white"],
+html[data-app-mode="dark"] [class^="bg-white/"],
+html[data-app-mode="dark"] [class*=" bg-white/"] {
+  background-color: var(--surface) !important;
+}
+
+html[data-app-mode="dark"] [class~="bg-[#fbfbfd]"],
+html[data-app-mode="dark"] [class^="bg-[#fbfbfd]/"],
+html[data-app-mode="dark"] [class*=" bg-[#fbfbfd]/"] {
+  background-color: rgb(21 21 24 / 0.86) !important;
+}
+
+html[data-app-mode="dark"] [class~="bg-[#f5f5f7]"],
+html[data-app-mode="dark"] [class^="bg-[#f5f5f7]/"],
+html[data-app-mode="dark"] [class*=" bg-[#f5f5f7]/"],
+html[data-app-mode="dark"] [class~="bg-[#f7f7f8]"],
+html[data-app-mode="dark"] [class^="bg-[#f7f7f8]/"],
+html[data-app-mode="dark"] [class*=" bg-[#f7f7f8]/"],
+html[data-app-mode="dark"] [class~="bg-[#f2f2f4]"],
+html[data-app-mode="dark"] [class^="bg-[#f2f2f4]/"],
+html[data-app-mode="dark"] [class*=" bg-[#f2f2f4]/"],
+html[data-app-mode="dark"] [class~="bg-[#f4f4f5]"],
+html[data-app-mode="dark"] [class^="bg-[#f4f4f5]/"],
+html[data-app-mode="dark"] [class*=" bg-[#f4f4f5]/"] {
+  background-color: var(--surface-muted) !important;
+}
+
+html[data-app-mode="dark"] [class~="bg-[#1d1d1f]"],
+html[data-app-mode="dark"] [class^="bg-[#1d1d1f]/"],
+html[data-app-mode="dark"] [class*=" bg-[#1d1d1f]/"] {
+  background-color: var(--accent) !important;
+}
+
+html[data-app-mode="dark"] [class~="text-[#1d1d1f]"],
+html[data-app-mode="dark"] [class^="text-[#1d1d1f]/"],
+html[data-app-mode="dark"] [class*=" text-[#1d1d1f]/"],
+html[data-app-mode="dark"] [class~="text-neutral-950"],
+html[data-app-mode="dark"] [class^="text-neutral-950/"],
+html[data-app-mode="dark"] [class*=" text-neutral-950/"],
+html[data-app-mode="dark"] [class~="text-black"],
+html[data-app-mode="dark"] [class^="text-black/"],
+html[data-app-mode="dark"] [class*=" text-black/"] {
+  color: var(--foreground) !important;
+}
+
+html[data-app-mode="dark"] [class~="text-[#6e6e73]"],
+html[data-app-mode="dark"] [class^="text-[#6e6e73]/"],
+html[data-app-mode="dark"] [class*=" text-[#6e6e73]/"],
+html[data-app-mode="dark"] [class~="text-[#86868b]"],
+html[data-app-mode="dark"] [class^="text-[#86868b]/"],
+html[data-app-mode="dark"] [class*=" text-[#86868b]/"],
+html[data-app-mode="dark"] [class~="text-neutral-500"],
+html[data-app-mode="dark"] [class^="text-neutral-500/"],
+html[data-app-mode="dark"] [class*=" text-neutral-500/"],
+html[data-app-mode="dark"] [class~="text-zinc-500"],
+html[data-app-mode="dark"] [class^="text-zinc-500/"],
+html[data-app-mode="dark"] [class*=" text-zinc-500/"],
+html[data-app-mode="dark"] [class~="text-slate-500"],
+html[data-app-mode="dark"] [class^="text-slate-500/"],
+html[data-app-mode="dark"] [class*=" text-slate-500/"] {
+  color: var(--muted) !important;
+}
+
+html[data-app-mode="dark"] [class~="border-black"],
+html[data-app-mode="dark"] [class^="border-black/"],
+html[data-app-mode="dark"] [class*=" border-black/"],
+html[data-app-mode="dark"] [class~="border-[#d2d2d7]"],
+html[data-app-mode="dark"] [class^="border-[#d2d2d7]/"],
+html[data-app-mode="dark"] [class*=" border-[#d2d2d7]/"],
+html[data-app-mode="dark"] [class~="border-[#e5e5ea]"],
+html[data-app-mode="dark"] [class^="border-[#e5e5ea]/"],
+html[data-app-mode="dark"] [class*=" border-[#e5e5ea]/"],
+html[data-app-mode="dark"] [class~="border-[#ececf0]"],
+html[data-app-mode="dark"] [class^="border-[#ececf0]/"],
+html[data-app-mode="dark"] [class*=" border-[#ececf0]/"] {
+  border-color: var(--border) !important;
+}
+
+html[data-app-mode="dark"] [class~="ring-black"],
+html[data-app-mode="dark"] [class^="ring-black/"],
+html[data-app-mode="dark"] [class*=" ring-black/"] {
+  --tw-ring-color: var(--border) !important;
 }
 
 ::selection {

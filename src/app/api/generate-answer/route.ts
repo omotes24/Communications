@@ -14,6 +14,7 @@ import {
   type AnswerModelMode,
   answerDraftSchema,
   generateAnswerRequestSchema,
+  type GenerateAnswerRequest,
   validateAnswerLength,
 } from "@/lib/schemas/interview";
 import { mockGenerateAnswer, streamMockAnswer } from "@/lib/test/mock-openai";
@@ -40,6 +41,17 @@ function resolveAnswerModel(
     return env.ANSWER_MODEL;
   }
   return env.RESEARCH_MODEL;
+}
+
+function estimateReservedAnswerTokens(
+  model: string,
+  body: GenerateAnswerRequest,
+): number {
+  const estimatedAmount = estimateGenerateAnswerTokens(body);
+  if (model === "gpt-5.4-mini") {
+    return Math.max(1, Math.ceil(estimatedAmount / 3));
+  }
+  return estimatedAmount;
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -70,7 +82,7 @@ export async function POST(request: Request): Promise<Response> {
       feature: "generate-answer",
       provider: env.AI_PROVIDER,
       model,
-      estimatedAmount: estimateGenerateAnswerTokens(body),
+      estimatedAmount: estimateReservedAnswerTokens(model, body),
     });
   } catch (error) {
     if (error instanceof TokenBalanceError) {

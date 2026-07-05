@@ -10,6 +10,7 @@ import type {
   GroupDiscussionFinalizeRequest,
   GroupDiscussionTopicRequest,
 } from "@/lib/schemas/groupDiscussion";
+import type { SolveQuestionRequest } from "@/lib/question-solver/schemas";
 import {
   calculateAppTokens,
   estimateTextTokens,
@@ -148,6 +149,30 @@ export function estimateGroupDiscussionFinalizeTokens(
       body.presentationText ?? body.session.presentationText,
     ].join("\n"),
     2400,
+  );
+}
+
+export function estimateSolveQuestionTokens(
+  body: SolveQuestionRequest,
+): number {
+  const imageTokenReserve = body.question.visualImageDataUrl ? 6000 : 0;
+  return (
+    estimateForText(
+      "solve-question",
+      [
+        body.mode,
+        body.question.subject,
+        body.question.gradeLevel,
+        body.question.answerType,
+        body.question.passage ?? "",
+        body.question.visualContext ?? "",
+        body.question.stem,
+        JSON.stringify(body.question.choices ?? []),
+        JSON.stringify(body.question.mathLatex ?? []),
+        body.question.rawText,
+      ].join("\n"),
+      body.mode === "answer_only" ? 500 : 1400,
+    ) + imageTokenReserve
   );
 }
 

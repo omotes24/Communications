@@ -48,7 +48,34 @@ const serviceRoleGrantsMigration = readFileSync(
   ),
   "utf8",
 );
-const allMigrations = `${migration}\n${hardeningMigration}\n${billingMigration}\n${pricingMigration}\n${serviceRoleGrantsMigration}`;
+const researchWebSearchMultiplierMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202606280001_research_web_search_multiplier.sql",
+  ),
+  "utf8",
+);
+const gpt54MiniAnswerRateMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202606280002_gpt54_mini_answer_rate.sql",
+  ),
+  "utf8",
+);
+const questionSolverRateCardMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202606280003_question_solver_rate_card.sql",
+  ),
+  "utf8",
+);
+const allMigrations = `${migration}\n${hardeningMigration}\n${billingMigration}\n${pricingMigration}\n${serviceRoleGrantsMigration}\n${researchWebSearchMultiplierMigration}\n${gpt54MiniAnswerRateMigration}\n${questionSolverRateCardMigration}`;
 
 describe("Supabase migration", () => {
   it("enables RLS for user data tables and defines token functions", () => {
@@ -117,12 +144,30 @@ describe("Supabase migration", () => {
   it("adds the OpenAI pricing rate card", () => {
     expect(pricingMigration).toContain("'default-v2'");
     expect(pricingMigration).toContain(
-      "('default-v2', '*', 'research-company', 1, 0.25, 4, 4, 0, 500, true)",
+      "('default-v2', 'gpt-5.4-mini', 'generate-answer', 0.3333, 0.0833, 1.3333, 1.3333, 0, 0, true)",
+    );
+    expect(gpt54MiniAnswerRateMigration).toContain("'gpt-5.4-mini'");
+    expect(gpt54MiniAnswerRateMigration).toContain("'generate-answer'");
+    expect(gpt54MiniAnswerRateMigration).toContain("0.3333");
+    expect(gpt54MiniAnswerRateMigration).toContain("1.3333");
+    expect(pricingMigration).toContain(
+      "('default-v2', '*', 'research-company', 1, 0.25, 4, 4, 0, 550, true)",
     );
     expect(pricingMigration).toContain(
       "('default-v2', '*', 'transcribe-audio', 0, 0, 0, 0, 40, 0, true)",
     );
+    expect(pricingMigration).toContain(
+      "('default-v2', '*', 'solve-question', 1, 0.25, 6, 6, 0, 0, true)",
+    );
+    expect(questionSolverRateCardMigration).toContain("'solve-question'");
+    expect(questionSolverRateCardMigration).toContain("1, 0.25, 6, 6");
     expect(pricingMigration).toContain("set active = false");
+    expect(researchWebSearchMultiplierMigration).toContain(
+      "web_search_multiplier = 550",
+    );
+    expect(researchWebSearchMultiplierMigration).toContain(
+      "web_search_multiplier = 500",
+    );
   });
 
   it("grants service role access to server-managed tables", () => {

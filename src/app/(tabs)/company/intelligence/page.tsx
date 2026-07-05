@@ -1,10 +1,7 @@
-import { CompanyIntelligenceScreen } from "@/components/company-intelligence/CompanyIntelligenceScreen";
-import { requireCurrentUser } from "@/lib/auth/server";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function CompanyIntelligencePage() {
-  await requireCurrentUser();
-
-  return <CompanyIntelligenceScreen />;
+export default function CompanyIntelligencePage() {
+  redirect("/company");
 }

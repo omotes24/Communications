@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import {
+  appColorModeOptions,
+  appColorModeStorageKey,
   appThemeOptions,
   appThemeStorageKey,
+  defaultAppColorMode,
   resolveAppTheme,
 } from "@/lib/theme";
 import "./globals.css";
@@ -40,12 +43,19 @@ export default function RootLayout({
   const allowedThemes = JSON.stringify(
     appThemeOptions.map((option) => option.id),
   );
+  const allowedColorModes = JSON.stringify(
+    appColorModeOptions.map((option) => option.id),
+  );
   const themeBootstrapScript = `
 (() => {
   try {
     const storedTheme = window.localStorage.getItem(${JSON.stringify(appThemeStorageKey)});
     if (${allowedThemes}.includes(storedTheme)) {
       document.documentElement.dataset.appTheme = storedTheme;
+    }
+    const storedColorMode = window.localStorage.getItem(${JSON.stringify(appColorModeStorageKey)});
+    if (${allowedColorModes}.includes(storedColorMode)) {
+      document.documentElement.dataset.appMode = storedColorMode;
     }
   } catch {}
 })();
@@ -56,6 +66,7 @@ export default function RootLayout({
       lang="ja"
       suppressHydrationWarning
       data-app-theme={appTheme}
+      data-app-mode={defaultAppColorMode}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

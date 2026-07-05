@@ -13,6 +13,9 @@ const enabledBooleanEnvSchema = z
   .default("true")
   .transform((value) => value === "true" || value === "1");
 
+const defaultCompanyIntelligenceResearchModel = "gpt-5.5";
+const miniModelPattern = /(?:^|[-_.])mini(?:$|[-_.])/;
+
 const serverEnvSchema = z.object({
   AI_PROVIDER: z.enum(["openai", "groq"]).default("openai"),
   AI_MOCK_MODE: booleanEnvSchema,
@@ -27,13 +30,14 @@ const serverEnvSchema = z.object({
   OPENAI_CLASSIFIER_MODEL: z.string().default("gpt-5.4-nano"),
   OPENAI_ANSWER_MODEL: z.string().default("gpt-5.4-mini"),
   OPENAI_RESEARCH_MODEL: z.string().default("gpt-5.5"),
+  OPENAI_QUESTION_SOLVER_MODEL: z.string().default("gpt-5.5"),
   OPENAI_GROUP_DISCUSSION_MODEL: z.string().default("gpt-5.5"),
   OPENAI_GD_MOCK_MODE: booleanEnvSchema,
   COMPANY_INTELLIGENCE_STRICT_MODE: enabledBooleanEnvSchema,
   COMPANY_INTELLIGENCE_MOCK_MODE: booleanEnvSchema,
   COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL: z
     .string()
-    .default("o4-mini-deep-research"),
+    .default(defaultCompanyIntelligenceResearchModel),
   COMPANY_INTELLIGENCE_SYNTHESIS_MODEL: z.string().default("gpt-5.5"),
   OPENAI_MOCK_MODE: booleanEnvSchema,
   GROQ_API_KEY: z.string().trim().min(1).optional(),
@@ -52,6 +56,7 @@ export type ServerEnv = RawServerEnv & {
   FAST_ANSWER_MODEL: string;
   ANSWER_MODEL: string;
   RESEARCH_MODEL: string;
+  QUESTION_SOLVER_MODEL: string;
   GROUP_DISCUSSION_MODEL: string;
 };
 
@@ -67,6 +72,7 @@ export function getServerEnv(): ServerEnv {
     OPENAI_CLASSIFIER_MODEL: process.env.OPENAI_CLASSIFIER_MODEL,
     OPENAI_ANSWER_MODEL: process.env.OPENAI_ANSWER_MODEL,
     OPENAI_RESEARCH_MODEL: process.env.OPENAI_RESEARCH_MODEL,
+    OPENAI_QUESTION_SOLVER_MODEL: process.env.OPENAI_QUESTION_SOLVER_MODEL,
     OPENAI_GROUP_DISCUSSION_MODEL:
       process.env.OPENAI_GROUP_DISCUSSION_MODEL,
     OPENAI_GD_MOCK_MODE: process.env.OPENAI_GD_MOCK_MODE,
@@ -108,6 +114,10 @@ export function getServerEnv(): ServerEnv {
       parsed.AI_PROVIDER === "groq"
         ? parsed.GROQ_RESEARCH_MODEL
         : parsed.OPENAI_RESEARCH_MODEL,
+    QUESTION_SOLVER_MODEL:
+      parsed.AI_PROVIDER === "groq"
+        ? parsed.GROQ_ANSWER_MODEL
+        : parsed.OPENAI_QUESTION_SOLVER_MODEL,
     GROUP_DISCUSSION_MODEL:
       parsed.AI_PROVIDER === "groq"
         ? parsed.GROQ_ANSWER_MODEL
@@ -134,4 +144,31 @@ export function assertOpenAIKey(env: ServerEnv): string {
 
 export function structuredOutputModel(env: ServerEnv): string {
   return env.AI_PROVIDER === "groq" ? env.ANSWER_MODEL : env.RESEARCH_MODEL;
+}
+
+function isUnsuitableCompanyIntelligenceResearchModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase();
+  return (
+    normalized.includes("deep-research") || miniModelPattern.test(normalized)
+  );
+}
+
+export function resolveCompanyIntelligenceResearchModel(env: ServerEnv): string {
+  const configured = env.COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL.trim();
+  if (!configured) {
+    return defaultCompanyIntelligenceResearchModel;
+  }
+
+  if (isUnsuitableCompanyIntelligenceResearchModel(configured)) {
+    const fallback = env.OPENAI_RESEARCH_MODEL.trim();
+    if (
+      fallback &&
+      !isUnsuitableCompanyIntelligenceResearchModel(fallback)
+    ) {
+      return fallback;
+    }
+    return defaultCompanyIntelligenceResearchModel;
+  }
+
+  return configured;
 }

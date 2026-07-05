@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { zodTextFormat } from "openai/helpers/zod";
 
 import {
   auditCompanyIntelligenceReport,
   createMockCompanyIntelligenceReport,
 } from "@/lib/company-intelligence/audit";
-import type { CompanyIntelligenceReport } from "@/lib/company-intelligence/schemas";
+import {
+  companyIntelligenceReportSchema,
+  type CompanyIntelligenceReport,
+} from "@/lib/company-intelligence/schemas";
 
 function baseReport(): CompanyIntelligenceReport {
   return createMockCompanyIntelligenceReport({
@@ -50,5 +54,23 @@ describe("company intelligence hallucination audit", () => {
 
     expect(audit.safeToDisplay).toBe(false);
     expect(audit.blockedReasons[0]).toContain("未確認");
+  });
+
+  it("keeps the report schema compatible with OpenAI structured outputs", () => {
+    const report = baseReport();
+    report.sources = report.sources.map((source) => ({
+      ...source,
+      checkedAt: null,
+    }));
+
+    const parsed = companyIntelligenceReportSchema.parse(report);
+
+    expect(parsed.sources[0]?.checkedAt).toBeNull();
+    const responseFormat = zodTextFormat(
+      companyIntelligenceReportSchema,
+      "company_intelligence_report",
+    );
+
+    expect(JSON.stringify(responseFormat)).not.toContain('"format"');
   });
 });

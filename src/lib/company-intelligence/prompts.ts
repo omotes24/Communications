@@ -42,6 +42,7 @@ export function buildNormalizationPrompt(
     "根拠URLがない内容は checkedFacts に入れず、aiInferences または unknowns または unverifiedClaims に入れてください。",
     "架空のURL、架空の会社情報、未確認の待遇・選考情報を作らないでください。",
     "sourceUrls は入力URLまたは調査結果に含まれる公開URLだけを使ってください。",
+    "sources の checkedAt は、確認日時が不明なら null にしてください。",
     "",
     `企業名: ${request.companyName || "未指定"}`,
     `応募職種: ${request.jobTitle || "未指定"}`,

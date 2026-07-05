@@ -9,6 +9,7 @@ import { POST as importProfileFile } from "@/app/api/import-profile-file/route";
 import { POST as learnInterviewContext } from "@/app/api/learn-interview-context/route";
 import { POST as realtimeSession } from "@/app/api/realtime-session/route";
 import { POST as researchCompany } from "@/app/api/research-company/route";
+import { POST as solveQuestion } from "@/app/api/solve-question/route";
 import {
   createEmptyCompanyProfile,
   createEmptyUserProfile,
@@ -158,6 +159,44 @@ describe("API routes in mock mode", () => {
       companyName: "サンプル株式会社",
       targetRole: "A職 Bコース",
       researchSources: ["https://example.com/recruit"],
+    });
+  });
+
+  it("solves a detected question in mock mode", async () => {
+    const response = await solveQuestion(
+      new Request("http://localhost/api/solve-question", {
+        method: "POST",
+        body: JSON.stringify({
+          question: {
+            questionId: "math-001",
+            source: "structured_dom",
+            subject: "math",
+            gradeLevel: "high1",
+            answerType: "single_choice",
+            stem: "次の二次方程式を解きなさい。x^2 - 5x + 6 = 0",
+            choices: [
+              { id: "A", text: "x = 1, 6" },
+              { id: "B", text: "x = 2, 3" },
+            ],
+            mathLatex: ["x^2 - 5x + 6 = 0"],
+            rawText:
+              "次の二次方程式を解きなさい。x^2 - 5x + 6 = 0 A x = 1, 6 B x = 2, 3",
+            pageUrl: "https://example.com/question",
+            pageTitle: "自作問題",
+            confidence: 0.95,
+          },
+          mode: "explanation",
+          language: "ja",
+        }),
+      }),
+    );
+
+    expect(response.ok).toBe(true);
+    await expect(response.json()).resolves.toMatchObject({
+      questionId: "math-001",
+      detectedSubject: "math",
+      answerType: "single_choice",
+      selectedChoiceIds: ["A"],
     });
   });
 

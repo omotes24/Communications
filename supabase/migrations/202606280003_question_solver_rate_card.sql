@@ -1,7 +1,3 @@
-update public.token_rate_cards
-set active = false
-where active = true;
-
 insert into public.token_rate_cards (
   version,
   model,
@@ -15,14 +11,6 @@ insert into public.token_rate_cards (
   active
 )
 values
-  ('default-v2', '*', 'classify-question', 1, 0.25, 3, 3, 0, 0, true),
-  ('default-v2', '*', 'generate-answer', 1, 0.25, 4, 4, 0, 0, true),
-  ('default-v2', 'gpt-5.4-mini', 'generate-answer', 0.3333, 0.0833, 1.3333, 1.3333, 0, 0, true),
-  ('default-v2', '*', 'research-company', 1, 0.25, 4, 4, 0, 550, true),
-  ('default-v2', '*', 'learn-interview-context', 1, 0.25, 4, 4, 0, 0, true),
-  ('default-v2', '*', 'transcribe-audio', 0, 0, 0, 0, 40, 0, true),
-  ('default-v2', '*', 'import-profile-file', 1, 0.25, 3, 3, 0, 0, true),
-  ('default-v2', '*', 'realtime-session', 0, 0, 0, 0, 40, 0, true),
   ('default-v2', '*', 'solve-question', 1, 0.25, 6, 6, 0, 0, true)
 on conflict (version, model, feature) do update
 set

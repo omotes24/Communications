@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   APP_STORAGE_EVENT,
-  clearAppStorage,
   hasMeaningfulLocalStorage,
   loadAppStorage,
   LOCAL_STORAGE_IMPORT_STATUS_KEY,
@@ -67,7 +66,6 @@ export function LocalStorageMigrationPrompt() {
               LOCAL_STORAGE_IMPORT_STATUS_KEY,
               "declined",
             );
-            clearAppStorage();
             setState("hidden");
             return;
           }
@@ -100,7 +98,6 @@ export function LocalStorageMigrationPrompt() {
     });
     if (response.ok) {
       window.localStorage.setItem(LOCAL_STORAGE_IMPORT_STATUS_KEY, "accepted");
-      clearAppStorage();
       window.dispatchEvent(new Event(APP_STORAGE_EVENT));
     }
     setState("hidden");
@@ -108,7 +105,6 @@ export function LocalStorageMigrationPrompt() {
 
   function skipImport() {
     window.localStorage.setItem(LOCAL_STORAGE_IMPORT_STATUS_KEY, "declined");
-    clearAppStorage();
     setState("hidden");
   }
 
@@ -139,7 +135,7 @@ export function LocalStorageMigrationPrompt() {
           disabled={state === "working"}
           className="h-10 rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f]"
         >
-          移行せず削除
+          移行しない
         </button>
       </div>
     </div>
