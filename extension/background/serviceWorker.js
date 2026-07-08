@@ -284,41 +284,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message?.type === "SELECT_REGION") {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tab = tabs[0];
-      if (!tab?.id) {
-        sendResponse({ ok: false, error: "アクティブなタブが見つかりません。" });
-        return;
-      }
-      // all_framesで動くcontent scriptのうちトップフレームだけに送る
-      chrome.tabs.sendMessage(
-        tab.id,
-        { type: "SELECT_REGION" },
-        { frameId: 0 },
-        (response) => {
-          if (chrome.runtime.lastError || !response) {
-            sendResponse({
-              ok: false,
-              error:
-                "このページでは範囲選択できません。ページを再読み込みしてから試してください。",
-            });
-            return;
-          }
-          sendResponse({
-            ...response,
-            pageUrl: tab.url || "",
-            pageTitle: tab.title || "",
-          });
-        },
-      );
-    });
-    return true;
-  }
-
   if (message?.type === "CAPTURE_VISIBLE_TAB") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const windowId = tabs[0]?.windowId;
+      const tab = tabs[0];
+      const windowId = tab?.windowId;
       chrome.tabs.captureVisibleTab(
         windowId,
         { format: "jpeg", quality: 82 },
@@ -332,7 +301,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             });
             return;
           }
-          sendResponse({ ok: true, dataUrl });
+          sendResponse({
+            ok: true,
+            dataUrl,
+            pageUrl: tab?.url || "",
+            pageTitle: tab?.title || "",
+          });
         },
       );
     });

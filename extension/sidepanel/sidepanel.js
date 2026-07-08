@@ -291,7 +291,7 @@ function captureVisibleTab() {
         );
         return;
       }
-      resolve(response.dataUrl);
+      resolve(response); // { dataUrl, pageUrl, pageTitle }
     });
   });
 }
@@ -333,77 +333,138 @@ accountLoginButton.addEventListener("click", () => {
   chrome.runtime.sendMessage({ type: "OPEN_LOGIN_PAGE" });
 });
 
-// ── 範囲選択スクショ ──────────────────────────────
-// 選択した範囲は「リセット」を押すまで保持され、以降のスクショ解答は
-// その範囲だけを切り抜いて送信する（StudyCameraと同じ操作感）。
-let savedRegion = null;
+// ── サイドパネル内プレビュー + 切り抜き ─────────────
+// 現在のタブのライブプレビューをパネル内に表示し、その上をドラッグして
+// 切り抜き範囲（正規化座標 0-1）を作る。範囲は「範囲リセット」まで維持され、
+// 「解く」を押すたびに最新の画面を撮り直して同じ範囲を切り抜いて送信する。
+const previewBox = document.getElementById("previewBox");
+const previewImage = document.getElementById("previewImage");
+const previewPlaceholder = document.getElementById("previewPlaceholder");
+const previewCropBox = document.getElementById("previewCropBox");
+const previewSolveButton = document.getElementById("previewSolve");
+const previewResetButton = document.getElementById("previewReset");
+const previewRefreshButton = document.getElementById("previewRefresh");
+const previewStatus = document.getElementById("previewStatus");
 
-const screenshotSolveButton = document.getElementById("screenshotSolve");
-const screenshotReselectButton = document.getElementById("screenshotReselect");
-const screenshotResetButton = document.getElementById("screenshotReset");
-const screenshotRegionStatus = document.getElementById(
-  "screenshotRegionStatus",
-);
+let previewCropRect = null; // 正規化(0-1)切り抜き範囲。リセットまで維持
+let previewDragStart = null;
+let latestCapture = null; // { dataUrl, pageUrl, pageTitle }
 
-function updateRegionStatus(message, state = "") {
+function updatePreviewStatus(message, state = "") {
   if (message) {
-    screenshotRegionStatus.textContent = message;
-    screenshotRegionStatus.dataset.state = state;
+    previewStatus.textContent = message;
+    previewStatus.dataset.state = state;
     return;
   }
-  if (savedRegion) {
-    const { width, height } = savedRegion.rect;
-    screenshotRegionStatus.textContent = `切り抜き範囲: ${Math.round(width)}×${Math.round(height)}（リセットまで維持）`;
-    screenshotRegionStatus.dataset.state = "ok";
+  if (previewCropRect) {
+    previewStatus.textContent =
+      "切り抜き範囲: 有効（「解く」でこの範囲だけ送信。リセットまで維持）";
+    previewStatus.dataset.state = "ok";
   } else {
-    screenshotRegionStatus.textContent =
-      "範囲未設定: スクショは画面全体を送信します。";
-    screenshotRegionStatus.dataset.state = "";
+    previewStatus.textContent =
+      "プレビュー上をドラッグすると問題部分だけを切り抜けます（未選択なら全体を送信）。";
+    previewStatus.dataset.state = "";
   }
 }
 
-function selectRegionOnPage() {
-  return new Promise((resolve, reject) => {
-    updateRegionStatus("ページ上でドラッグして範囲を選択してください...", "");
-    chrome.runtime.sendMessage({ type: "SELECT_REGION" }, (response) => {
-      if (!response?.ok || !response.rect) {
-        updateRegionStatus();
-        reject(
-          new Error(
-            response?.cancelled
-              ? "範囲選択を中止しました。"
-              : response?.error || "範囲選択に失敗しました。",
-          ),
-        );
-        return;
-      }
-      savedRegion = {
-        rect: response.rect,
-        viewport: response.viewport,
-        pageUrl: response.pageUrl || "",
-        pageTitle: response.pageTitle || "",
-      };
-      updateRegionStatus();
-      resolve(savedRegion);
-    });
-  });
+function renderPreviewCropBox(rect) {
+  if (!rect) {
+    previewCropBox.hidden = true;
+    return;
+  }
+  previewCropBox.hidden = false;
+  previewCropBox.style.left = `${rect.x * 100}%`;
+  previewCropBox.style.top = `${rect.y * 100}%`;
+  previewCropBox.style.width = `${rect.width * 100}%`;
+  previewCropBox.style.height = `${rect.height * 100}%`;
 }
 
-async function cropDataUrlToRegion(dataUrl, region) {
+async function refreshPreview() {
+  if (previewDragStart || document.hidden) {
+    return;
+  }
+  try {
+    const capture = await captureVisibleTab();
+    latestCapture = capture;
+    previewImage.src = capture.dataUrl;
+    previewImage.hidden = false;
+    previewPlaceholder.hidden = true;
+  } catch (error) {
+    if (!latestCapture) {
+      previewPlaceholder.hidden = false;
+      previewPlaceholder.textContent =
+        error?.message?.includes("activeTab") || error?.message
+          ? "このページはプレビューできません（chrome:// や拡張ページなど）。問題ページのタブを開いてください。"
+          : "プレビューを取得できませんでした。";
+    }
+  }
+}
+
+function previewNormalizedPoint(event) {
+  const rect = previewImage.getBoundingClientRect();
+  if (!rect.width || !rect.height) {
+    return { x: 0, y: 0 };
+  }
+  return {
+    x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+    y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)),
+  };
+}
+
+function previewRectFrom(a, b) {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) };
+}
+
+previewBox.addEventListener("mousedown", (event) => {
+  if (previewImage.hidden) {
+    return;
+  }
+  event.preventDefault();
+  previewDragStart = previewNormalizedPoint(event);
+});
+
+previewBox.addEventListener("mousemove", (event) => {
+  if (!previewDragStart) {
+    return;
+  }
+  renderPreviewCropBox(
+    previewRectFrom(previewDragStart, previewNormalizedPoint(event)),
+  );
+});
+
+function endPreviewDrag(event) {
+  if (!previewDragStart) {
+    return;
+  }
+  const rect = previewRectFrom(
+    previewDragStart,
+    previewNormalizedPoint(event),
+  );
+  previewDragStart = null;
+  if (rect.width > 0.02 && rect.height > 0.02) {
+    previewCropRect = rect;
+  }
+  renderPreviewCropBox(previewCropRect);
+  updatePreviewStatus();
+}
+
+previewBox.addEventListener("mouseup", endPreviewDrag);
+previewBox.addEventListener("mouseleave", endPreviewDrag);
+
+/** 正規化された切り抜き範囲を適用してJPEGに切り出す */
+async function cropDataUrlNormalized(dataUrl, rect) {
   const image = await loadImage(dataUrl);
-  // captureVisibleTabはデバイス解像度で撮れるので、ビューポートCSS座標を
-  // 画像座標へスケーリングして切り抜く（ズームやdprの違いを吸収）。
-  const scaleX = image.naturalWidth / region.viewport.width;
-  const scaleY = image.naturalHeight / region.viewport.height;
-  const sx = Math.max(0, Math.round(region.rect.x * scaleX));
-  const sy = Math.max(0, Math.round(region.rect.y * scaleY));
+  const sx = Math.max(0, Math.round(rect.x * image.naturalWidth));
+  const sy = Math.max(0, Math.round(rect.y * image.naturalHeight));
   const sw = Math.min(
     image.naturalWidth - sx,
-    Math.max(8, Math.round(region.rect.width * scaleX)),
+    Math.max(8, Math.round(rect.width * image.naturalWidth)),
   );
   const sh = Math.min(
     image.naturalHeight - sy,
-    Math.max(8, Math.round(region.rect.height * scaleY)),
+    Math.max(8, Math.round(rect.height * image.naturalHeight)),
   );
   const canvas = document.createElement("canvas");
   canvas.width = sw;
@@ -418,13 +479,16 @@ async function cropDataUrlToRegion(dataUrl, region) {
   return canvas.toDataURL("image/jpeg", 0.92);
 }
 
+/** 最新の画面を撮り直し、保持中の範囲で切り抜いて圧縮したdataURLを返す */
 async function captureScreenshotDataUrl() {
-  // オーバーレイ除去やUI更新が描画に反映されるのを待ってから撮る
-  await new Promise((resolve) => setTimeout(resolve, 180));
-  const fullDataUrl = await captureVisibleTab();
-  const cropped = savedRegion
-    ? await cropDataUrlToRegion(fullDataUrl, savedRegion)
-    : fullDataUrl;
+  const capture = await captureVisibleTab();
+  latestCapture = capture;
+  previewImage.src = capture.dataUrl;
+  previewImage.hidden = false;
+  previewPlaceholder.hidden = true;
+  const cropped = previewCropRect
+    ? await cropDataUrlNormalized(capture.dataUrl, previewCropRect)
+    : capture.dataUrl;
   return compressImageDataUrl(cropped);
 }
 
@@ -439,18 +503,15 @@ function buildStandaloneScreenshotQuestion(imageDataUrl) {
     answerType: "unknown",
     stem,
     rawText: stem,
-    pageUrl: (savedRegion?.pageUrl || "").slice(0, 2048),
-    pageTitle: (savedRegion?.pageTitle || "スクリーンショット").slice(0, 300),
+    pageUrl: (latestCapture?.pageUrl || "").slice(0, 2048),
+    pageTitle: (latestCapture?.pageTitle || "スクリーンショット").slice(0, 300),
     confidence: 0.7,
     visualImageDataUrl: imageDataUrl,
   };
 }
 
-async function solveStandaloneScreenshot({ reselect = false } = {}) {
+async function solveFromPreview() {
   try {
-    if (reselect || !savedRegion) {
-      await selectRegionOnPage();
-    }
     renderSolution(
       {
         finalAnswer: "スクリーンショットを取得しています...",
@@ -462,8 +523,7 @@ async function solveStandaloneScreenshot({ reselect = false } = {}) {
     const imageDataUrl = await captureScreenshotDataUrl();
     if (imageDataUrl.length > MAX_MANUAL_IMAGE_DATA_URL_LENGTH) {
       renderSolution({
-        error:
-          "画像が大きすぎます。より狭い範囲を選択してください。",
+        error: "画像が大きすぎます。より狭い範囲を選択してください。",
       });
       return;
     }
@@ -490,7 +550,7 @@ async function solveWithScreenshot(question, mode) {
     const nextQuestion = withManualContext(
       question,
       [
-        savedRegion
+        previewCropRect
           ? "画面スクリーンショット（選択範囲の切り抜き）を添付しています。"
           : "画面スクリーンショットを添付しています。",
         "ブラウザのURLバーはChrome拡張のスクリーンショットには含まれません。",
@@ -890,17 +950,22 @@ solveModeButtons.forEach((button) => {
 saveApiBaseUrlButton.addEventListener("click", saveApiBaseUrl);
 testApiBaseUrlButton.addEventListener("click", testApiBaseUrl);
 
-screenshotSolveButton.addEventListener("click", () =>
-  solveStandaloneScreenshot(),
-);
-screenshotReselectButton.addEventListener("click", () =>
-  solveStandaloneScreenshot({ reselect: true }),
-);
-screenshotResetButton.addEventListener("click", () => {
-  savedRegion = null;
-  updateRegionStatus();
+previewSolveButton.addEventListener("click", () => void solveFromPreview());
+previewResetButton.addEventListener("click", () => {
+  previewCropRect = null;
+  renderPreviewCropBox(null);
+  updatePreviewStatus();
 });
-updateRegionStatus();
+previewRefreshButton.addEventListener("click", () => void refreshPreview());
+updatePreviewStatus();
+void refreshPreview();
+setInterval(() => void refreshPreview(), 1500);
+chrome.tabs.onActivated.addListener(() => void refreshPreview());
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    void refreshPreview();
+  }
+});
 
 apiBaseUrlInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
