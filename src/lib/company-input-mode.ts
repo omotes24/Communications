@@ -11,7 +11,8 @@ export function getCompanyInputCopy(mode = getCompanyInputMode()) {
     return {
       label: "企業Webサイト・採用情報など",
       shortLabel: "企業Webサイト・採用情報",
-      description: "",
+      description:
+        "志望企業のWebサイトや採用ページのURLを登録すると、AIが社風・求める人物像を読み取り、自分スロットと組み合わせて面接前メモを自動で作成します。",
       homeLead:
         "事前学習した自分の情報、会社名、企業Webサイト・採用情報、志望コースをもとに、",
       setupFlow:
@@ -29,7 +30,8 @@ export function getCompanyInputCopy(mode = getCompanyInputMode()) {
   return {
     label: "社風・採用情報・URL・特筆事項など(詳細)",
     shortLabel: "社風・採用情報・URL",
-    description: "",
+    description:
+      "社風・採用情報・URL・特筆事項などを詳しく登録するほど、AIが自分スロットと組み合わせて精度の高い面接前メモを作成します。",
     homeLead:
       "事前学習した自分の情報、会社名、社風・採用情報、志望コースをもとに、",
     setupFlow:
