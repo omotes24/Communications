@@ -1,5 +1,6 @@
 import { zodTextFormat } from "openai/helpers/zod";
 import type { ResponseInput } from "openai/resources/responses/responses";
+import { z } from "zod";
 
 import { requireApiUser } from "@/lib/auth/server";
 import { createOpenAIClient } from "@/lib/openai/client";
@@ -32,6 +33,45 @@ import { extractOpenAIUsage, type UsageParts } from "@/lib/tokens/usage";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 90;
+
+const gatewayStringArraySchema = z
+  .union([z.array(z.string()), z.string(), z.null(), z.undefined()])
+  .transform((value) => {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim()) {
+      return [value];
+    }
+    return [];
+  });
+
+const gatewayNullableChoiceIdsSchema = z
+  .union([z.array(z.string()), z.string(), z.null(), z.undefined()])
+  .transform((value) => {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim()) {
+      return [value];
+    }
+    return null;
+  });
+
+const gatewayBooleanSchema = z.preprocess((value) => {
+  if (typeof value === "string") {
+    return value.toLowerCase() === "true";
+  }
+  return value;
+}, z.boolean());
+
+const gatewaySolvedQuestionSchema = solvedQuestionSchema.extend({
+  selectedChoiceIds: gatewayNullableChoiceIdsSchema,
+  confidence: z.coerce.number().min(0).max(1),
+  needsReview: gatewayBooleanSchema,
+  warnings: gatewayStringArraySchema,
+  learningPoints: gatewayStringArraySchema,
+});
 
 function corsHeaders(request: Request): HeadersInit {
   const origin = request.headers.get("origin") ?? "";
@@ -183,6 +223,55 @@ export async function POST(request: Request): Promise<Response> {
       let usageParts: UsageParts = {};
       let extractedVisualContext: string | undefined;
 
+      if (env.OPENAI_BASE_URL) {
+        // OpenAI互換ゲートウェイ（マルチモーダル前提）では視覚抽出の別呼び出しを
+        // せず、画像を image_url パートとして解答呼び出しに直接添付する。
+        // ゲートウェイは1呼び出しあたり十数秒かかるため、1回にまとめる方が速い。
+        const imageUrl = body.question.visualImageDataUrl;
+        const solverText = buildQuestionSolverInput(body, {});
+        const response = await client.chat.completions.create(
+          {
+            model,
+            messages: [
+              {
+                role: "system",
+                content: `${QUESTION_SOLVER_INSTRUCTIONS}\n\nReturn only JSON with this shape: {"questionId": string, "detectedSubject": "japanese" | "math" | "english" | "science" | "social" | "unknown", "answerType": "single_choice" | "multiple_choice" | "text_input" | "numeric_input" | "essay" | "calculation" | "proof" | "reading_comprehension" | "unknown", "finalAnswer": string, "selectedChoiceIds": string[] | null, "explanation": string, "steps": [{"title": string, "content": string}], "confidence": number, "needsReview": boolean, "warnings": string[], "learningPoints": string[]}.`,
+              },
+              {
+                role: "user",
+                content: imageUrl
+                  ? [
+                      { type: "text" as const, text: solverText },
+                      {
+                        type: "image_url" as const,
+                        image_url: { url: imageUrl, detail: "high" as const },
+                      },
+                    ]
+                  : solverText,
+              },
+            ],
+          },
+          { signal: request.signal },
+        );
+
+        const content = response.choices[0]?.message.content;
+        if (!content) {
+          await releaseAiTokenReservation(reservation, "empty_response");
+          return jsonWithCors(
+            request,
+            { error: "解答JSONの解析に失敗しました。" },
+            { status: 502 },
+          );
+        }
+
+        const solved = gatewaySolvedQuestionSchema.parse(
+          withQuestionDefaults(extractJsonObject(content), body),
+        );
+        usageParts = addUsageParts(usageParts, extractOpenAIUsage(response));
+        await settleAiTokens(reservation, usageParts);
+        return jsonWithCors(request, solved);
+      }
+
       if (body.question.visualImageDataUrl) {
         const visualResponse = await client.responses.parse(
           {
@@ -251,4 +340,51 @@ export async function POST(request: Request): Promise<Response> {
     }
     return jsonWithCors(request, { error: toPublicError(error) }, { status: 400 });
   }
+}
+
+function extractJsonObject(content: string): unknown {
+  const trimmed = content.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fenced?.[1]) {
+      return JSON.parse(fenced[1].trim());
+    }
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(trimmed.slice(start, end + 1));
+    }
+    throw new Error("JSON形式の自動テスト解答を読み取れませんでした");
+  }
+}
+
+function withQuestionDefaults(
+  value: unknown,
+  body: SolveQuestionRequest,
+): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+
+  const record = value as Record<string, unknown>;
+  return {
+    selectedChoiceIds: null,
+    warnings: [],
+    learningPoints: [],
+    ...record,
+    questionId:
+      typeof record.questionId === "string" && record.questionId.trim()
+        ? record.questionId
+        : body.question.questionId,
+    detectedSubject:
+      typeof record.detectedSubject === "string" && record.detectedSubject.trim()
+        ? record.detectedSubject
+        : body.question.subject,
+    answerType:
+      typeof record.answerType === "string" && record.answerType.trim()
+        ? record.answerType
+        : body.question.answerType,
+  };
 }

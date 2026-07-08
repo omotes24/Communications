@@ -1,4 +1,5 @@
 import { zodTextFormat } from "openai/helpers/zod";
+import { z } from "zod";
 
 import { requireApiUser } from "@/lib/auth/server";
 import { createOpenAIClient } from "@/lib/openai/client";
@@ -23,6 +24,16 @@ import {
 import { extractOpenAIUsage } from "@/lib/tokens/usage";
 
 export const dynamic = "force-dynamic";
+
+const gatewayLearningOutputSchema = z.object({
+  brief: z.string(),
+  keyPoints: z
+    .union([z.array(z.string()), z.string()])
+    .transform((value) => (Array.isArray(value) ? value : [value])),
+  caution: z
+    .union([z.string(), z.array(z.string()), z.null()])
+    .transform((value) => (Array.isArray(value) ? value.join("\n") : value)),
+});
 
 export async function POST(request: Request): Promise<Response> {
   const auth = await requireApiUser();
@@ -78,6 +89,37 @@ export async function POST(request: Request): Promise<Response> {
 
     try {
       const client = createOpenAIClient();
+      if (env.OPENAI_BASE_URL) {
+        const response = await client.chat.completions.create(
+          {
+            model,
+            messages: [
+              {
+                role: "system",
+                content: `${buildInterviewLearningInstructions(
+                  body.learningLanguage,
+                )}\n\nReturn only JSON with this shape: {"brief": string, "keyPoints": string[], "caution": string | null}.`,
+              },
+              {
+                role: "user",
+                content: buildInterviewLearningInput(body),
+              },
+            ],
+          },
+          { signal: request.signal },
+        );
+        const content = response.choices[0]?.message.content;
+        if (!content) {
+          await releaseAiTokenReservation(reservation, "empty_response");
+          return jsonError("面接前学習メモの生成に失敗しました", 502);
+        }
+        const parsed = gatewayLearningOutputSchema.parse(
+          extractJsonObject(content),
+        );
+        await settleAiTokens(reservation, extractOpenAIUsage(response));
+        return Response.json(parsed);
+      }
+
       const response = await client.responses.parse(
         {
           model,
@@ -112,5 +154,23 @@ export async function POST(request: Request): Promise<Response> {
       return jsonError(error.message, error.status);
     }
     return jsonError(toPublicError(error), 400);
+  }
+}
+
+function extractJsonObject(content: string): unknown {
+  const trimmed = content.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fenced?.[1]) {
+      return JSON.parse(fenced[1].trim());
+    }
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(trimmed.slice(start, end + 1));
+    }
+    throw new Error("JSON形式の学習結果を読み取れませんでした");
   }
 }

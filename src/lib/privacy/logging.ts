@@ -29,6 +29,16 @@ function toProviderFriendlyError(message: string): string | null {
     ].join(" ");
   }
 
+  if (
+    normalized.includes("target page, context or browser has been closed") ||
+    normalized.includes("page.evaluate")
+  ) {
+    return [
+      "CatGPT Gateway 内のChatGPTブラウザが閉じているため、AI APIを実行できません。",
+      "start-communications.command を再実行するか、CatGPT Gatewayを再起動してから http://localhost:6080/vnc.html でChatGPTにログインし直してください。",
+    ].join(" ");
+  }
+
   return null;
 }
 
