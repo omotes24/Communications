@@ -1,6 +1,8 @@
 const tabQuestions = new Map();
 const tabFrameDetections = new Map();
-const DEFAULT_API_BASE_URL = "http://localhost:3000";
+// トークン課金残高を使うため、送信先は常に本番サイトに固定する
+// （ユーザーが変更できる設定は置かない）。
+const API_BASE_URL = "https://communications-umber.vercel.app";
 
 function notifyRuntime(message) {
   chrome.runtime.sendMessage(message, () => {
@@ -18,6 +20,43 @@ async function parseFetchResponse(response) {
     return JSON.parse(text);
   } catch {
     return { error: text.slice(0, 1200) };
+  }
+}
+
+async function postSolveQuestion(question, mode) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/solve-question`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question,
+        mode: mode || "explanation",
+        language: "ja",
+      }),
+    });
+    const data = await parseFetchResponse(response);
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      data: response.ok
+        ? data
+        : {
+            error:
+              data.error ||
+              `API送信に失敗しました。HTTP ${response.status} ${response.statusText}`,
+            details: data,
+          },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      data: {
+        error: error instanceof Error ? error.message : "解答生成に失敗しました。",
+      },
+    };
   }
 }
 
@@ -64,13 +103,6 @@ chrome.action.onClicked.addListener((tab) => {
     chrome.sidePanel.open({ tabId: tab.id });
   }
 });
-
-async function getApiBaseUrl() {
-  const values = await chrome.storage.sync.get({
-    apiBaseUrl: DEFAULT_API_BASE_URL,
-  });
-  return String(values.apiBaseUrl).replace(/\/$/, "");
-}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "DETECTED_QUESTIONS" && sender.tab?.id) {
@@ -171,92 +203,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === "SOLVE_QUESTION") {
-    (async () => {
-      try {
-        const apiBaseUrl = await getApiBaseUrl();
-        const response = await fetch(`${apiBaseUrl}/api/solve-question`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            question: message.question,
-            mode: message.mode || "explanation",
-            language: "ja",
-          }),
-        });
-        const data = await parseFetchResponse(response);
-        sendResponse({
-          ok: response.ok,
-          status: response.status,
-          statusText: response.statusText,
-          apiBaseUrl,
-          data: response.ok
-            ? data
-            : {
-                error:
-                  data.error ||
-                  `API送信に失敗しました。HTTP ${response.status} ${response.statusText}`,
-                details: data,
-              },
-        });
-      } catch (error) {
-        sendResponse({
-          ok: false,
-          status: 0,
-          data: {
-            error:
-              error instanceof Error
-                ? error.message
-                : "解答生成に失敗しました。",
-          },
-        });
-      }
-    })();
-    return true;
-  }
-
-  if (message?.type === "TEST_API") {
-    (async () => {
-      try {
-        const apiBaseUrl = await getApiBaseUrl();
-        const response = await fetch(`${apiBaseUrl}/api/solve-question`, {
-          method: "OPTIONS",
-          credentials: "include",
-        });
-        sendResponse({
-          ok: response.ok,
-          status: response.status,
-          statusText: response.statusText,
-          apiBaseUrl,
-        });
-      } catch (error) {
-        sendResponse({
-          ok: false,
-          status: 0,
-          data: {
-            error:
-              error instanceof Error
-                ? error.message
-                : "API疎通確認に失敗しました。",
-          },
-        });
-      }
-    })();
+    postSolveQuestion(message.question, message.mode).then(sendResponse);
     return true;
   }
 
   if (message?.type === "GET_ACCOUNT") {
     (async () => {
       try {
-        const apiBaseUrl = await getApiBaseUrl();
-        const response = await fetch(`${apiBaseUrl}/api/account/me`, {
+        const response = await fetch(`${API_BASE_URL}/api/account/me`, {
           credentials: "include",
         });
         const data = await parseFetchResponse(response);
         sendResponse({
           ok: response.ok,
           status: response.status,
-          apiBaseUrl,
           data,
         });
       } catch (error) {
@@ -276,40 +236,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === "OPEN_LOGIN_PAGE") {
-    (async () => {
-      const apiBaseUrl = await getApiBaseUrl();
-      chrome.tabs.create({ url: `${apiBaseUrl}/auth/login` });
-      sendResponse({ ok: true });
-    })();
-    return true;
+    chrome.tabs.create({ url: `${API_BASE_URL}/auth/login` });
+    sendResponse({ ok: true });
+    return false;
   }
 
   if (message?.type === "CAPTURE_VISIBLE_TAB") {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tab = tabs[0];
-      const windowId = tab?.windowId;
-      chrome.tabs.captureVisibleTab(
-        windowId,
-        { format: "jpeg", quality: 82 },
-        (dataUrl) => {
-          if (chrome.runtime.lastError || !dataUrl) {
-            sendResponse({
-              ok: false,
-              error:
-                chrome.runtime.lastError?.message ||
-                "画面スクリーンショットを取得できませんでした。",
-            });
-            return;
-          }
+    // service workerには「現在のウィンドウ」が無いため、currentWindowではなく
+    // 最後にフォーカスされた通常ウィンドウを基準にする（複数ウィンドウ配置対策）
+    chrome.tabs.query(
+      { active: true, lastFocusedWindow: true },
+      (tabs) => {
+        const tab = tabs[0];
+        if (!tab?.windowId) {
           sendResponse({
-            ok: true,
-            dataUrl,
-            pageUrl: tab?.url || "",
-            pageTitle: tab?.title || "",
+            ok: false,
+            error: "アクティブなタブが見つかりません。問題ページのウィンドウを一度クリックしてください。",
           });
-        },
-      );
-    });
+          return;
+        }
+        chrome.tabs.captureVisibleTab(
+          tab.windowId,
+          { format: "jpeg", quality: 82 },
+          (dataUrl) => {
+            if (chrome.runtime.lastError || !dataUrl) {
+              sendResponse({
+                ok: false,
+                error:
+                  chrome.runtime.lastError?.message ||
+                  "画面スクリーンショットを取得できませんでした。",
+                pageUrl: tab.url || "",
+              });
+              return;
+            }
+            sendResponse({
+              ok: true,
+              dataUrl,
+              pageUrl: tab.url || "",
+              pageTitle: tab.title || "",
+            });
+          },
+        );
+      },
+    );
     return true;
   }
 

@@ -997,6 +997,7 @@ let timer = 0;
 let observer = null;
 let floatingStatus = null;
 let extensionContextAlive = true;
+let floatingWidget = null;
 
 function stopDetectionRuntime() {
   extensionContextAlive = false;
@@ -1046,7 +1047,7 @@ function publishQuestions({ force = false } = {}) {
   try {
     questions = extractQuestions();
   } catch (error) {
-    console.warn("[Yell for You] question detection failed", error);
+    console.warn("[SolveSnap] question detection failed", error);
     questions = [];
   }
   const payload = JSON.stringify(questions);
@@ -1097,6 +1098,20 @@ globalThis.__YFY_QUESTION_DETECTOR_PUBLISH__ = publishQuestions;
 function updateFloatingStatus(message) {
   if (floatingStatus) {
     floatingStatus.textContent = message;
+  }
+}
+
+function removeFloatingControls() {
+  floatingWidget?.remove();
+  floatingWidget = null;
+  floatingStatus = null;
+}
+
+function pauseObserver() {
+  window.clearTimeout(timer);
+  if (observer) {
+    observer.disconnect();
+    observer = null;
   }
 }
 
@@ -1180,6 +1195,17 @@ function createFloatingControls() {
 
   widget.append(detectButton, restartButton, floatingStatus);
   document.documentElement.appendChild(widget);
+  floatingWidget = widget;
+}
+
+function applyUiMode(mode) {
+  if (mode === "detect") {
+    startObserver();
+    createFloatingControls();
+  } else {
+    pauseObserver();
+    removeFloatingControls();
+  }
 }
 
 try {
@@ -1197,8 +1223,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false;
 });
 
-startObserver();
-createFloatingControls();
+// DOM監視（MutationObserver）とフローティングの検知/再検知ボタンは
+// 「ページ検知」モードでのみ動かす。スクショモードでは問題検知自体を止め、
+// 不要なconfidence判定やそれに連動する自動解答が割り込まないようにする。
+// サイドパネルのモード切替（yfyUiMode）と同期させ、ページ再読み込みなしで反映する。
+chrome.storage.sync.get({ yfyUiMode: "screenshot" }, ({ yfyUiMode }) => {
+  applyUiMode(yfyUiMode);
+});
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "sync" && changes.yfyUiMode) {
+    applyUiMode(changes.yfyUiMode.newValue);
+  }
+});
 } catch (error) {
   if (
     error instanceof Error &&
