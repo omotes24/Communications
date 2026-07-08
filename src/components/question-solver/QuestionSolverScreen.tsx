@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ImageSolverCard } from "@/components/question-solver/ImageSolverCard";
 
 const setupSteps = [
   {
@@ -53,10 +54,14 @@ export function QuestionSolverScreen() {
     <div>
       <PageHeader
         title="Webテストを自動で解く"
-        description="Chrome上のタブから問題を検知し、解答を生成します。chrome://extensions/（拡張機能）をONにすることで利用することができます。"
+        description="スクショ・画像の貼り付け、またはChrome拡張機能で問題を検知して解答を生成します。"
         descriptionClassName="text-[#1d1d1f]"
         compact
       />
+
+      <section className="mb-4">
+        <ImageSolverCard />
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/[0.08]">
@@ -142,10 +147,10 @@ export function QuestionSolverScreen() {
               />
               <div>
                 <h2 className="text-lg font-semibold tracking-tight">
-                  このページでは入力しません
+                  問題文の手入力は不要です
                 </h2>
                 <p className="mt-2 text-sm font-medium leading-6 text-[#3f3f46]">
-                  問題文の入力やJSON貼り付けは不要です。問題の検知と解答生成は、Chrome拡張機能のサイドパネルから行います。
+                  このページに画像を貼り付けるか、Chrome拡張機能のサイドパネルから検知・スクショ解答してください。どちらも問題文のタイピングやJSON貼り付けは不要です。
                 </p>
               </div>
             </div>
