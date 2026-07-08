@@ -2,15 +2,10 @@ const questionsEl = document.getElementById("questions");
 const solutionEl = document.getElementById("solution");
 const detectNowButton = document.getElementById("detectNow");
 const restartDetectionButton = document.getElementById("restartDetection");
-const apiBaseUrlInput = document.getElementById("apiBaseUrl");
-const saveApiBaseUrlButton = document.getElementById("saveApiBaseUrl");
-const testApiBaseUrlButton = document.getElementById("testApiBaseUrl");
-const apiBaseUrlStatus = document.getElementById("apiBaseUrlStatus");
 const solveModeButtons = Array.from(
   document.querySelectorAll("[data-solve-mode]"),
 );
 
-const DEFAULT_API_BASE_URL = "http://localhost:3000";
 let autoSolvedSignature = "";
 let solvingSignature = "";
 let currentSolveMode = "explanation";
@@ -18,7 +13,28 @@ let activeSolutionMode = "explanation";
 const manualImages = new Map();
 const MAX_MANUAL_IMAGE_DATA_URL_LENGTH = 2_400_000;
 
-const validSolveModes = new Set(["answer_only", "explanation", "step_by_step"]);
+const validSolveModes = new Set(["answer_only", "explanation"]);
+
+// ── 解き方モード（スクショ / ページ検知） ──────────────
+const screenshotSection = document.getElementById("screenshotSection");
+const detectSection = document.getElementById("detectSection");
+const uiModeButtons = Array.from(document.querySelectorAll("[data-ui-mode]"));
+let currentUiMode = "screenshot";
+
+function setUiMode(mode, options = {}) {
+  if (mode !== "screenshot" && mode !== "detect") {
+    return;
+  }
+  currentUiMode = mode;
+  screenshotSection.hidden = mode !== "screenshot";
+  detectSection.hidden = mode !== "detect";
+  uiModeButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.uiMode === mode);
+  });
+  if (options.persist !== false) {
+    chrome.storage.sync.set({ yfyUiMode: mode });
+  }
+}
 
 function setSolveMode(mode, options = {}) {
   if (!validSolveModes.has(mode)) {
@@ -35,69 +51,6 @@ function setSolveMode(mode, options = {}) {
 
 function selectedSolveMode() {
   return currentSolveMode;
-}
-
-function normalizeApiBaseUrl(value) {
-  return String(value || DEFAULT_API_BASE_URL).trim().replace(/\/$/, "");
-}
-
-function setApiStatus(message, state = "") {
-  apiBaseUrlStatus.textContent = message;
-  apiBaseUrlStatus.dataset.state = state;
-}
-
-function loadApiBaseUrl() {
-  chrome.storage.sync.get(
-    { apiBaseUrl: DEFAULT_API_BASE_URL },
-    ({ apiBaseUrl }) => {
-      apiBaseUrlInput.value = normalizeApiBaseUrl(apiBaseUrl);
-      setApiStatus("ローカルサーバーへ送信します。", "ok");
-    },
-  );
-}
-
-function saveApiBaseUrl() {
-  const value = normalizeApiBaseUrl(apiBaseUrlInput.value);
-  return new Promise((resolve, reject) => {
-    try {
-      const parsed = new URL(value);
-      if (!["http:", "https:"].includes(parsed.protocol)) {
-        throw new Error("http または https のURLを入れてください。");
-      }
-      chrome.storage.sync.set({ apiBaseUrl: value }, () => {
-        setApiStatus("API送信先を保存しました。", "ok");
-        apiBaseUrlInput.value = value;
-        refreshAccountStatus();
-        resolve(value);
-      });
-    } catch (error) {
-      setApiStatus(error?.message || "URLを確認してください。", "error");
-      reject(error);
-    }
-  });
-}
-
-async function testApiBaseUrl() {
-  try {
-    await saveApiBaseUrl();
-  } catch {
-    return;
-  }
-  setApiStatus("APIを確認しています...", "");
-  chrome.runtime.sendMessage({ type: "TEST_API" }, (response) => {
-    if (response?.ok) {
-      setApiStatus(
-        `接続OK: ${response.apiBaseUrl} (${response.status})`,
-        "ok",
-      );
-      return;
-    }
-    setApiStatus(
-      response?.data?.error ||
-        `接続失敗: HTTP ${response?.status ?? "unknown"}`,
-      "error",
-    );
-  });
 }
 
 function confidence(question) {
@@ -380,7 +333,7 @@ function renderPreviewCropBox(rect) {
 }
 
 async function refreshPreview() {
-  if (previewDragStart || document.hidden) {
+  if (previewDragStart || document.hidden || currentUiMode !== "screenshot") {
     return;
   }
   try {
@@ -392,10 +345,10 @@ async function refreshPreview() {
   } catch (error) {
     if (!latestCapture) {
       previewPlaceholder.hidden = false;
-      previewPlaceholder.textContent =
-        error?.message?.includes("activeTab") || error?.message
-          ? "このページはプレビューできません（chrome:// や拡張ページなど）。問題ページのタブを開いてください。"
-          : "プレビューを取得できませんでした。";
+      // 原因の切り分けができるよう、実際のエラー内容をそのまま表示する
+      previewPlaceholder.textContent = `プレビューを取得できません: ${
+        error?.message || "不明なエラー"
+      }（問題ページのタブを一度クリックしてから「更新」を押してください）`;
     }
   }
 }
@@ -489,7 +442,11 @@ async function captureScreenshotDataUrl() {
   const cropped = previewCropRect
     ? await cropDataUrlNormalized(capture.dataUrl, previewCropRect)
     : capture.dataUrl;
-  return compressImageDataUrl(cropped);
+  const compressed = await compressImageDataUrl(cropped);
+  if (compressed.length > MAX_MANUAL_IMAGE_DATA_URL_LENGTH) {
+    throw new Error("画像が大きすぎます。より狭い範囲を選択してください。");
+  }
+  return compressed;
 }
 
 function buildStandaloneScreenshotQuestion(imageDataUrl) {
@@ -521,12 +478,6 @@ async function solveFromPreview() {
       selectedSolveMode(),
     );
     const imageDataUrl = await captureScreenshotDataUrl();
-    if (imageDataUrl.length > MAX_MANUAL_IMAGE_DATA_URL_LENGTH) {
-      renderSolution({
-        error: "画像が大きすぎます。より狭い範囲を選択してください。",
-      });
-      return;
-    }
     const question = buildStandaloneScreenshotQuestion(imageDataUrl);
     solve(question, selectedSolveMode(), { force: true });
   } catch (error) {
@@ -815,7 +766,6 @@ function renderSolution(solution, renderMode = activeSolutionMode) {
   }
   const showExplanation =
     renderMode !== "answer_only" || solution.needsReview || !solution.finalAnswer;
-  const showSteps = renderMode === "step_by_step";
   solutionEl.innerHTML = `
     <article class="solution-card">
       <div class="meta">
@@ -824,20 +774,6 @@ function renderSolution(solution, renderMode = activeSolutionMode) {
       </div>
       <h2>${renderRichText(solution.finalAnswer || "")}</h2>
       ${showExplanation ? `<p>${renderRichText(solution.explanation || "")}</p>` : ""}
-      ${
-        showSteps
-          ? (solution.steps || [])
-              .map(
-                (step) => `
-                  <div class="step">
-                    <p><strong>${escapeHtml(step.title)}</strong></p>
-                    <p>${renderRichText(step.content)}</p>
-                  </div>
-                `,
-              )
-              .join("")
-          : ""
-      }
     </article>
   `;
 }
@@ -918,6 +854,12 @@ function runDetection(type) {
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "QUESTIONS_UPDATED") {
+    // スクショモードではページ検知（confidence判定・自動解答）を無視する。
+    // content script側でも検知自体を止めているが、モード切替直後の
+    // 送信中メッセージに備えてここでも防ぐ。
+    if (currentUiMode !== "detect") {
+      return;
+    }
     renderQuestions(message.questions || []);
   }
 });
@@ -947,8 +889,14 @@ solveModeButtons.forEach((button) => {
   });
 });
 
-saveApiBaseUrlButton.addEventListener("click", saveApiBaseUrl);
-testApiBaseUrlButton.addEventListener("click", testApiBaseUrl);
+uiModeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setUiMode(button.dataset.uiMode || "screenshot");
+    if (button.dataset.uiMode === "screenshot") {
+      void refreshPreview();
+    }
+  });
+});
 
 previewSolveButton.addEventListener("click", () => void solveFromPreview());
 previewResetButton.addEventListener("click", () => {
@@ -967,20 +915,15 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-apiBaseUrlInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    saveApiBaseUrl();
-  }
-});
-
 chrome.storage.sync.get(
-  { yfyQuestionSolveMode: "explanation" },
-  ({ yfyQuestionSolveMode }) => {
+  { yfyQuestionSolveMode: "explanation", yfyUiMode: "screenshot" },
+  ({ yfyQuestionSolveMode, yfyUiMode }) => {
     setSolveMode(yfyQuestionSolveMode, { persist: false });
-    loadApiBaseUrl();
+    setUiMode(yfyUiMode, { persist: false });
     refreshAccountStatus();
     refresh();
   },
 );
 
 setSolveMode("explanation", { persist: false });
+setUiMode("screenshot", { persist: false });
