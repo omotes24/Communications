@@ -41,18 +41,26 @@
             ログイン
           </button>
         </div>
-        <div class="screenshot-setting" aria-label="スクショ解答">
-          <span>スクショ</span>
-          <button id="screenshotSolve" type="button">スクショで解く</button>
-          <button id="screenshotReselect" class="secondary" type="button">
-            範囲を選び直す
+      </header>
+      <section class="preview-section" aria-label="画面プレビューと切り抜き">
+        <div id="previewBox" class="preview-box">
+          <img id="previewImage" alt="現在のタブのプレビュー" hidden />
+          <p id="previewPlaceholder" class="preview-placeholder">
+            プレビューを読み込んでいます...
+          </p>
+          <div id="previewCropBox" class="preview-crop" hidden></div>
+        </div>
+        <div class="preview-actions">
+          <button id="previewSolve" type="button">解く</button>
+          <button id="previewReset" class="secondary" type="button">
+            範囲リセット
           </button>
-          <button id="screenshotReset" class="secondary" type="button">
-            リセット
+          <button id="previewRefresh" class="secondary" type="button">
+            更新
           </button>
         </div>
-        <p id="screenshotRegionStatus" class="api-status" aria-live="polite"></p>
-      </header>
+        <p id="previewStatus" class="api-status" aria-live="polite"></p>
+      </section>
       <section id="questions" class="list"></section>
       <section id="solution" class="solution"></section>
     </main>
