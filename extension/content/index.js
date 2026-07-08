@@ -1182,6 +1182,127 @@ function createFloatingControls() {
   document.documentElement.appendChild(widget);
 }
 
+// ドラッグで範囲を選択するオーバーレイ。選択後は自身を取り除いてから
+// rect（CSSピクセル・ビューポート基準）を返す。スクショはサイドパネル側が
+// オーバーレイ消滅後に撮るので、選択UIは写り込まない。
+function startRegionSelection(sendResponse) {
+  document.getElementById("yfy-region-overlay")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "yfy-region-overlay";
+  Object.assign(overlay.style, {
+    position: "fixed",
+    inset: "0",
+    zIndex: "2147483647",
+    cursor: "crosshair",
+    background: "rgba(15, 23, 42, 0.2)",
+  });
+
+  const hint = document.createElement("div");
+  hint.textContent = "ドラッグで解答したい範囲を選択（Escで中止）";
+  Object.assign(hint.style, {
+    position: "fixed",
+    top: "14px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "rgba(15, 23, 42, 0.88)",
+    color: "#ffffff",
+    padding: "7px 16px",
+    borderRadius: "999px",
+    font: "12px/1.4 -apple-system, 'Hiragino Sans', sans-serif",
+    pointerEvents: "none",
+  });
+
+  const box = document.createElement("div");
+  Object.assign(box.style, {
+    position: "fixed",
+    border: "2px dashed #facc15",
+    boxShadow: "0 0 0 100000px rgba(15, 23, 42, 0.3)",
+    display: "none",
+    pointerEvents: "none",
+  });
+
+  overlay.append(hint, box);
+
+  let startPoint = null;
+  let lastRect = null;
+  let finished = false;
+
+  const cleanup = () => {
+    window.removeEventListener("keydown", onKeyDown, true);
+    overlay.remove();
+  };
+
+  const finish = (rect) => {
+    if (finished) {
+      return;
+    }
+    finished = true;
+    cleanup();
+    if (rect && rect.width >= 8 && rect.height >= 8) {
+      sendResponse({
+        ok: true,
+        rect,
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+        dpr: window.devicePixelRatio || 1,
+      });
+    } else {
+      sendResponse({ ok: false, cancelled: true });
+    }
+  };
+
+  const rectFrom = (event) => {
+    if (!startPoint) {
+      return null;
+    }
+    const x1 = Math.max(0, Math.min(startPoint.x, event.clientX));
+    const y1 = Math.max(0, Math.min(startPoint.y, event.clientY));
+    const x2 = Math.min(window.innerWidth, Math.max(startPoint.x, event.clientX));
+    const y2 = Math.min(window.innerHeight, Math.max(startPoint.y, event.clientY));
+    return { x: x1, y: y1, width: x2 - x1, height: y2 - y1 };
+  };
+
+  const onKeyDown = (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      finish(null);
+    }
+  };
+
+  overlay.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    startPoint = { x: event.clientX, y: event.clientY };
+    overlay.style.background = "transparent";
+    hint.style.display = "none";
+  });
+
+  overlay.addEventListener("mousemove", (event) => {
+    const rect = rectFrom(event);
+    if (!rect) {
+      return;
+    }
+    lastRect = rect;
+    Object.assign(box.style, {
+      display: "block",
+      left: `${rect.x}px`,
+      top: `${rect.y}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+    });
+  });
+
+  overlay.addEventListener("mouseup", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    finish(rectFrom(event) || lastRect);
+  });
+
+  window.addEventListener("keydown", onKeyDown, true);
+  document.documentElement.appendChild(overlay);
+}
+
 try {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "DETECT_NOW") {
@@ -1192,6 +1313,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "RESTART_DETECTION") {
     startObserver();
     sendResponse({ ok: true });
+    return true;
+  }
+  if (message?.type === "SELECT_REGION") {
+    startRegionSelection(sendResponse);
     return true;
   }
   return false;

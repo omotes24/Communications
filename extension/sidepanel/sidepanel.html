@@ -35,6 +35,17 @@
           <button id="testApiBaseUrl" class="secondary" type="button">確認</button>
         </div>
         <p id="apiBaseUrlStatus" class="api-status" aria-live="polite"></p>
+        <div class="screenshot-setting" aria-label="スクショ解答">
+          <span>スクショ</span>
+          <button id="screenshotSolve" type="button">スクショで解く</button>
+          <button id="screenshotReselect" class="secondary" type="button">
+            範囲を選び直す
+          </button>
+          <button id="screenshotReset" class="secondary" type="button">
+            リセット
+          </button>
+        </div>
+        <p id="screenshotRegionStatus" class="api-status" aria-live="polite"></p>
       </header>
       <section id="questions" class="list"></section>
       <section id="solution" class="solution"></section>
