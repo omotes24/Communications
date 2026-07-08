@@ -245,6 +245,45 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "GET_ACCOUNT") {
+    (async () => {
+      try {
+        const apiBaseUrl = await getApiBaseUrl();
+        const response = await fetch(`${apiBaseUrl}/api/account/me`, {
+          credentials: "include",
+        });
+        const data = await parseFetchResponse(response);
+        sendResponse({
+          ok: response.ok,
+          status: response.status,
+          apiBaseUrl,
+          data,
+        });
+      } catch (error) {
+        sendResponse({
+          ok: false,
+          status: 0,
+          data: {
+            error:
+              error instanceof Error
+                ? error.message
+                : "アカウント情報を取得できませんでした。",
+          },
+        });
+      }
+    })();
+    return true;
+  }
+
+  if (message?.type === "OPEN_LOGIN_PAGE") {
+    (async () => {
+      const apiBaseUrl = await getApiBaseUrl();
+      chrome.tabs.create({ url: `${apiBaseUrl}/auth/login` });
+      sendResponse({ ok: true });
+    })();
+    return true;
+  }
+
   if (message?.type === "SELECT_REGION") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tab = tabs[0];

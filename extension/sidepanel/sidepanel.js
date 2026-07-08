@@ -67,6 +67,7 @@ function saveApiBaseUrl() {
       chrome.storage.sync.set({ apiBaseUrl: value }, () => {
         setApiStatus("API送信先を保存しました。", "ok");
         apiBaseUrlInput.value = value;
+        refreshAccountStatus();
         resolve(value);
       });
     } catch (error) {
@@ -294,6 +295,43 @@ function captureVisibleTab() {
     });
   });
 }
+
+// ── Communicationsアカウント ──────────────────────
+// APIへの送信はブラウザのCookie（Supabaseセッション）を利用するため、
+// 本体サイトにログインしていれば拡張もそのアカウント・トークン残高を使う。
+const accountStatusEl = document.getElementById("accountStatus");
+const accountLoginButton = document.getElementById("accountLogin");
+
+function refreshAccountStatus() {
+  chrome.runtime.sendMessage({ type: "GET_ACCOUNT" }, (response) => {
+    if (response?.ok && response.data?.id) {
+      const balance = response.data.wallet?.available_balance;
+      accountStatusEl.textContent = `ログイン中: ${response.data.email || response.data.id}${
+        typeof balance === "number"
+          ? `（残高 ${balance.toLocaleString("ja-JP")} トークン）`
+          : ""
+      }`;
+      accountStatusEl.dataset.state = "ok";
+      accountLoginButton.hidden = true;
+      return;
+    }
+    if (response?.status === 401) {
+      accountStatusEl.textContent =
+        "未ログイン: サイトにログインすると解答できます。";
+      accountStatusEl.dataset.state = "error";
+      accountLoginButton.hidden = false;
+      return;
+    }
+    accountStatusEl.textContent =
+      response?.data?.error || "アカウント状態を確認できませんでした。";
+    accountStatusEl.dataset.state = "error";
+    accountLoginButton.hidden = false;
+  });
+}
+
+accountLoginButton.addEventListener("click", () => {
+  chrome.runtime.sendMessage({ type: "OPEN_LOGIN_PAGE" });
+});
 
 // ── 範囲選択スクショ ──────────────────────────────
 // 選択した範囲は「リセット」を押すまで保持され、以降のスクショ解答は
@@ -875,6 +913,7 @@ chrome.storage.sync.get(
   ({ yfyQuestionSolveMode }) => {
     setSolveMode(yfyQuestionSolveMode, { persist: false });
     loadApiBaseUrl();
+    refreshAccountStatus();
     refresh();
   },
 );

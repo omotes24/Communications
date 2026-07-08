@@ -95,6 +95,14 @@ header {
   font-weight: 700;
 }
 
+.account-setting {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
 .screenshot-setting {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
