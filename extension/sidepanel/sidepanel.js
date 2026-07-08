@@ -295,6 +295,149 @@ function captureVisibleTab() {
   });
 }
 
+// ── 範囲選択スクショ ──────────────────────────────
+// 選択した範囲は「リセット」を押すまで保持され、以降のスクショ解答は
+// その範囲だけを切り抜いて送信する（StudyCameraと同じ操作感）。
+let savedRegion = null;
+
+const screenshotSolveButton = document.getElementById("screenshotSolve");
+const screenshotReselectButton = document.getElementById("screenshotReselect");
+const screenshotResetButton = document.getElementById("screenshotReset");
+const screenshotRegionStatus = document.getElementById(
+  "screenshotRegionStatus",
+);
+
+function updateRegionStatus(message, state = "") {
+  if (message) {
+    screenshotRegionStatus.textContent = message;
+    screenshotRegionStatus.dataset.state = state;
+    return;
+  }
+  if (savedRegion) {
+    const { width, height } = savedRegion.rect;
+    screenshotRegionStatus.textContent = `切り抜き範囲: ${Math.round(width)}×${Math.round(height)}（リセットまで維持）`;
+    screenshotRegionStatus.dataset.state = "ok";
+  } else {
+    screenshotRegionStatus.textContent =
+      "範囲未設定: スクショは画面全体を送信します。";
+    screenshotRegionStatus.dataset.state = "";
+  }
+}
+
+function selectRegionOnPage() {
+  return new Promise((resolve, reject) => {
+    updateRegionStatus("ページ上でドラッグして範囲を選択してください...", "");
+    chrome.runtime.sendMessage({ type: "SELECT_REGION" }, (response) => {
+      if (!response?.ok || !response.rect) {
+        updateRegionStatus();
+        reject(
+          new Error(
+            response?.cancelled
+              ? "範囲選択を中止しました。"
+              : response?.error || "範囲選択に失敗しました。",
+          ),
+        );
+        return;
+      }
+      savedRegion = {
+        rect: response.rect,
+        viewport: response.viewport,
+        pageUrl: response.pageUrl || "",
+        pageTitle: response.pageTitle || "",
+      };
+      updateRegionStatus();
+      resolve(savedRegion);
+    });
+  });
+}
+
+async function cropDataUrlToRegion(dataUrl, region) {
+  const image = await loadImage(dataUrl);
+  // captureVisibleTabはデバイス解像度で撮れるので、ビューポートCSS座標を
+  // 画像座標へスケーリングして切り抜く（ズームやdprの違いを吸収）。
+  const scaleX = image.naturalWidth / region.viewport.width;
+  const scaleY = image.naturalHeight / region.viewport.height;
+  const sx = Math.max(0, Math.round(region.rect.x * scaleX));
+  const sy = Math.max(0, Math.round(region.rect.y * scaleY));
+  const sw = Math.min(
+    image.naturalWidth - sx,
+    Math.max(8, Math.round(region.rect.width * scaleX)),
+  );
+  const sh = Math.min(
+    image.naturalHeight - sy,
+    Math.max(8, Math.round(region.rect.height * scaleY)),
+  );
+  const canvas = document.createElement("canvas");
+  canvas.width = sw;
+  canvas.height = sh;
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) {
+    return dataUrl;
+  }
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, sw, sh);
+  context.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+  return canvas.toDataURL("image/jpeg", 0.92);
+}
+
+async function captureScreenshotDataUrl() {
+  // オーバーレイ除去やUI更新が描画に反映されるのを待ってから撮る
+  await new Promise((resolve) => setTimeout(resolve, 180));
+  const fullDataUrl = await captureVisibleTab();
+  const cropped = savedRegion
+    ? await cropDataUrlToRegion(fullDataUrl, savedRegion)
+    : fullDataUrl;
+  return compressImageDataUrl(cropped);
+}
+
+function buildStandaloneScreenshotQuestion(imageDataUrl) {
+  const stem =
+    "添付したスクリーンショット画像に写っている問題を読み取り、解答してください。";
+  return {
+    questionId: `manual-screenshot-${Date.now()}`,
+    source: "generic_dom",
+    subject: "unknown",
+    gradeLevel: "unknown",
+    answerType: "unknown",
+    stem,
+    rawText: stem,
+    pageUrl: (savedRegion?.pageUrl || "").slice(0, 2048),
+    pageTitle: (savedRegion?.pageTitle || "スクリーンショット").slice(0, 300),
+    confidence: 0.7,
+    visualImageDataUrl: imageDataUrl,
+  };
+}
+
+async function solveStandaloneScreenshot({ reselect = false } = {}) {
+  try {
+    if (reselect || !savedRegion) {
+      await selectRegionOnPage();
+    }
+    renderSolution(
+      {
+        finalAnswer: "スクリーンショットを取得しています...",
+        explanation: "",
+        confidence: 0,
+      },
+      selectedSolveMode(),
+    );
+    const imageDataUrl = await captureScreenshotDataUrl();
+    if (imageDataUrl.length > MAX_MANUAL_IMAGE_DATA_URL_LENGTH) {
+      renderSolution({
+        error:
+          "画像が大きすぎます。より狭い範囲を選択してください。",
+      });
+      return;
+    }
+    const question = buildStandaloneScreenshotQuestion(imageDataUrl);
+    solve(question, selectedSolveMode(), { force: true });
+  } catch (error) {
+    renderSolution({
+      error: error?.message || "スクショ解答に失敗しました。",
+    });
+  }
+}
+
 async function solveWithScreenshot(question, mode) {
   renderSolution(
     {
@@ -305,12 +448,13 @@ async function solveWithScreenshot(question, mode) {
     mode,
   );
   try {
-    const dataUrl = await captureVisibleTab();
-    const compressed = await compressImageDataUrl(dataUrl);
+    const compressed = await captureScreenshotDataUrl();
     const nextQuestion = withManualContext(
       question,
       [
-        "画面スクリーンショットを添付しています。",
+        savedRegion
+          ? "画面スクリーンショット（選択範囲の切り抜き）を添付しています。"
+          : "画面スクリーンショットを添付しています。",
         "ブラウザのURLバーはChrome拡張のスクリーンショットには含まれません。",
         "ページ内ヘッダーやナビゲーションは無視し、現在表示されている問題部分を優先してください。",
       ].join("\n"),
@@ -707,6 +851,18 @@ solveModeButtons.forEach((button) => {
 
 saveApiBaseUrlButton.addEventListener("click", saveApiBaseUrl);
 testApiBaseUrlButton.addEventListener("click", testApiBaseUrl);
+
+screenshotSolveButton.addEventListener("click", () =>
+  solveStandaloneScreenshot(),
+);
+screenshotReselectButton.addEventListener("click", () =>
+  solveStandaloneScreenshot({ reselect: true }),
+);
+screenshotResetButton.addEventListener("click", () => {
+  savedRegion = null;
+  updateRegionStatus();
+});
+updateRegionStatus();
 
 apiBaseUrlInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
