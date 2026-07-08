@@ -1,11 +1,24 @@
 const tabQuestions = new Map();
 const tabFrameDetections = new Map();
+const DEFAULT_API_BASE_URL = "http://localhost:3000";
 
 function notifyRuntime(message) {
   chrome.runtime.sendMessage(message, () => {
     // The side panel may be closed; that is not an actionable error.
     void chrome.runtime.lastError;
   });
+}
+
+async function parseFetchResponse(response) {
+  const text = await response.text();
+  if (!text) {
+    return {};
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: text.slice(0, 1200) };
+  }
 }
 
 function sendDetectionToTab(tabId, message, sendResponse, retry = true) {
@@ -54,7 +67,7 @@ chrome.action.onClicked.addListener((tab) => {
 
 async function getApiBaseUrl() {
   const values = await chrome.storage.sync.get({
-    apiBaseUrl: "https://www.yell-for-you.jp",
+    apiBaseUrl: DEFAULT_API_BASE_URL,
   });
   return String(values.apiBaseUrl).replace(/\/$/, "");
 }
@@ -171,11 +184,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             language: "ja",
           }),
         });
-        const data = await response.json();
-        sendResponse({ ok: response.ok, data });
+        const data = await parseFetchResponse(response);
+        sendResponse({
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          apiBaseUrl,
+          data: response.ok
+            ? data
+            : {
+                error:
+                  data.error ||
+                  `API送信に失敗しました。HTTP ${response.status} ${response.statusText}`,
+                details: data,
+              },
+        });
       } catch (error) {
         sendResponse({
           ok: false,
+          status: 0,
           data: {
             error:
               error instanceof Error
@@ -185,6 +212,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
       }
     })();
+    return true;
+  }
+
+  if (message?.type === "TEST_API") {
+    (async () => {
+      try {
+        const apiBaseUrl = await getApiBaseUrl();
+        const response = await fetch(`${apiBaseUrl}/api/solve-question`, {
+          method: "OPTIONS",
+          credentials: "include",
+        });
+        sendResponse({
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          apiBaseUrl,
+        });
+      } catch (error) {
+        sendResponse({
+          ok: false,
+          status: 0,
+          data: {
+            error:
+              error instanceof Error
+                ? error.message
+                : "API疎通確認に失敗しました。",
+          },
+        });
+      }
+    })();
+    return true;
+  }
+
+  if (message?.type === "CAPTURE_VISIBLE_TAB") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const windowId = tabs[0]?.windowId;
+      chrome.tabs.captureVisibleTab(
+        windowId,
+        { format: "jpeg", quality: 82 },
+        (dataUrl) => {
+          if (chrome.runtime.lastError || !dataUrl) {
+            sendResponse({
+              ok: false,
+              error:
+                chrome.runtime.lastError?.message ||
+                "画面スクリーンショットを取得できませんでした。",
+            });
+            return;
+          }
+          sendResponse({ ok: true, dataUrl });
+        },
+      );
+    });
     return true;
   }
 

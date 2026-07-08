@@ -23,6 +23,18 @@
           <button type="button" data-solve-mode="explanation">解説</button>
           <button type="button" data-solve-mode="step_by_step">途中式</button>
         </div>
+        <div class="api-setting" aria-label="API送信先">
+          <label for="apiBaseUrl">API</label>
+          <input
+            id="apiBaseUrl"
+            type="url"
+            spellcheck="false"
+            placeholder="http://localhost:3000"
+          />
+          <button id="saveApiBaseUrl" class="secondary" type="button">保存</button>
+          <button id="testApiBaseUrl" class="secondary" type="button">確認</button>
+        </div>
+        <p id="apiBaseUrlStatus" class="api-status" aria-live="polite"></p>
       </header>
       <section id="questions" class="list"></section>
       <section id="solution" class="solution"></section>

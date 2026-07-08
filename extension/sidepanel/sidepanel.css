@@ -69,6 +69,48 @@ header {
   color: white;
 }
 
+.api-setting {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.api-setting label {
+  color: #6e6e73;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.api-setting input {
+  min-width: 0;
+  border: 1px solid rgb(0 0 0 / 10%);
+  border-radius: 12px;
+  background: #f5f5f7;
+  padding: 9px 10px;
+  color: #1d1d1f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.api-status {
+  min-height: 16px;
+  margin-top: 6px;
+  color: #6e6e73;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.api-status[data-state="ok"] {
+  color: #047857;
+}
+
+.api-status[data-state="error"] {
+  color: #b91c1c;
+}
+
 header p {
   margin: 0 0 8px;
   color: #7c3aed;
