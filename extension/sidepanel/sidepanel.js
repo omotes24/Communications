@@ -2,10 +2,15 @@ const questionsEl = document.getElementById("questions");
 const solutionEl = document.getElementById("solution");
 const detectNowButton = document.getElementById("detectNow");
 const restartDetectionButton = document.getElementById("restartDetection");
+const apiBaseUrlInput = document.getElementById("apiBaseUrl");
+const saveApiBaseUrlButton = document.getElementById("saveApiBaseUrl");
+const testApiBaseUrlButton = document.getElementById("testApiBaseUrl");
+const apiBaseUrlStatus = document.getElementById("apiBaseUrlStatus");
 const solveModeButtons = Array.from(
   document.querySelectorAll("[data-solve-mode]"),
 );
 
+const DEFAULT_API_BASE_URL = "http://localhost:3000";
 let autoSolvedSignature = "";
 let solvingSignature = "";
 let currentSolveMode = "explanation";
@@ -30,6 +35,68 @@ function setSolveMode(mode, options = {}) {
 
 function selectedSolveMode() {
   return currentSolveMode;
+}
+
+function normalizeApiBaseUrl(value) {
+  return String(value || DEFAULT_API_BASE_URL).trim().replace(/\/$/, "");
+}
+
+function setApiStatus(message, state = "") {
+  apiBaseUrlStatus.textContent = message;
+  apiBaseUrlStatus.dataset.state = state;
+}
+
+function loadApiBaseUrl() {
+  chrome.storage.sync.get(
+    { apiBaseUrl: DEFAULT_API_BASE_URL },
+    ({ apiBaseUrl }) => {
+      apiBaseUrlInput.value = normalizeApiBaseUrl(apiBaseUrl);
+      setApiStatus("ローカルサーバーへ送信します。", "ok");
+    },
+  );
+}
+
+function saveApiBaseUrl() {
+  const value = normalizeApiBaseUrl(apiBaseUrlInput.value);
+  return new Promise((resolve, reject) => {
+    try {
+      const parsed = new URL(value);
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        throw new Error("http または https のURLを入れてください。");
+      }
+      chrome.storage.sync.set({ apiBaseUrl: value }, () => {
+        setApiStatus("API送信先を保存しました。", "ok");
+        apiBaseUrlInput.value = value;
+        resolve(value);
+      });
+    } catch (error) {
+      setApiStatus(error?.message || "URLを確認してください。", "error");
+      reject(error);
+    }
+  });
+}
+
+async function testApiBaseUrl() {
+  try {
+    await saveApiBaseUrl();
+  } catch {
+    return;
+  }
+  setApiStatus("APIを確認しています...", "");
+  chrome.runtime.sendMessage({ type: "TEST_API" }, (response) => {
+    if (response?.ok) {
+      setApiStatus(
+        `接続OK: ${response.apiBaseUrl} (${response.status})`,
+        "ok",
+      );
+      return;
+    }
+    setApiStatus(
+      response?.data?.error ||
+        `接続失敗: HTTP ${response?.status ?? "unknown"}`,
+      "error",
+    );
+  });
 }
 
 function confidence(question) {
@@ -214,6 +281,49 @@ async function handleManualImage(index, file) {
   }
 }
 
+function captureVisibleTab() {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ type: "CAPTURE_VISIBLE_TAB" }, (response) => {
+      if (!response?.ok || !response.dataUrl) {
+        reject(
+          new Error(response?.error || "画面スクリーンショットを取得できませんでした。"),
+        );
+        return;
+      }
+      resolve(response.dataUrl);
+    });
+  });
+}
+
+async function solveWithScreenshot(question, mode) {
+  renderSolution(
+    {
+      finalAnswer: "スクリーンショットを取得しています...",
+      explanation: "",
+      confidence: 0,
+    },
+    mode,
+  );
+  try {
+    const dataUrl = await captureVisibleTab();
+    const compressed = await compressImageDataUrl(dataUrl);
+    const nextQuestion = withManualContext(
+      question,
+      [
+        "画面スクリーンショットを添付しています。",
+        "ブラウザのURLバーはChrome拡張のスクリーンショットには含まれません。",
+        "ページ内ヘッダーやナビゲーションは無視し、現在表示されている問題部分を優先してください。",
+      ].join("\n"),
+      compressed,
+    );
+    solve(nextQuestion, mode, { force: true });
+  } catch (error) {
+    renderSolution({
+      error: error?.message || "スクリーンショット付き解答に失敗しました。",
+    });
+  }
+}
+
 function normalizeLatex(value) {
   return String(value ?? "")
     .replaceAll("\\\\", "\\")
@@ -362,6 +472,7 @@ function renderQuestions(questions) {
           }
           <div class="actions">
             <button data-index="${index}" data-mode="selected">解く</button>
+            <button class="secondary" data-index="${index}" data-mode="screenshot">スクショで解く</button>
             ${
               needsManualVisualContext(question)
                 ? `<button data-index="${index}" data-mode="selected" data-with-context="true">補足して解く</button>`
@@ -392,6 +503,10 @@ function renderQuestions(questions) {
           : question;
       const mode =
         button.dataset.mode === "hint" ? "hint" : selectedSolveMode();
+      if (button.dataset.mode === "screenshot") {
+        solveWithScreenshot(question, selectedSolveMode());
+        return;
+      }
       solve(nextQuestion, mode, { force: true });
     });
   });
@@ -590,10 +705,20 @@ solveModeButtons.forEach((button) => {
   });
 });
 
+saveApiBaseUrlButton.addEventListener("click", saveApiBaseUrl);
+testApiBaseUrlButton.addEventListener("click", testApiBaseUrl);
+
+apiBaseUrlInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    saveApiBaseUrl();
+  }
+});
+
 chrome.storage.sync.get(
   { yfyQuestionSolveMode: "explanation" },
   ({ yfyQuestionSolveMode }) => {
     setSolveMode(yfyQuestionSolveMode, { persist: false });
+    loadApiBaseUrl();
     refresh();
   },
 );
