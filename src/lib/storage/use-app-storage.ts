@@ -12,7 +12,9 @@ import {
   getActiveCompanies,
   getActiveProfile,
   getActiveProfiles,
+  loadAppStorage,
   LOCAL_STORAGE_IMPORT_STATUS_KEY,
+  saveAppStorage,
   saveLearning,
   setActiveCompany,
   setActiveProfile,
@@ -98,7 +100,7 @@ export function useAppStorage() {
         });
         if (!response.ok) {
           if (!pendingCloudSaveRef.current) {
-            applyStorage(defaultStorage);
+            applyStorage(preferSessionActiveCompany(loadAppStorage()));
           }
           setCloudSyncEnabled(false);
           return;
@@ -120,7 +122,7 @@ export function useAppStorage() {
       } catch {
         if (!cancelled) {
           if (!pendingCloudSaveRef.current) {
-            applyStorage(defaultStorage);
+            applyStorage(preferSessionActiveCompany(loadAppStorage()));
           }
           setCloudSyncEnabled(false);
         }
@@ -148,7 +150,8 @@ export function useAppStorage() {
       if (cloudSyncEnabled) {
         persistCloudStorage(next);
       } else {
-        pendingCloudSaveRef.current = true;
+        saveAppStorage(next);
+        pendingCloudSaveRef.current = false;
       }
     },
     [applyStorage, cloudSyncEnabled, persistCloudStorage],
@@ -252,7 +255,6 @@ export function useAppStorage() {
         clearAppStorage();
         writePreferredActiveCompanyId(null);
         window.localStorage.setItem(LOCAL_STORAGE_IMPORT_STATUS_KEY, "declined");
-        setCloudSyncEnabled(true);
         applyStorage(defaultStorage);
         pendingCloudSaveRef.current = false;
         if (cloudSyncEnabled) {

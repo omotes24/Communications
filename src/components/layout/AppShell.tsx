@@ -7,10 +7,10 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpenCheck,
   BriefcaseBusiness,
-  ChevronDown,
   ChevronUp,
   Languages,
-  MoreHorizontal,
+  MessagesSquare,
+  Settings,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -25,19 +25,8 @@ const navItems = [
   { href: "/company", label: "会社", icon: BriefcaseBusiness },
   { href: "/support", label: "面接", icon: UsersRound },
   { href: "/english-interview", label: "英語", icon: Languages },
-];
-
-const moreNavItems = [
-  {
-    href: "/group-discussion",
-    label: "グループディスカッション",
-    icon: UsersRound,
-  },
-  {
-    href: "/question-solver",
-    label: "Webテストを自動で解く",
-    icon: BookOpenCheck,
-  },
+  { href: "/group-discussion", label: "GD", icon: MessagesSquare },
+  { href: "/question-solver", label: "Webテスト", icon: BookOpenCheck },
 ];
 
 const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.2";
@@ -67,7 +56,7 @@ export function AppShell({
   const tabsHidden = canCollapseTabs && tabsCollapsed;
 
   useEffect(() => {
-    for (const item of [...navItems, ...moreNavItems]) {
+    for (const item of navItems) {
       router.prefetch(item.href);
     }
   }, [router]);
@@ -81,8 +70,6 @@ export function AppShell({
       (href !== "/" && displayedPathname.startsWith(`${href}/`))
     );
   }
-
-  const moreActive = moreNavItems.some((item) => isNavItemActive(item.href));
 
   function markNavigationIntent(href: string) {
     if (href === displayedPathname) {
@@ -157,6 +144,18 @@ export function AppShell({
                     <span className="hidden sm:inline">タブをしまう</span>
                   </button>
                 ) : null}
+                <Link
+                  href="/account"
+                  aria-label="設定"
+                  className={cn(
+                    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                    isDark
+                      ? "bg-white/10 text-white/70 hover:bg-white/15 hover:text-white"
+                      : "bg-white text-[#6e6e73] shadow-sm ring-1 ring-black/[0.06] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
+                  )}
+                >
+                  <Settings className="h-4 w-4" aria-hidden />
+                </Link>
                 <AccountMenu />
               </div>
             </div>
@@ -164,7 +163,7 @@ export function AppShell({
             <nav
               aria-label="主要画面"
               className={cn(
-                "relative z-30 mt-3 grid grid-cols-5 rounded-full p-1 shadow-sm ring-1",
+                "relative z-30 mt-3 grid grid-cols-6 gap-0.5 rounded-full p-1 shadow-sm ring-1",
                 isDark
                   ? "bg-white/5 ring-white/10"
                   : "bg-white/75 ring-black/[0.06]",
@@ -183,7 +182,7 @@ export function AppShell({
                     onPointerDown={() => markNavigationIntent(item.href)}
                     onClick={() => markNavigationIntent(item.href)}
                     className={cn(
-                      "flex h-10 items-center justify-center gap-2 rounded-full px-2 text-sm font-semibold tracking-tight",
+                      "flex h-10 items-center justify-center gap-1.5 rounded-full px-1.5 text-sm font-semibold tracking-tight",
                       active
                         ? isDark
                           ? "bg-white text-neutral-950 shadow-sm"
@@ -198,72 +197,6 @@ export function AppShell({
                   </Link>
                 );
               })}
-              <div className="group relative">
-                <button
-                  type="button"
-                  aria-haspopup="menu"
-                  aria-expanded={moreActive}
-                  className={cn(
-                    "flex h-10 w-full items-center justify-center gap-1.5 rounded-full px-2 text-sm font-semibold tracking-tight",
-                    moreActive
-                      ? isDark
-                        ? "bg-white text-neutral-950 shadow-sm"
-                        : "bg-[var(--accent)] text-white shadow-sm"
-                      : isDark
-                        ? "text-white/60 hover:bg-white/10 hover:text-white"
-                        : "text-[#6e6e73] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
-                  )}
-                >
-                  <MoreHorizontal aria-hidden className="h-4 w-4 shrink-0" />
-                  <span className="truncate">その他</span>
-                  <ChevronDown aria-hidden className="h-3.5 w-3.5 shrink-0" />
-                </button>
-                <div
-                  role="menu"
-                  className={cn(
-                    "invisible absolute right-0 top-full z-50 min-w-64 pt-2 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100",
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "rounded-3xl p-2 shadow-xl ring-1",
-                      isDark
-                        ? "bg-neutral-950 ring-white/10"
-                        : "bg-white ring-black/[0.08]",
-                    )}
-                  >
-                    {moreNavItems.map((item) => {
-                      const Icon = item.icon;
-                      const active = isNavItemActive(item.href);
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          prefetch
-                          role="menuitem"
-                          onMouseEnter={() => router.prefetch(item.href)}
-                          onFocus={() => router.prefetch(item.href)}
-                          onPointerDown={() => markNavigationIntent(item.href)}
-                          onClick={() => markNavigationIntent(item.href)}
-                          className={cn(
-                            "flex min-h-11 items-center gap-2 rounded-2xl px-3 text-sm font-semibold transition",
-                            active
-                              ? isDark
-                                ? "bg-white text-neutral-950"
-                                : "bg-[var(--accent)] text-white"
-                              : isDark
-                                ? "text-white/70 hover:bg-white/10 hover:text-white"
-                                : "text-[#6e6e73] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
-                          )}
-                        >
-                          <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                          <span>{item.label}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
             </nav>
           </div>
         </header>

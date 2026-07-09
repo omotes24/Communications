@@ -13,7 +13,28 @@ let activeSolutionMode = "explanation";
 const manualImages = new Map();
 const MAX_MANUAL_IMAGE_DATA_URL_LENGTH = 2_400_000;
 
-const validSolveModes = new Set(["answer_only", "explanation", "step_by_step"]);
+const validSolveModes = new Set(["answer_only", "explanation"]);
+
+// ── 解き方モード（スクショ / ページ検知） ──────────────
+const screenshotSection = document.getElementById("screenshotSection");
+const detectSection = document.getElementById("detectSection");
+const uiModeButtons = Array.from(document.querySelectorAll("[data-ui-mode]"));
+let currentUiMode = "screenshot";
+
+function setUiMode(mode, options = {}) {
+  if (mode !== "screenshot" && mode !== "detect") {
+    return;
+  }
+  currentUiMode = mode;
+  screenshotSection.hidden = mode !== "screenshot";
+  detectSection.hidden = mode !== "detect";
+  uiModeButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.uiMode === mode);
+  });
+  if (options.persist !== false) {
+    chrome.storage.sync.set({ yfyUiMode: mode });
+  }
+}
 
 function setSolveMode(mode, options = {}) {
   if (!validSolveModes.has(mode)) {
@@ -214,6 +235,288 @@ async function handleManualImage(index, file) {
   }
 }
 
+function captureVisibleTab() {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ type: "CAPTURE_VISIBLE_TAB" }, (response) => {
+      if (!response?.ok || !response.dataUrl) {
+        reject(
+          new Error(response?.error || "画面スクリーンショットを取得できませんでした。"),
+        );
+        return;
+      }
+      resolve(response); // { dataUrl, pageUrl, pageTitle }
+    });
+  });
+}
+
+// ── Communicationsアカウント ──────────────────────
+// APIへの送信はブラウザのCookie（Supabaseセッション）を利用するため、
+// 本体サイトにログインしていれば拡張もそのアカウント・トークン残高を使う。
+const accountStatusEl = document.getElementById("accountStatus");
+const accountLoginButton = document.getElementById("accountLogin");
+
+function refreshAccountStatus() {
+  chrome.runtime.sendMessage({ type: "GET_ACCOUNT" }, (response) => {
+    if (response?.ok && response.data?.id) {
+      const balance = response.data.wallet?.available_balance;
+      accountStatusEl.textContent = `ログイン中: ${response.data.email || response.data.id}${
+        typeof balance === "number"
+          ? `（残高 ${balance.toLocaleString("ja-JP")} トークン）`
+          : ""
+      }`;
+      accountStatusEl.dataset.state = "ok";
+      accountLoginButton.hidden = true;
+      return;
+    }
+    if (response?.status === 401) {
+      accountStatusEl.textContent =
+        "未ログイン: サイトにログインすると解答できます。";
+      accountStatusEl.dataset.state = "error";
+      accountLoginButton.hidden = false;
+      return;
+    }
+    accountStatusEl.textContent =
+      response?.data?.error || "アカウント状態を確認できませんでした。";
+    accountStatusEl.dataset.state = "error";
+    accountLoginButton.hidden = false;
+  });
+}
+
+accountLoginButton.addEventListener("click", () => {
+  chrome.runtime.sendMessage({ type: "OPEN_LOGIN_PAGE" });
+});
+
+// ── サイドパネル内プレビュー + 切り抜き ─────────────
+// 現在のタブのライブプレビューをパネル内に表示し、その上をドラッグして
+// 切り抜き範囲（正規化座標 0-1）を作る。範囲は「範囲リセット」まで維持され、
+// 「解く」を押すたびに最新の画面を撮り直して同じ範囲を切り抜いて送信する。
+const previewBox = document.getElementById("previewBox");
+const previewImage = document.getElementById("previewImage");
+const previewPlaceholder = document.getElementById("previewPlaceholder");
+const previewCropBox = document.getElementById("previewCropBox");
+const previewSolveButton = document.getElementById("previewSolve");
+const previewResetButton = document.getElementById("previewReset");
+const previewRefreshButton = document.getElementById("previewRefresh");
+const previewStatus = document.getElementById("previewStatus");
+
+let previewCropRect = null; // 正規化(0-1)切り抜き範囲。リセットまで維持
+let previewDragStart = null;
+let latestCapture = null; // { dataUrl, pageUrl, pageTitle }
+
+function updatePreviewStatus(message, state = "") {
+  if (message) {
+    previewStatus.textContent = message;
+    previewStatus.dataset.state = state;
+    return;
+  }
+  if (previewCropRect) {
+    previewStatus.textContent =
+      "切り抜き範囲: 有効（「解く」でこの範囲だけ送信。リセットまで維持）";
+    previewStatus.dataset.state = "ok";
+  } else {
+    previewStatus.textContent =
+      "プレビュー上をドラッグすると問題部分だけを切り抜けます（未選択なら全体を送信）。";
+    previewStatus.dataset.state = "";
+  }
+}
+
+function renderPreviewCropBox(rect) {
+  if (!rect) {
+    previewCropBox.hidden = true;
+    return;
+  }
+  previewCropBox.hidden = false;
+  previewCropBox.style.left = `${rect.x * 100}%`;
+  previewCropBox.style.top = `${rect.y * 100}%`;
+  previewCropBox.style.width = `${rect.width * 100}%`;
+  previewCropBox.style.height = `${rect.height * 100}%`;
+}
+
+async function refreshPreview() {
+  if (previewDragStart || document.hidden || currentUiMode !== "screenshot") {
+    return;
+  }
+  try {
+    const capture = await captureVisibleTab();
+    latestCapture = capture;
+    previewImage.src = capture.dataUrl;
+    previewImage.hidden = false;
+    previewPlaceholder.hidden = true;
+  } catch (error) {
+    if (!latestCapture) {
+      previewPlaceholder.hidden = false;
+      // 原因の切り分けができるよう、実際のエラー内容をそのまま表示する
+      previewPlaceholder.textContent = `プレビューを取得できません: ${
+        error?.message || "不明なエラー"
+      }（問題ページのタブを一度クリックしてから「更新」を押してください）`;
+    }
+  }
+}
+
+function previewNormalizedPoint(event) {
+  const rect = previewImage.getBoundingClientRect();
+  if (!rect.width || !rect.height) {
+    return { x: 0, y: 0 };
+  }
+  return {
+    x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+    y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)),
+  };
+}
+
+function previewRectFrom(a, b) {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) };
+}
+
+previewBox.addEventListener("mousedown", (event) => {
+  if (previewImage.hidden) {
+    return;
+  }
+  event.preventDefault();
+  previewDragStart = previewNormalizedPoint(event);
+});
+
+previewBox.addEventListener("mousemove", (event) => {
+  if (!previewDragStart) {
+    return;
+  }
+  renderPreviewCropBox(
+    previewRectFrom(previewDragStart, previewNormalizedPoint(event)),
+  );
+});
+
+function endPreviewDrag(event) {
+  if (!previewDragStart) {
+    return;
+  }
+  const rect = previewRectFrom(
+    previewDragStart,
+    previewNormalizedPoint(event),
+  );
+  previewDragStart = null;
+  if (rect.width > 0.02 && rect.height > 0.02) {
+    previewCropRect = rect;
+  }
+  renderPreviewCropBox(previewCropRect);
+  updatePreviewStatus();
+}
+
+previewBox.addEventListener("mouseup", endPreviewDrag);
+previewBox.addEventListener("mouseleave", endPreviewDrag);
+
+/** 正規化された切り抜き範囲を適用してJPEGに切り出す */
+async function cropDataUrlNormalized(dataUrl, rect) {
+  const image = await loadImage(dataUrl);
+  const sx = Math.max(0, Math.round(rect.x * image.naturalWidth));
+  const sy = Math.max(0, Math.round(rect.y * image.naturalHeight));
+  const sw = Math.min(
+    image.naturalWidth - sx,
+    Math.max(8, Math.round(rect.width * image.naturalWidth)),
+  );
+  const sh = Math.min(
+    image.naturalHeight - sy,
+    Math.max(8, Math.round(rect.height * image.naturalHeight)),
+  );
+  const canvas = document.createElement("canvas");
+  canvas.width = sw;
+  canvas.height = sh;
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) {
+    return dataUrl;
+  }
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, sw, sh);
+  context.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+  return canvas.toDataURL("image/jpeg", 0.92);
+}
+
+/** 最新の画面を撮り直し、保持中の範囲で切り抜いて圧縮したdataURLを返す */
+async function captureScreenshotDataUrl() {
+  const capture = await captureVisibleTab();
+  latestCapture = capture;
+  previewImage.src = capture.dataUrl;
+  previewImage.hidden = false;
+  previewPlaceholder.hidden = true;
+  const cropped = previewCropRect
+    ? await cropDataUrlNormalized(capture.dataUrl, previewCropRect)
+    : capture.dataUrl;
+  const compressed = await compressImageDataUrl(cropped);
+  if (compressed.length > MAX_MANUAL_IMAGE_DATA_URL_LENGTH) {
+    throw new Error("画像が大きすぎます。より狭い範囲を選択してください。");
+  }
+  return compressed;
+}
+
+function buildStandaloneScreenshotQuestion(imageDataUrl) {
+  const stem =
+    "添付したスクリーンショット画像に写っている問題を読み取り、解答してください。";
+  return {
+    questionId: `manual-screenshot-${Date.now()}`,
+    source: "generic_dom",
+    subject: "unknown",
+    gradeLevel: "unknown",
+    answerType: "unknown",
+    stem,
+    rawText: stem,
+    pageUrl: (latestCapture?.pageUrl || "").slice(0, 2048),
+    pageTitle: (latestCapture?.pageTitle || "スクリーンショット").slice(0, 300),
+    confidence: 0.7,
+    visualImageDataUrl: imageDataUrl,
+  };
+}
+
+async function solveFromPreview() {
+  try {
+    renderSolution(
+      {
+        finalAnswer: "スクリーンショットを取得しています...",
+        explanation: "",
+        confidence: 0,
+      },
+      selectedSolveMode(),
+    );
+    const imageDataUrl = await captureScreenshotDataUrl();
+    const question = buildStandaloneScreenshotQuestion(imageDataUrl);
+    solve(question, selectedSolveMode(), { force: true });
+  } catch (error) {
+    renderSolution({
+      error: error?.message || "スクショ解答に失敗しました。",
+    });
+  }
+}
+
+async function solveWithScreenshot(question, mode) {
+  renderSolution(
+    {
+      finalAnswer: "スクリーンショットを取得しています...",
+      explanation: "",
+      confidence: 0,
+    },
+    mode,
+  );
+  try {
+    const compressed = await captureScreenshotDataUrl();
+    const nextQuestion = withManualContext(
+      question,
+      [
+        previewCropRect
+          ? "画面スクリーンショット（選択範囲の切り抜き）を添付しています。"
+          : "画面スクリーンショットを添付しています。",
+        "ブラウザのURLバーはChrome拡張のスクリーンショットには含まれません。",
+        "ページ内ヘッダーやナビゲーションは無視し、現在表示されている問題部分を優先してください。",
+      ].join("\n"),
+      compressed,
+    );
+    solve(nextQuestion, mode, { force: true });
+  } catch (error) {
+    renderSolution({
+      error: error?.message || "スクリーンショット付き解答に失敗しました。",
+    });
+  }
+}
+
 function normalizeLatex(value) {
   return String(value ?? "")
     .replaceAll("\\\\", "\\")
@@ -362,6 +665,7 @@ function renderQuestions(questions) {
           }
           <div class="actions">
             <button data-index="${index}" data-mode="selected">解く</button>
+            <button class="secondary" data-index="${index}" data-mode="screenshot">スクショで解く</button>
             ${
               needsManualVisualContext(question)
                 ? `<button data-index="${index}" data-mode="selected" data-with-context="true">補足して解く</button>`
@@ -392,6 +696,10 @@ function renderQuestions(questions) {
           : question;
       const mode =
         button.dataset.mode === "hint" ? "hint" : selectedSolveMode();
+      if (button.dataset.mode === "screenshot") {
+        solveWithScreenshot(question, selectedSolveMode());
+        return;
+      }
       solve(nextQuestion, mode, { force: true });
     });
   });
@@ -458,7 +766,6 @@ function renderSolution(solution, renderMode = activeSolutionMode) {
   }
   const showExplanation =
     renderMode !== "answer_only" || solution.needsReview || !solution.finalAnswer;
-  const showSteps = renderMode === "step_by_step";
   solutionEl.innerHTML = `
     <article class="solution-card">
       <div class="meta">
@@ -467,20 +774,6 @@ function renderSolution(solution, renderMode = activeSolutionMode) {
       </div>
       <h2>${renderRichText(solution.finalAnswer || "")}</h2>
       ${showExplanation ? `<p>${renderRichText(solution.explanation || "")}</p>` : ""}
-      ${
-        showSteps
-          ? (solution.steps || [])
-              .map(
-                (step) => `
-                  <div class="step">
-                    <p><strong>${escapeHtml(step.title)}</strong></p>
-                    <p>${renderRichText(step.content)}</p>
-                  </div>
-                `,
-              )
-              .join("")
-          : ""
-      }
     </article>
   `;
 }
@@ -561,6 +854,12 @@ function runDetection(type) {
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "QUESTIONS_UPDATED") {
+    // スクショモードではページ検知（confidence判定・自動解答）を無視する。
+    // content script側でも検知自体を止めているが、モード切替直後の
+    // 送信中メッセージに備えてここでも防ぐ。
+    if (currentUiMode !== "detect") {
+      return;
+    }
     renderQuestions(message.questions || []);
   }
 });
@@ -590,12 +889,41 @@ solveModeButtons.forEach((button) => {
   });
 });
 
+uiModeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setUiMode(button.dataset.uiMode || "screenshot");
+    if (button.dataset.uiMode === "screenshot") {
+      void refreshPreview();
+    }
+  });
+});
+
+previewSolveButton.addEventListener("click", () => void solveFromPreview());
+previewResetButton.addEventListener("click", () => {
+  previewCropRect = null;
+  renderPreviewCropBox(null);
+  updatePreviewStatus();
+});
+previewRefreshButton.addEventListener("click", () => void refreshPreview());
+updatePreviewStatus();
+void refreshPreview();
+setInterval(() => void refreshPreview(), 1500);
+chrome.tabs.onActivated.addListener(() => void refreshPreview());
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    void refreshPreview();
+  }
+});
+
 chrome.storage.sync.get(
-  { yfyQuestionSolveMode: "explanation" },
-  ({ yfyQuestionSolveMode }) => {
+  { yfyQuestionSolveMode: "explanation", yfyUiMode: "screenshot" },
+  ({ yfyQuestionSolveMode, yfyUiMode }) => {
     setSolveMode(yfyQuestionSolveMode, { persist: false });
+    setUiMode(yfyUiMode, { persist: false });
+    refreshAccountStatus();
     refresh();
   },
 );
 
 setSolveMode("explanation", { persist: false });
+setUiMode("screenshot", { persist: false });

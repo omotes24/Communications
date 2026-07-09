@@ -18,8 +18,20 @@ function isProtectedPath(pathname: string): boolean {
   );
 }
 
+function shouldBypassAuthForLocalDev(): boolean {
+  return (
+    process.env.NODE_ENV === "development" &&
+    process.env.LOCAL_AUTH_BYPASS === "true"
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request });
+
+  if (shouldBypassAuthForLocalDev()) {
+    return response;
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

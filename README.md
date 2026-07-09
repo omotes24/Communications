@@ -17,6 +17,20 @@
 - Stripe Checkoutによるトークン購入
 - Stripe webhook検証後のトークン付与
 - 公開ページ: `/privacy`, `/terms`, `/account-deletion`, `/help`, `/pricing`
+- 管理ダッシュボード: `/admin`（管理者のみ）
+
+## 管理ダッシュボード
+
+`/admin` で、ユーザー数・トークン残高合計・機能別/日別の使用量・Stripe売上・
+最近の購入とトークンイベントをリアルタイム（30秒ごと自動更新）に確認できます。
+
+- 管理者は環境変数 `ADMIN_EMAILS`（カンマ区切りのメールアドレス）で指定します。
+  例: `ADMIN_EMAILS=owner@example.com,friend@example.com`
+  Vercelの環境変数から変更できるため、デプロイ権限を持つメンバーが管理者を追加できます。
+- データはSupabaseの `token_wallets` / `token_ledger` / `ai_usage_events` /
+  `stripe_checkout_grants` を集計しています（サービスロールキーが必要）。
+- ローカル開発（`LOCAL_AUTH_BYPASS=true`・`ADMIN_EMAILS`未設定）では
+  仮ユーザーが管理者として扱われ、レイアウトの確認ができます。
 
 ## セットアップ
 

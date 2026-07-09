@@ -13,7 +13,9 @@ export function createOpenAIClient(options: OpenAIClientOptions = {}): OpenAI {
   return new OpenAI({
     apiKey: assertProviderKey(env),
     baseURL:
-      env.AI_PROVIDER === "groq" ? "https://api.groq.com/openai/v1" : undefined,
+      env.AI_PROVIDER === "groq"
+        ? "https://api.groq.com/openai/v1"
+        : env.OPENAI_BASE_URL,
     timeout: options.timeoutMs,
   });
 }

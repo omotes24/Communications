@@ -3,6 +3,7 @@
 import {
   BookOpenCheck,
   CheckCircle2,
+  Download,
   ImagePlus,
   MousePointerClick,
   Puzzle,
@@ -13,28 +14,28 @@ import { PageHeader } from "@/components/layout/PageHeader";
 
 const setupSteps = [
   {
-    title: "拡張機能をONにする",
-    body: "Chromeで chrome://extensions/ を開き、Yell for You Webテストを自動で解く をONにします。",
+    title: "拡張機能をダウンロード",
+    body: "下の「拡張機能をダウンロード」からZIPを保存し、フォルダに展開します。",
   },
   {
-    title: "問題ページを開く",
-    body: "Webテストや練習問題のページをChromeで開きます。問題文、選択肢、表が画面に表示されている状態にします。",
+    title: "Chromeで読み込む",
+    body: "chrome://extensions/ を開き、右上の「デベロッパーモード」をON。「パッケージ化されていない拡張機能を読み込む」から展開したフォルダを選びます。",
   },
   {
     title: "サイドパネルを開く",
-    body: "Chrome右上の拡張機能アイコンから Yell for You Webテストを自動で解く を開きます。",
+    body: "Chrome右上の拡張機能アイコンから SolveSnap を開きます。",
   },
   {
-    title: "検知する",
-    body: "サイドパネルの 検知 を押すと、開いているタブから問題を読み取り、解答を生成します。",
+    title: "問題を解く",
+    body: "画面をドラッグして問題部分を選び「解く」を押すか、「ページ検知」に切り替えて自動で問題を読み取ります。",
   },
 ];
 
 const usageTips = [
   {
     icon: RefreshCw,
-    title: "問題が変わったら再検知",
-    body: "次の問題へ進んだ後は、再検知を押すと新しい問題を読み取ります。",
+    title: "問題が変わったら更新",
+    body: "次の問題へ進んだら、サイドパネルの「更新」でプレビューを撮り直してから「解く」を押します。",
   },
   {
     icon: ImagePlus,
@@ -44,7 +45,7 @@ const usageTips = [
   {
     icon: MousePointerClick,
     title: "出力形式を切り替える",
-    body: "解答のみ、解説、途中式を必要に応じて切り替えられます。",
+    body: "解答のみ／解説を必要に応じて切り替えられます。",
   },
 ];
 
@@ -53,10 +54,32 @@ export function QuestionSolverScreen() {
     <div>
       <PageHeader
         title="Webテストを自動で解く"
-        description="Chrome上のタブから問題を検知し、解答を生成します。chrome://extensions/（拡張機能）をONにすることで利用することができます。"
+        description="Chrome拡張機能「SolveSnap」が、開いているタブの問題をスクショまたは自動検知して解答します。ログイン中のこのアカウントのトークン残高を使います。"
         descriptionClassName="text-[#1d1d1f]"
         compact
       />
+
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/[0.08]">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)] text-white">
+          <Download className="h-5 w-5" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold tracking-tight">
+            SolveSnap Chrome拡張機能
+          </h2>
+          <p className="mt-1 text-sm font-medium leading-6 text-[#3f3f46]">
+            Chromeウェブストアには未公開のため、ZIPをダウンロードして手動で読み込みます。
+          </p>
+        </div>
+        <a
+          href="/downloads/solvesnap-extension.zip"
+          download
+          className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-[var(--accent)] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--accent-hover)]"
+        >
+          <Download className="h-4 w-4" aria-hidden />
+          拡張機能をダウンロード
+        </a>
+      </div>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/[0.08]">

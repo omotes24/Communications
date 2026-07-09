@@ -79,6 +79,17 @@ function shouldUseTestTokenStore(): boolean {
   );
 }
 
+function shouldUseLocalTokenStore(): boolean {
+  return (
+    process.env.NODE_ENV === "development" &&
+    process.env.LOCAL_TOKEN_BYPASS === "true"
+  );
+}
+
+function shouldUseMemoryTokenStore(): boolean {
+  return shouldUseTestTokenStore() || shouldUseLocalTokenStore();
+}
+
 function isTokenSystemConfigured(): boolean {
   return Boolean(getServerSupabaseConfig()?.serviceRoleKey);
 }
@@ -90,11 +101,11 @@ export function createRequestIds(request: Request) {
 }
 
 export async function getWalletBalance(userId: string): Promise<Wallet> {
-  if (shouldUseTestTokenStore()) {
+  if (shouldUseMemoryTokenStore()) {
     const wallet = testWallets.get(userId) ?? {
-      available_balance: 100000,
+      available_balance: getLocalTokenBalance(),
       reserved_balance: 0,
-      lifetime_granted: 100000,
+      lifetime_granted: getLocalTokenBalance(),
       lifetime_consumed: 0,
     };
     testWallets.set(userId, wallet);
@@ -161,7 +172,7 @@ async function ensureInitialGrant(userId: string): Promise<void> {
 }
 
 export async function listUsageEvents(userId: string, limit = 30) {
-  if (shouldUseTestTokenStore() || !isTokenSystemConfigured()) {
+  if (shouldUseMemoryTokenStore() || !isTokenSystemConfigured()) {
     return [];
   }
 
@@ -183,7 +194,7 @@ export async function listUsageEvents(userId: string, limit = 30) {
 }
 
 export async function listLedgerEvents(userId: string, limit = 30) {
-  if (shouldUseTestTokenStore() || !isTokenSystemConfigured()) {
+  if (shouldUseMemoryTokenStore() || !isTokenSystemConfigured()) {
     return [];
   }
 
@@ -226,7 +237,7 @@ export async function reserveAiTokens({
   const rateCard = await getRateCard(feature, model);
   const reservedAmount = Math.max(1, Math.ceil(estimatedAmount));
 
-  if (shouldUseTestTokenStore()) {
+  if (shouldUseMemoryTokenStore()) {
     const wallet = await getWalletBalance(userId);
     const existing = testReservations.get(requestId);
     if (existing) {
@@ -308,7 +319,7 @@ export async function reconcileExpiredTokenReservations(limit = 100): Promise<{
     released_amount: number;
   }>;
 }> {
-  if (shouldUseTestTokenStore()) {
+  if (shouldUseMemoryTokenStore()) {
     return { released: 0, reservations: [] };
   }
 
@@ -350,7 +361,7 @@ export async function settleAiTokens(
       : 0;
   const latencyMs = Date.now() - reservation.startedAt;
 
-  if (shouldUseTestTokenStore()) {
+  if (shouldUseMemoryTokenStore()) {
     const wallet = await getWalletBalance(reservation.userId);
     const stored = testReservations.get(reservation.requestId);
     if (!stored || stored.status !== "reserved") {
@@ -405,7 +416,7 @@ export async function releaseAiTokenReservation(
   reservation: TokenReservation,
   reason: string,
 ) {
-  if (shouldUseTestTokenStore()) {
+  if (shouldUseMemoryTokenStore()) {
     const wallet = await getWalletBalance(reservation.userId);
     const stored = testReservations.get(reservation.requestId);
     if (!stored || stored.status !== "reserved") {
@@ -457,7 +468,7 @@ async function getRateCard(
   feature: AiFeature,
   model: string,
 ): Promise<TokenRateCard> {
-  if (shouldUseTestTokenStore() || !isTokenSystemConfigured()) {
+  if (shouldUseMemoryTokenStore() || !isTokenSystemConfigured()) {
     return fallbackRateCard;
   }
 
@@ -494,4 +505,12 @@ async function getRateCard(
       card.web_search_multiplier ?? fallbackRateCard.webSearchMultiplier,
     ),
   };
+}
+
+function getLocalTokenBalance(): number {
+  const configured = Number(process.env.LOCAL_TOKEN_BALANCE ?? 100000000);
+  if (!Number.isFinite(configured) || configured <= 0) {
+    return 100000000;
+  }
+  return Math.floor(configured);
 }
