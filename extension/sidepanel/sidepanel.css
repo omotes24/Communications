@@ -41,8 +41,8 @@ header {
 }
 
 .mode-setting {
-  display: grid;
-  grid-template-columns: auto repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
   margin-top: 10px;
@@ -52,6 +52,7 @@ header {
 }
 
 .mode-setting span {
+  flex-shrink: 0;
   padding: 0 7px;
   color: #6e6e73;
   font-size: 11px;
@@ -59,6 +60,8 @@ header {
 }
 
 .mode-setting button {
+  flex: 1 1 0;
+  min-width: 0;
   background: transparent;
   color: #6e6e73;
   padding: 8px 10px;
@@ -67,6 +70,79 @@ header {
 .mode-setting button.active {
   background: #1d1d1f;
   color: white;
+}
+
+.account-setting {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.preview-section {
+  margin-top: 12px;
+  border-radius: 16px;
+  background: white;
+  padding: 10px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+}
+
+.preview-box {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #1d1d1f;
+  cursor: crosshair;
+  user-select: none;
+  min-height: 90px;
+}
+
+.preview-box img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.preview-placeholder {
+  margin: 0;
+  padding: 36px 12px;
+  color: #a1a1a6;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.preview-crop {
+  position: absolute;
+  border: 2px dashed #facc15;
+  box-shadow: 0 0 0 100000px rgb(15 23 42 / 45%);
+  pointer-events: none;
+}
+
+.preview-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.api-status {
+  min-height: 16px;
+  margin-top: 6px;
+  color: #6e6e73;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.api-status[data-state="ok"] {
+  color: #047857;
+}
+
+.api-status[data-state="error"] {
+  color: #b91c1c;
 }
 
 header p {
@@ -346,13 +422,6 @@ button.secondary {
   font-size: 13px;
   font-weight: 650;
   line-height: 1.7;
-}
-
-.step {
-  margin-top: 10px;
-  border-radius: 16px;
-  background: white;
-  padding: 10px;
 }
 
 .error {

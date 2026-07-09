@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "extension:zip": "node scripts/build-extension-zip.mjs",
     "tokens:grant-test": "node scripts/grant-test-tokens.mjs",
     "tokens:release-expired": "node scripts/release-expired-reservations.mjs",
     "supabase:verify-rls": "node scripts/verify-rls.mjs",

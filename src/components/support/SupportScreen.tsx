@@ -175,6 +175,11 @@ export function SupportScreen({
     >
       <PageHeader
         title={isEnglish ? "英語面接" : "面接"}
+        description={
+          isEnglish
+            ? "英語での質問をリアルタイム音声で受け取り、AIがその場で回答案を生成します。"
+            : "面接官の質問をリアルタイム音声で受け取り、AIがその場で回答案を生成します。"
+        }
         tone={tone}
         compact={compact}
         dense

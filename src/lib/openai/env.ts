@@ -20,6 +20,7 @@ const serverEnvSchema = z.object({
   AI_PROVIDER: z.enum(["openai", "groq"]).default("openai"),
   AI_MOCK_MODE: booleanEnvSchema,
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
+  OPENAI_BASE_URL: z.string().trim().url().optional(),
   OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-realtime-whisper"),
   OPENAI_TRANSCRIPTION_DELAY: z
     .enum(realtimeTranscriptionDelays)
@@ -66,6 +67,7 @@ export function getServerEnv(): ServerEnv {
     AI_PROVIDER: rawProvider,
     AI_MOCK_MODE: process.env.AI_MOCK_MODE,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
     OPENAI_TRANSCRIPTION_MODEL: process.env.OPENAI_TRANSCRIPTION_MODEL,
     OPENAI_TRANSCRIPTION_DELAY: process.env.OPENAI_TRANSCRIPTION_DELAY,
     OPENAI_AUDIO_NOISE_REDUCTION: process.env.OPENAI_AUDIO_NOISE_REDUCTION,

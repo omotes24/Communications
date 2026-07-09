@@ -22,11 +22,25 @@ function shouldUseTestAuth(): boolean {
   );
 }
 
+function shouldUseLocalDevAuth(): boolean {
+  return (
+    process.env.NODE_ENV === "development" &&
+    process.env.LOCAL_AUTH_BYPASS === "true"
+  );
+}
+
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   if (shouldUseTestAuth()) {
     return {
       id: process.env.TEST_AUTH_USER_ID!,
       email: "test@example.com",
+    };
+  }
+
+  if (shouldUseLocalDevAuth()) {
+    return {
+      id: process.env.LOCAL_AUTH_USER_ID || "local-dev-user",
+      email: process.env.LOCAL_AUTH_EMAIL || "local@example.com",
     };
   }
 

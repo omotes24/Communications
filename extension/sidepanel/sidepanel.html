@@ -3,28 +3,63 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Webテストを自動で解く</title>
+    <title>SolveSnap — Yell for You</title>
     <link rel="stylesheet" href="./sidepanel.css" />
   </head>
   <body>
     <main>
       <header>
-        <p>YELL FOR YOU 1.2</p>
-        <h1>Webテストを自動で解く</h1>
+        <p>YELL FOR YOU</p>
+        <h1>SolveSnap</h1>
+        <div class="mode-setting" aria-label="解き方">
+          <span>解き方</span>
+          <button type="button" data-ui-mode="screenshot">スクショ</button>
+          <button type="button" data-ui-mode="detect">ページ検知</button>
+        </div>
+        <div class="mode-setting" aria-label="出力形式">
+          <span>出力</span>
+          <button type="button" data-solve-mode="answer_only">解答のみ</button>
+          <button type="button" data-solve-mode="explanation">解説</button>
+        </div>
+        <div class="account-setting" aria-label="アカウント">
+          <span id="accountStatus" class="api-status">アカウント確認中...</span>
+          <button id="accountLogin" class="secondary" type="button" hidden>
+            ログイン
+          </button>
+        </div>
+      </header>
+      <section
+        id="screenshotSection"
+        class="preview-section"
+        aria-label="画面プレビューと切り抜き"
+      >
+        <div id="previewBox" class="preview-box">
+          <img id="previewImage" alt="現在のタブのプレビュー" hidden />
+          <p id="previewPlaceholder" class="preview-placeholder">
+            プレビューを読み込んでいます...
+          </p>
+          <div id="previewCropBox" class="preview-crop" hidden></div>
+        </div>
+        <div class="preview-actions">
+          <button id="previewSolve" type="button">解く</button>
+          <button id="previewReset" class="secondary" type="button">
+            範囲リセット
+          </button>
+          <button id="previewRefresh" class="secondary" type="button">
+            更新
+          </button>
+        </div>
+        <p id="previewStatus" class="api-status" aria-live="polite"></p>
+      </section>
+      <section id="detectSection" hidden>
         <div class="toolbar">
           <button id="detectNow" type="button">検知</button>
           <button id="restartDetection" class="secondary" type="button">
             リスタート
           </button>
         </div>
-        <div class="mode-setting" aria-label="出力形式">
-          <span>出力</span>
-          <button type="button" data-solve-mode="answer_only">解答のみ</button>
-          <button type="button" data-solve-mode="explanation">解説</button>
-          <button type="button" data-solve-mode="step_by_step">途中式</button>
-        </div>
-      </header>
-      <section id="questions" class="list"></section>
+        <section id="questions" class="list"></section>
+      </section>
       <section id="solution" class="solution"></section>
     </main>
     <script src="./sidepanel.js"></script>

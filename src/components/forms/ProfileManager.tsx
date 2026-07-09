@@ -520,7 +520,10 @@ export function ProfileManager() {
 
   return (
     <section>
-      <PageHeader title="自分スロット" />
+      <PageHeader
+        title="自分スロット"
+        description="自己PR・強み・弱み・エピソードなど、面接で使うあなた自身の情報を登録します。ここに整理した内容が、面接・英語面接・グループディスカッションでのAI回答生成の材料になります。"
+      />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <form
