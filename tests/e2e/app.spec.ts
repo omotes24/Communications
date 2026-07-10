@@ -102,7 +102,10 @@ test("public legal and help pages render", async ({ page }) => {
 
 test("group discussion practice flow works in mock mode", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "グループディスカッション" }).click();
+  await page.getByRole("button", { name: "その他" }).click();
+  await page
+    .getByRole("menuitem", { name: "グループディスカッション" })
+    .click();
   await expect(
     page.getByRole("heading", { name: "グループディスカッション" }),
   ).toBeVisible();
