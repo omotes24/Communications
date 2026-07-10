@@ -12,7 +12,6 @@ import {
   getActiveCompanies,
   getActiveProfile,
   getActiveProfiles,
-  loadAppStorage,
   LOCAL_STORAGE_IMPORT_STATUS_KEY,
   saveAppStorage,
   saveLearning,
@@ -74,6 +73,7 @@ export function useAppStorage() {
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
   const storageRef = useRef<AppStorage>(defaultStorage);
   const pendingCloudSaveRef = useRef(false);
+  const initialCloudLoadCompletedRef = useRef(false);
 
   const applyStorage = useCallback((next: AppStorage) => {
     storageRef.current = next;
@@ -98,11 +98,7 @@ export function useAppStorage() {
         });
         if (!response.ok) {
           if (!pendingCloudSaveRef.current) {
-            applyStorage(
-              response.status === 401
-                ? defaultStorage
-                : preferSessionActiveCompany(loadAppStorage()),
-            );
+            applyStorage(defaultStorage);
           }
           setCloudSyncEnabled(false);
           return;
@@ -130,6 +126,7 @@ export function useAppStorage() {
         }
       } finally {
         if (!cancelled) {
+          initialCloudLoadCompletedRef.current = true;
           setReady(true);
         }
       }
@@ -152,8 +149,8 @@ export function useAppStorage() {
       if (cloudSyncEnabled) {
         persistCloudStorage(next);
       } else {
-        pendingCloudSaveRef.current = true;
         saveAppStorage(next);
+        pendingCloudSaveRef.current = !initialCloudLoadCompletedRef.current;
       }
     },
     [applyStorage, cloudSyncEnabled, persistCloudStorage],
