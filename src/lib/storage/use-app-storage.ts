@@ -60,9 +60,7 @@ function preferSessionActiveCompany(storage: AppStorage): AppStorage {
   if (!preferredCompanyId) {
     return storage;
   }
-  if (
-    storage.companies.some((company) => company.id === preferredCompanyId)
-  ) {
+  if (storage.companies.some((company) => company.id === preferredCompanyId)) {
     return setActiveCompany(storage, preferredCompanyId);
   }
   writePreferredActiveCompanyId(null);
@@ -255,7 +253,10 @@ export function useAppStorage() {
       clearAll() {
         clearAppStorage();
         writePreferredActiveCompanyId(null);
-        window.localStorage.setItem(LOCAL_STORAGE_IMPORT_STATUS_KEY, "declined");
+        window.localStorage.setItem(
+          LOCAL_STORAGE_IMPORT_STATUS_KEY,
+          "declined",
+        );
         applyStorage(defaultStorage);
         pendingCloudSaveRef.current = false;
         if (cloudSyncEnabled) {

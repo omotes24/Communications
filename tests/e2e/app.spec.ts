@@ -26,10 +26,10 @@ test("manual question flow with mock AI", async ({ page }) => {
   const profileSave = waitForStorageSave(page);
   await page.getByRole("button", { name: "保存" }).click();
   await profileSave;
-  await expect(page.getByText("保存しました。")).toBeVisible();
+  await expect(page.getByText("新規作成しました。")).toBeVisible();
 
   await page.goto("/company");
-  await expect(page.getByRole("button", { name: /SLOT A:/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /SLOT A/ })).toBeVisible();
   await page.getByLabel("会社名").fill("サンプル株式会社");
   await page
     .getByLabel(/社風・採用情報.*特筆事項など\(詳細\)/)
@@ -102,13 +102,16 @@ test("public legal and help pages render", async ({ page }) => {
 
 test("group discussion practice flow works in mock mode", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "グループディスカッション" }).click();
+  await page.getByRole("button", { name: "その他" }).click();
+  await page
+    .getByRole("menuitem", { name: "グループディスカッション" })
+    .click();
   await expect(
     page.getByRole("heading", { name: "グループディスカッション" }),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "練習を始める" }).click();
-  await expect(page.getByRole("heading", { name: "発話ログ" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "発言ログ" })).toBeVisible();
 
   await page
     .getByLabel("発話を入力")
@@ -119,12 +122,14 @@ test("group discussion practice flow works in mock mode", async ({ page }) => {
       .getByRole("article")
       .filter({ hasText: "まず前提を整理して、評価基準を決めませんか。" }),
   ).toBeVisible();
-  await expect(page.getByText(/AI .+役/)).toBeVisible();
+  await expect(page.getByText("AI 標準")).toBeVisible();
 
-  await page.getByRole("button", { name: "終了して評価" }).click();
-  await expect(page.getByText("最終評価を保存しました。")).toBeVisible();
+  await page.getByRole("button", { name: "終了して採点" }).click();
+  await expect(page.getByText("採点レポートを保存しました。")).toBeVisible();
   await page.getByRole("link", { name: /結果を見る/ }).click();
-  await expect(page.getByRole("heading", { name: "GD結果" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "GD採点レポート" }),
+  ).toBeVisible();
 
   await page.goto("/group-discussion/history");
   await expect(page.getByText("地方自治体の若年層流出")).toBeVisible();
