@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpenCheck, Languages, UsersRound } from "lucide-react";
+import { Languages } from "lucide-react";
 
 import { ChromeStartButton } from "@/components/home/ChromeStartButton";
 import { TypingHeadline } from "@/components/home/TypingHeadline";
@@ -40,20 +40,6 @@ export default function Home() {
             >
               <Languages className="h-4 w-4" aria-hidden />
               英語面接
-            </Link>
-            <Link
-              href="/question-solver"
-              className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--accent)] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--accent-hover)]"
-            >
-              <BookOpenCheck className="h-4 w-4" aria-hidden />
-              Webテストを自動で解く
-            </Link>
-            <Link
-              href="/group-discussion"
-              className="inline-flex h-12 items-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-[#1d1d1f] shadow-sm ring-1 ring-black/[0.08] transition hover:bg-[#fdfdfd]"
-            >
-              <UsersRound className="h-4 w-4" aria-hidden />
-              グループディスカッション
             </Link>
           </div>
         </div>
