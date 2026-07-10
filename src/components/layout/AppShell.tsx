@@ -10,7 +10,6 @@ import {
   ChevronUp,
   Languages,
   MessagesSquare,
-  Settings,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -144,19 +143,7 @@ export function AppShell({
                     <span className="hidden sm:inline">タブをしまう</span>
                   </button>
                 ) : null}
-                <Link
-                  href="/account"
-                  aria-label="設定"
-                  className={cn(
-                    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                    isDark
-                      ? "bg-white/10 text-white/70 hover:bg-white/15 hover:text-white"
-                      : "bg-white text-[#6e6e73] shadow-sm ring-1 ring-black/[0.06] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
-                  )}
-                >
-                  <Settings className="h-4 w-4" aria-hidden />
-                </Link>
-                <AccountMenu />
+                <AccountMenu tone={variant} />
               </div>
             </div>
 
@@ -182,7 +169,7 @@ export function AppShell({
                     onPointerDown={() => markNavigationIntent(item.href)}
                     onClick={() => markNavigationIntent(item.href)}
                     className={cn(
-                      "flex h-10 items-center justify-center gap-1.5 rounded-full px-1.5 text-sm font-semibold tracking-tight",
+                      "flex h-10 items-center justify-center rounded-full px-1 text-[11px] font-semibold sm:gap-1.5 sm:px-1.5 sm:text-sm",
                       active
                         ? isDark
                           ? "bg-white text-neutral-950 shadow-sm"
@@ -192,8 +179,11 @@ export function AppShell({
                           : "text-[#6e6e73] hover:bg-[#f5f5f7] hover:text-[#1d1d1f]",
                     )}
                   >
-                    <Icon aria-hidden className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{item.label}</span>
+                    <Icon
+                      aria-hidden
+                      className="hidden h-4 w-4 shrink-0 sm:block"
+                    />
+                    <span className="whitespace-nowrap">{item.label}</span>
                   </Link>
                 );
               })}
