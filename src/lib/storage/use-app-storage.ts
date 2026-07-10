@@ -61,9 +61,7 @@ function preferSessionActiveCompany(storage: AppStorage): AppStorage {
   if (!preferredCompanyId) {
     return storage;
   }
-  if (
-    storage.companies.some((company) => company.id === preferredCompanyId)
-  ) {
+  if (storage.companies.some((company) => company.id === preferredCompanyId)) {
     return setActiveCompany(storage, preferredCompanyId);
   }
   writePreferredActiveCompanyId(null);
@@ -100,7 +98,11 @@ export function useAppStorage() {
         });
         if (!response.ok) {
           if (!pendingCloudSaveRef.current) {
-            applyStorage(preferSessionActiveCompany(loadAppStorage()));
+            applyStorage(
+              response.status === 401
+                ? defaultStorage
+                : preferSessionActiveCompany(loadAppStorage()),
+            );
           }
           setCloudSyncEnabled(false);
           return;
@@ -122,7 +124,7 @@ export function useAppStorage() {
       } catch {
         if (!cancelled) {
           if (!pendingCloudSaveRef.current) {
-            applyStorage(preferSessionActiveCompany(loadAppStorage()));
+            applyStorage(defaultStorage);
           }
           setCloudSyncEnabled(false);
         }
@@ -150,8 +152,8 @@ export function useAppStorage() {
       if (cloudSyncEnabled) {
         persistCloudStorage(next);
       } else {
+        pendingCloudSaveRef.current = true;
         saveAppStorage(next);
-        pendingCloudSaveRef.current = false;
       }
     },
     [applyStorage, cloudSyncEnabled, persistCloudStorage],
@@ -254,7 +256,10 @@ export function useAppStorage() {
       clearAll() {
         clearAppStorage();
         writePreferredActiveCompanyId(null);
-        window.localStorage.setItem(LOCAL_STORAGE_IMPORT_STATUS_KEY, "declined");
+        window.localStorage.setItem(
+          LOCAL_STORAGE_IMPORT_STATUS_KEY,
+          "declined",
+        );
         applyStorage(defaultStorage);
         pendingCloudSaveRef.current = false;
         if (cloudSyncEnabled) {

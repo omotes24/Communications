@@ -53,9 +53,7 @@ describe("AuthForm", () => {
   });
 
   it("sends only one login request while a login is pending", async () => {
-    let resolveLogin:
-      | ((value: { error: Error | null }) => void)
-      | undefined;
+    let resolveLogin: ((value: { error: Error | null }) => void) | undefined;
     authMocks.signInWithPassword.mockReturnValue(
       new Promise<{ error: Error | null }>((resolve) => {
         resolveLogin = resolve;
@@ -96,7 +94,9 @@ describe("AuthForm", () => {
     });
 
     submitForm("ログイン");
-    await screen.findByText("メールアドレスまたはパスワードが正しくありません。");
+    await screen.findByText(
+      "メールアドレスまたはパスワードが正しくありません。",
+    );
 
     submitForm("ログイン");
     expect(authMocks.signInWithPassword).toHaveBeenCalledTimes(1);
@@ -105,7 +105,10 @@ describe("AuthForm", () => {
       target: { value: "changed-password" },
     });
     submitForm("ログイン");
-    expect(authMocks.signInWithPassword).toHaveBeenCalledTimes(2);
+    await waitFor(() => {
+      expect(authMocks.signInWithPassword).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole("button", { name: "ログイン" })).toBeEnabled();
+    });
   });
 
   it("treats duplicate signup throttle responses as an already-sent email", async () => {
@@ -132,7 +135,9 @@ describe("AuthForm", () => {
     });
 
     submitForm("登録する");
-    await screen.findByText("確認メールを送信済みです。受信メールを確認してください。");
+    await screen.findByText(
+      "確認メールを送信済みです。受信メールを確認してください。",
+    );
 
     submitForm("登録する");
     expect(authMocks.signUp).toHaveBeenCalledTimes(1);
@@ -142,7 +147,8 @@ describe("AuthForm", () => {
   });
 
   it("uses the configured public site URL for signup confirmation emails", async () => {
-    process.env.NEXT_PUBLIC_SITE_URL = "https://communications-umber.vercel.app/";
+    process.env.NEXT_PUBLIC_SITE_URL =
+      "https://communications-umber.vercel.app/";
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -162,7 +168,9 @@ describe("AuthForm", () => {
     });
 
     submitForm("登録する");
-    await screen.findByText("確認メールを送信しました。メール内のリンクを開いてください。");
+    await screen.findByText(
+      "確認メールを送信しました。メール内のリンクを開いてください。",
+    );
 
     expect(authMocks.signUp).toHaveBeenCalledWith({
       email: "new@example.com",
@@ -200,7 +208,8 @@ describe("AuthForm", () => {
   });
 
   it("sends password reset emails to the dedicated reset password page", async () => {
-    process.env.NEXT_PUBLIC_SITE_URL = "https://communications-umber.vercel.app/";
+    process.env.NEXT_PUBLIC_SITE_URL =
+      "https://communications-umber.vercel.app/";
     recoveryAuthMocks.resetPasswordForEmail.mockResolvedValue({ error: null });
 
     render(<AuthForm mode="forgot-password" />);
