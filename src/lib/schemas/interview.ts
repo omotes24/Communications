@@ -68,6 +68,12 @@ export const companyProfileSchema = z.object({
   researchSources: z.array(z.string()).default([]),
   fitHypotheses: z.array(z.string()).default([]),
   interviewAngles: z.array(z.string()).default([]),
+  sourceSystem: z.enum(["standalone", "jobtrack"]).default("standalone"),
+  jobtrackCatalogRef: z
+    .string()
+    .regex(/^JT\d{6}$/)
+    .nullable()
+    .default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -337,6 +343,8 @@ export function createEmptyCompanyProfile(): CompanyProfile {
     researchSources: [],
     fitHypotheses: [],
     interviewAngles: [],
+    sourceSystem: "standalone",
+    jobtrackCatalogRef: null,
     createdAt: now,
     updatedAt: now,
   };

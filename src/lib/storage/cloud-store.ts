@@ -16,7 +16,7 @@ const storageSelect = {
   personalSlots:
     "id, name, content, excluded_content, created_at, updated_at",
   companySlots:
-    "id, company_name, website_url, recruitment_url, course_name, source_content, research_summary, detailed_notes, created_at, updated_at",
+    "id, company_name, website_url, recruitment_url, course_name, source_content, research_summary, detailed_notes, jobtrack_catalog_ref, created_at, updated_at",
   sessions:
     "id, company_slot_id, title, started_at, ended_at, explicitly_saved, created_at, updated_at",
   messages:
@@ -207,6 +207,7 @@ export async function saveCloudStorage(
         course_name: company.targetRole,
         source_content: company.researchInput,
         research_summary: company.researchSummary,
+        jobtrack_catalog_ref: company.jobtrackCatalogRef,
         detailed_notes: { profile: company },
         created_at: company.createdAt,
         updated_at: company.updatedAt,

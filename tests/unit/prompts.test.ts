@@ -114,6 +114,8 @@ describe("prompts", () => {
           id: "company-a",
           label: "応募先A",
           companyName: "A社",
+          sourceSystem: "standalone",
+          jobtrackCatalogRef: null,
           business: "",
           philosophy: "",
           targetRole: "事業開発",

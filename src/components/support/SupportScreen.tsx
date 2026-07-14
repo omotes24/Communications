@@ -16,6 +16,7 @@ import type { TranscriptItem } from "@/components/audio/use-realtime-transcripti
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAppStorage } from "@/lib/storage/use-app-storage";
 import { cn } from "@/lib/utils";
+import type { InterviewLaunchContext } from "@/modules/interview/contract";
 
 const minInterviewScale = 0.62;
 const maxInterviewScale = 1;
@@ -121,11 +122,16 @@ function RealtimeTranscriptPanel({
 
 export function SupportScreen({
   variant = "japanese",
+  launchContext,
 }: {
   variant?: "japanese" | "english";
+  launchContext?: InterviewLaunchContext;
 }) {
   const { activeCompany } = useAppStorage();
-  const activeCompanyName = activeCompany?.companyName || activeCompany?.label;
+  const activeCompanyName =
+    launchContext?.company?.name ||
+    activeCompany?.companyName ||
+    activeCompany?.label;
   const isEnglish = variant === "english";
   const tone: "light" | "dark" = "light";
   const screenRef = useRef<HTMLElement | null>(null);

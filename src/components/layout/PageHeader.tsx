@@ -19,31 +19,20 @@ export function PageHeader({
   const isDark = tone === "dark";
 
   return (
-    <div
-      className={cn(
-        dense
-          ? "mb-3 border-b pb-3"
-          : compact
-            ? "mb-4 border-b pb-4"
-            : "mb-8 border-b pb-6",
-        isDark ? "border-white/10" : "border-black/[0.08]",
-      )}
-    >
+    <div className={cn("flex items-end gap-4", dense ? "mb-3" : compact ? "mb-4" : "mb-5")}>
+      <div className="min-w-0 flex-1">
       <p
         className={cn(
-          "text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]",
-          dense ? "mb-1 text-[10px]" : compact ? "mb-2" : "mb-3",
+          "text-xs font-bold uppercase tracking-[0.35px] text-[var(--accent)]",
+          dense ? "mb-1 text-[10px]" : "mb-1.5",
         )}
       >
         {appName}
       </p>
       <h1
         className={cn(
-          dense
-            ? "text-2xl font-semibold tracking-tight sm:text-3xl"
-            : compact
-            ? "text-3xl font-semibold tracking-tight sm:text-4xl"
-            : "text-4xl font-semibold tracking-tight sm:text-6xl",
+          dense ? "text-[25px] leading-[30px]" : compact ? "text-[28px] leading-8" : "text-[32px] leading-[38px]",
+          "font-extrabold tracking-[-1.05px]",
           isDark ? "text-white" : "text-[#1d1d1f]",
         )}
       >
@@ -52,7 +41,7 @@ export function PageHeader({
       {description ? (
         <p
           className={cn(
-            "mt-4 max-w-3xl text-base font-medium leading-8",
+            "mt-1.5 max-w-[660px] text-sm font-normal leading-[21px]",
             isDark ? "text-white/60" : "text-[#6e6e73]",
             descriptionClassName,
           )}
@@ -60,6 +49,7 @@ export function PageHeader({
           {description}
         </p>
       ) : null}
+      </div>
     </div>
   );
 }

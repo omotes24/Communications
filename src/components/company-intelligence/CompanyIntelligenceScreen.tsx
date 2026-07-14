@@ -94,6 +94,8 @@ function reportToCompanyProfile(
     id: crypto.randomUUID(),
     label: `${report.companyName} 企業研究`,
     companyName: report.companyName,
+    sourceSystem: "standalone",
+    jobtrackCatalogRef: null,
     business: checkedFacts || report.statusSummary,
     philosophy: report.statusSummary,
     targetRole: report.jobTitle,

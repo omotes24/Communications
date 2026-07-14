@@ -1,19 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Moon, Palette, Sun } from "lucide-react";
+import { Moon, Palette, Sun } from "lucide-react";
 
 import {
   appColorModeOptions,
   appColorModeStorageKey,
-  appThemeOptions,
   appThemeStorageKey,
   defaultAppColorMode,
-  defaultAppTheme,
   isAppColorMode,
-  isAppTheme,
   type AppColorMode,
-  type AppTheme,
 } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -23,30 +19,22 @@ export function ThemeCustomizer({
   tone?: "light" | "dark";
 }) {
   const [open, setOpen] = useState(false);
-  const [theme, setTheme] = useState<AppTheme>(defaultAppTheme);
   const [colorMode, setColorMode] =
     useState<AppColorMode>(defaultAppColorMode);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const currentTheme = document.documentElement.dataset.appTheme;
-    const storedTheme = window.localStorage.getItem(appThemeStorageKey);
     const currentColorMode = document.documentElement.dataset.appMode;
     const storedColorMode = window.localStorage.getItem(appColorModeStorageKey);
-    const nextTheme = isAppTheme(storedTheme)
-      ? storedTheme
-      : isAppTheme(currentTheme)
-        ? currentTheme
-        : defaultAppTheme;
     const nextColorMode = isAppColorMode(storedColorMode)
       ? storedColorMode
       : isAppColorMode(currentColorMode)
         ? currentColorMode
         : defaultAppColorMode;
-    document.documentElement.setAttribute("data-app-theme", nextTheme);
+    document.documentElement.setAttribute("data-app-theme", "blue");
+    window.localStorage.setItem(appThemeStorageKey, "blue");
     document.documentElement.setAttribute("data-app-mode", nextColorMode);
     const frame = window.requestAnimationFrame(() => {
-      setTheme(nextTheme);
       setColorMode(nextColorMode);
     });
     return () => window.cancelAnimationFrame(frame);
@@ -76,12 +64,6 @@ export function ThemeCustomizer({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
-
-  function selectTheme(nextTheme: AppTheme) {
-    document.documentElement.setAttribute("data-app-theme", nextTheme);
-    window.localStorage.setItem(appThemeStorageKey, nextTheme);
-    setTheme(nextTheme);
-  }
 
   function selectColorMode(nextColorMode: AppColorMode) {
     document.documentElement.setAttribute("data-app-mode", nextColorMode);
@@ -152,34 +134,9 @@ export function ThemeCustomizer({
               );
             })}
           </div>
-          <div
-            className="grid grid-cols-7 gap-2"
-            role="radiogroup"
-            aria-label="Theme color"
-          >
-            {appThemeOptions.map((option) => {
-              const selected = option.id === theme;
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  aria-label={`${option.label}テーマ`}
-                  onClick={() => selectTheme(option.id)}
-                  className={cn(
-                    "relative flex h-8 w-8 items-center justify-center rounded-full border border-black/10 shadow-sm transition hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[var(--accent-ring-strong)]",
-                    selected ? "ring-4 ring-[var(--accent-ring)]" : "",
-                  )}
-                  style={{ backgroundColor: option.color }}
-                >
-                  {selected ? (
-                    <Check className="h-4 w-4 text-white" aria-hidden />
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
+          <p className="px-2 text-xs font-semibold leading-5 text-[#6e6e73]">
+            アクセントカラーはJobTrackブルーに統一されています。
+          </p>
         </div>
       ) : null}
     </div>
