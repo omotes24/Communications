@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const headlineLines = ["Web面接を", "AIで完全攻略。"] as const;
+const headlineLines = ["面接の前から、", "本番まで、あなたの味方。"] as const;
 const typingSpeedMs = 95;
 const startDelayMs = 260;
 
@@ -62,19 +62,18 @@ export function TypingHeadline() {
   return (
     <h1
       aria-label={headlineLines.join(" ")}
-      className="relative mx-auto max-w-5xl text-center text-5xl font-semibold tracking-normal text-[#1d1d1f] sm:text-7xl lg:text-8xl"
+      className="relative mx-auto max-w-5xl text-center text-[clamp(1.3rem,7vw,5rem)] font-semibold leading-[1.08] tracking-normal text-[#1d1d1f]"
     >
       <span aria-hidden="true" className="invisible block">
-        {headlineLines[0]}
-        <br />
-        {headlineLines[1]}
+        <span className="block whitespace-nowrap">{headlineLines[0]}</span>
+        <span className="block whitespace-nowrap">{headlineLines[1]}</span>
       </span>
       <span aria-hidden="true" className="absolute inset-0 block">
-        <span className="block min-h-[1em]">
+        <span className="block min-h-[1em] whitespace-nowrap">
           {visibleFirstLine}
           {cursorLine === 0 ? <span className="typing-cursor" /> : null}
         </span>
-        <span className="block min-h-[1em]">
+        <span className="block min-h-[1em] whitespace-nowrap">
           {visibleSecondLine}
           {cursorLine === 1 ? <span className="typing-cursor" /> : null}
         </span>

@@ -10,7 +10,7 @@ import {
 } from "@/lib/theme";
 import "./globals.css";
 
-const appDescription = "Web面接をAIで完全攻略。";
+const appDescription = "面接の前から、本番まで、あなたの味方。";
 
 export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.3",

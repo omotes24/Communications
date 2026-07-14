@@ -4,11 +4,9 @@ import { Languages } from "lucide-react";
 import { ChromeStartButton } from "@/components/home/ChromeStartButton";
 import { TypingHeadline } from "@/components/home/TypingHeadline";
 import { AppShell } from "@/components/layout/AppShell";
-import { getCompanyInputCopy } from "@/lib/company-input-mode";
 
 export default function Home() {
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.3";
-  const companyInputCopy = getCompanyInputCopy();
 
   return (
     <AppShell>
@@ -18,10 +16,10 @@ export default function Home() {
             {appName}
           </p>
           <TypingHeadline />
-          <p className="mx-auto mt-6 max-w-2xl text-lg font-medium leading-8 text-[#6e6e73]">
-            {companyInputCopy.homeLead}
+          <p className="mx-auto mt-6 max-w-5xl text-base font-medium leading-7 text-[#6e6e73] sm:text-lg sm:leading-8">
+            LINEで面接予定を登録。面接前に自動で通知。
             <br />
-            瞬時に面接で回答する文章を生成します。
+            面接中は、あなたと応募先の情報をもとに、AIが回答案をリアルタイムで自動生成します。(まもなく使用可能です。)
           </p>
           <p className="mt-4 text-sm font-semibold text-[#86868b]">
             Chromeのみに対応しています。

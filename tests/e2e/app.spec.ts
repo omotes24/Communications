@@ -100,7 +100,7 @@ test("public legal and help pages render", async ({ page }) => {
   }
 });
 
-test("previous home and theme customizer stay available", async ({ page }) => {
+test("home message and theme customizer stay available", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -113,7 +113,20 @@ test("previous home and theme customizer stay available", async ({ page }) => {
 
   await expect(root).toHaveAttribute("data-app-theme", "blue");
   await expect(
-    page.getByRole("heading", { name: "Web面接を AIで完全攻略。" }),
+    page.getByRole("heading", {
+      name: "面接の前から、 本番まで、あなたの味方。",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("LINEで面接予定を登録。面接前に自動で通知。", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "面接中は、あなたと応募先の情報をもとに、AIが回答案をリアルタイムで自動生成します。(まもなく使用可能です。)",
+      { exact: false },
+    ),
   ).toBeVisible();
   await expect(customize).toHaveCount(1);
   await customize.click();
@@ -136,6 +149,9 @@ test("previous home and theme customizer stay available", async ({ page }) => {
   const panel = page.locator("#theme-customizer");
   const navigation = page.getByRole("navigation", { name: "主要画面" });
   await expect(panel).toBeVisible();
+  const documentWidth = await page.evaluate(
+    () => document.documentElement.scrollWidth,
+  );
   const panelBox = await panel.boundingBox();
   const navigationBox = await navigation.boundingBox();
   expect(panelBox).not.toBeNull();
@@ -143,6 +159,7 @@ test("previous home and theme customizer stay available", async ({ page }) => {
   expect(panelBox!.x).toBeGreaterThanOrEqual(0);
   expect(panelBox!.x + panelBox!.width).toBeLessThanOrEqual(375);
   expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(navigationBox!.y);
+  expect(documentWidth).toBeLessThanOrEqual(375);
 });
 
 test("group discussion practice flow works in mock mode", async ({ page }) => {
