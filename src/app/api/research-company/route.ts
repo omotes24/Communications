@@ -19,7 +19,10 @@ import {
   type CompanyProfile,
   type ResearchCompanyRequest,
 } from "@/lib/schemas/interview";
-import { estimateResearchCompanyTokens } from "@/lib/tokens/ai-estimates";
+import {
+  COMPANY_RESEARCH_MAX_OUTPUT_TOKENS,
+  estimateResearchCompanyTokens,
+} from "@/lib/tokens/ai-estimates";
 import {
   createRequestIds,
   releaseAiTokenReservation,
@@ -42,9 +45,7 @@ type CompanyResearchResult = {
 };
 
 function extractUrls(text: string): string[] {
-  return Array.from(
-    new Set(text.match(/https?:\/\/[^\s<>"'、。)）]+/g) ?? []),
-  );
+  return Array.from(new Set(text.match(/https?:\/\/[^\s<>"'、。)）]+/g) ?? []));
 }
 
 function mockResearchCompany(request: ResearchCompanyRequest): CompanyProfile {
@@ -156,6 +157,7 @@ async function runStructuredCompanyResearch(
       model,
       instructions: COMPANY_RESEARCH_INSTRUCTIONS,
       input: buildCompanyResearchInput(body),
+      max_output_tokens: COMPANY_RESEARCH_MAX_OUTPUT_TOKENS,
       ...(useWebSearch
         ? {
             tools: [
@@ -196,7 +198,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const body = researchCompanyRequestSchema.parse(await request.json());
     const env = getServerEnv();
-    const model = env.RESEARCH_MODEL;
+    const model = env.COMPANY_RESEARCH_MODEL;
     const { requestId, operationId } = createRequestIds(request);
     const reservation = await reserveAiTokens({
       userId: auth.user.id,

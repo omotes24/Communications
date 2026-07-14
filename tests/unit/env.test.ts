@@ -15,6 +15,8 @@ describe("server env", () => {
     delete process.env.GROQ_API_KEY;
     delete process.env.OPENAI_ANSWER_MODEL;
     delete process.env.OPENAI_RESEARCH_MODEL;
+    delete process.env.OPENAI_COMPANY_RESEARCH_MODEL;
+    delete process.env.OPENAI_INTERVIEW_LEARNING_MODEL;
     delete process.env.OPENAI_QUESTION_SOLVER_MODEL;
     delete process.env.OPENAI_GROUP_DISCUSSION_MODEL;
     delete process.env.COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL;
@@ -36,6 +38,8 @@ describe("server env", () => {
     expect(env.CLASSIFIER_MODEL).toBe("gpt-5.4-nano");
     expect(env.FAST_ANSWER_MODEL).toBe("gpt-5.6-luna");
     expect(env.RESEARCH_MODEL).toBe("gpt-5.6-terra");
+    expect(env.COMPANY_RESEARCH_MODEL).toBe("gpt-5.6-sol");
+    expect(env.INTERVIEW_LEARNING_MODEL).toBe("gpt-5.6-sol");
     expect(env.QUESTION_SOLVER_MODEL).toBe("gpt-5.6-terra");
     expect(env.GROUP_DISCUSSION_MODEL).toBe("gpt-5.6-terra");
     expect(env.OPENAI_TRANSCRIPTION_DELAY).toBe("high");
@@ -62,6 +66,19 @@ describe("server env", () => {
 
     expect(env.AI_PROVIDER).toBe("groq");
     expect(env.ANSWER_MODEL).toBe("openai/gpt-oss-120b");
+    expect(env.COMPANY_RESEARCH_MODEL).toBe("groq/compound");
+    expect(env.INTERVIEW_LEARNING_MODEL).toBe("openai/gpt-oss-120b");
+  });
+
+  it("keeps preparation models separate from high-quality answers", () => {
+    process.env.OPENAI_COMPANY_RESEARCH_MODEL = "company-test-model";
+    process.env.OPENAI_INTERVIEW_LEARNING_MODEL = "learning-test-model";
+
+    const env = getServerEnv();
+
+    expect(env.COMPANY_RESEARCH_MODEL).toBe("company-test-model");
+    expect(env.INTERVIEW_LEARNING_MODEL).toBe("learning-test-model");
+    expect(env.RESEARCH_MODEL).toBe("gpt-5.6-terra");
   });
 
   it("avoids gated deep research models for company intelligence", () => {

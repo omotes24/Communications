@@ -31,6 +31,8 @@ const serverEnvSchema = z.object({
   OPENAI_CLASSIFIER_MODEL: z.string().default("gpt-5.4-nano"),
   OPENAI_ANSWER_MODEL: z.string().default("gpt-5.6-luna"),
   OPENAI_RESEARCH_MODEL: z.string().default("gpt-5.6-terra"),
+  OPENAI_COMPANY_RESEARCH_MODEL: z.string().default("gpt-5.6-sol"),
+  OPENAI_INTERVIEW_LEARNING_MODEL: z.string().default("gpt-5.6-sol"),
   OPENAI_QUESTION_SOLVER_MODEL: z.string().default("gpt-5.6-terra"),
   OPENAI_GROUP_DISCUSSION_MODEL: z.string().default("gpt-5.6-terra"),
   OPENAI_GD_MOCK_MODE: booleanEnvSchema,
@@ -57,6 +59,8 @@ export type ServerEnv = RawServerEnv & {
   FAST_ANSWER_MODEL: string;
   ANSWER_MODEL: string;
   RESEARCH_MODEL: string;
+  COMPANY_RESEARCH_MODEL: string;
+  INTERVIEW_LEARNING_MODEL: string;
   QUESTION_SOLVER_MODEL: string;
   GROUP_DISCUSSION_MODEL: string;
 };
@@ -74,6 +78,9 @@ export function getServerEnv(): ServerEnv {
     OPENAI_CLASSIFIER_MODEL: process.env.OPENAI_CLASSIFIER_MODEL,
     OPENAI_ANSWER_MODEL: process.env.OPENAI_ANSWER_MODEL,
     OPENAI_RESEARCH_MODEL: process.env.OPENAI_RESEARCH_MODEL,
+    OPENAI_COMPANY_RESEARCH_MODEL: process.env.OPENAI_COMPANY_RESEARCH_MODEL,
+    OPENAI_INTERVIEW_LEARNING_MODEL:
+      process.env.OPENAI_INTERVIEW_LEARNING_MODEL,
     OPENAI_QUESTION_SOLVER_MODEL: process.env.OPENAI_QUESTION_SOLVER_MODEL,
     OPENAI_GROUP_DISCUSSION_MODEL: process.env.OPENAI_GROUP_DISCUSSION_MODEL,
     OPENAI_GD_MOCK_MODE: process.env.OPENAI_GD_MOCK_MODE,
@@ -115,6 +122,14 @@ export function getServerEnv(): ServerEnv {
       parsed.AI_PROVIDER === "groq"
         ? parsed.GROQ_RESEARCH_MODEL
         : parsed.OPENAI_RESEARCH_MODEL,
+    COMPANY_RESEARCH_MODEL:
+      parsed.AI_PROVIDER === "groq"
+        ? parsed.GROQ_RESEARCH_MODEL
+        : parsed.OPENAI_COMPANY_RESEARCH_MODEL,
+    INTERVIEW_LEARNING_MODEL:
+      parsed.AI_PROVIDER === "groq"
+        ? parsed.GROQ_ANSWER_MODEL
+        : parsed.OPENAI_INTERVIEW_LEARNING_MODEL,
     QUESTION_SOLVER_MODEL:
       parsed.AI_PROVIDER === "groq"
         ? parsed.GROQ_ANSWER_MODEL

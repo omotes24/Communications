@@ -11,6 +11,7 @@ import {
   groupDiscussionFinalizeRequestSchema,
 } from "@/lib/schemas/groupDiscussion";
 import { estimateGroupDiscussionFinalizeTokens } from "@/lib/tokens/ai-estimates";
+import { adjustTextReservationForModel } from "@/lib/tokens/model-rates";
 import {
   createRequestIds,
   releaseAiTokenReservation,
@@ -30,7 +31,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    const body = groupDiscussionFinalizeRequestSchema.parse(await request.json());
+    const body = groupDiscussionFinalizeRequestSchema.parse(
+      await request.json(),
+    );
     const env = getServerEnv();
     const { requestId, operationId } = createRequestIds(request);
     const reservation = await reserveAiTokens({
@@ -40,7 +43,10 @@ export async function POST(request: Request): Promise<Response> {
       feature: "group-discussion",
       provider: env.AI_PROVIDER,
       model: env.GROUP_DISCUSSION_MODEL,
-      estimatedAmount: estimateGroupDiscussionFinalizeTokens(body),
+      estimatedAmount: adjustTextReservationForModel(
+        env.GROUP_DISCUSSION_MODEL,
+        estimateGroupDiscussionFinalizeTokens(body),
+      ),
       metadata: { route: "group-discussion-finalize" },
     });
 

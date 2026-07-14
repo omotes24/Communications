@@ -19,6 +19,7 @@ import {
   type ProfileFileImportRequest,
 } from "@/lib/schemas/interview";
 import { estimateProfileImportTokens } from "@/lib/tokens/ai-estimates";
+import { adjustTextReservationForModel } from "@/lib/tokens/model-rates";
 import {
   createRequestIds,
   releaseAiTokenReservation,
@@ -290,7 +291,10 @@ export async function POST(request: Request): Promise<Response> {
       feature: "import-profile-file",
       provider: env.AI_PROVIDER,
       model: env.CLASSIFIER_MODEL,
-      estimatedAmount: estimateProfileImportTokens(body),
+      estimatedAmount: adjustTextReservationForModel(
+        env.CLASSIFIER_MODEL,
+        estimateProfileImportTokens(body),
+      ),
     });
 
     if (env.AI_MOCK_MODE) {

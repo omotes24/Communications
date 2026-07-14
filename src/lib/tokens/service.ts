@@ -4,7 +4,8 @@ import { getServerSupabaseConfig } from "@/lib/supabase/server-config";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import {
   calculateAppTokens,
-  fallbackRateCard,
+  fallbackRateCardForModel,
+  rateCardModelCandidates,
   type AiFeature,
   type TokenRateCard,
   type UsageParts,
@@ -53,7 +54,10 @@ export type LedgerEventRow = {
 };
 
 const testWallets = new Map<string, Wallet>();
-const testReservations = new Map<string, TokenReservation & { status: string }>();
+const testReservations = new Map<
+  string,
+  TokenReservation & { status: string }
+>();
 
 export function resetTestTokenState(userId: string, balance = 100000) {
   testWallets.set(userId, {
@@ -294,9 +298,10 @@ export async function reserveAiTokens({
     throw error;
   }
 
-  const reservationRow = (Array.isArray(data) ? data[0] : data) as
-    | { reserved_amount?: number; expires_at?: string }
-    | null;
+  const reservationRow = (Array.isArray(data) ? data[0] : data) as {
+    reserved_amount?: number;
+    expires_at?: string;
+  } | null;
   return {
     requestId,
     operationId,
@@ -356,9 +361,7 @@ export async function settleAiTokens(
   status: "success" | "failed" = "success",
 ) {
   const actualAmount =
-    status === "success"
-      ? calculateAppTokens(usage, reservation.rateCard)
-      : 0;
+    status === "success" ? calculateAppTokens(usage, reservation.rateCard) : 0;
   const latencyMs = Date.now() - reservation.startedAt;
 
   if (shouldUseMemoryTokenStore()) {
@@ -468,6 +471,7 @@ async function getRateCard(
   feature: AiFeature,
   model: string,
 ): Promise<TokenRateCard> {
+  const fallbackRateCard = fallbackRateCardForModel(model);
   if (shouldUseMemoryTokenStore() || !isTokenSystemConfigured()) {
     return fallbackRateCard;
   }
@@ -480,7 +484,7 @@ async function getRateCard(
     )
     .eq("active", true)
     .eq("feature", feature)
-    .in("model", [model, "*"])
+    .in("model", rateCardModelCandidates(model))
     .order("model", { ascending: false })
     .order("active_from", { ascending: false })
     .limit(1);
@@ -492,12 +496,20 @@ async function getRateCard(
   const card = data[0] as Record<string, unknown>;
   return {
     version: String(card.version ?? fallbackRateCard.version),
-    inputTokenMultiplier: Number(card.input_token_multiplier ?? 1),
-    cachedInputTokenMultiplier: Number(
-      card.cached_input_token_multiplier ?? 0.25,
+    inputTokenMultiplier: Number(
+      card.input_token_multiplier ?? fallbackRateCard.inputTokenMultiplier,
     ),
-    outputTokenMultiplier: Number(card.output_token_multiplier ?? 4),
-    reasoningTokenMultiplier: Number(card.reasoning_token_multiplier ?? 4),
+    cachedInputTokenMultiplier: Number(
+      card.cached_input_token_multiplier ??
+        fallbackRateCard.cachedInputTokenMultiplier,
+    ),
+    outputTokenMultiplier: Number(
+      card.output_token_multiplier ?? fallbackRateCard.outputTokenMultiplier,
+    ),
+    reasoningTokenMultiplier: Number(
+      card.reasoning_token_multiplier ??
+        fallbackRateCard.reasoningTokenMultiplier,
+    ),
     audioSecondMultiplier: Number(
       card.audio_second_multiplier ?? fallbackRateCard.audioSecondMultiplier,
     ),

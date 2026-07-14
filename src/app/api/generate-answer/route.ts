@@ -19,7 +19,7 @@ import {
 } from "@/lib/schemas/interview";
 import { mockGenerateAnswer, streamMockAnswer } from "@/lib/test/mock-openai";
 import { estimateGenerateAnswerTokens } from "@/lib/tokens/ai-estimates";
-import { adjustAnswerReservationForModel } from "@/lib/tokens/model-rates";
+import { adjustTextReservationForModel } from "@/lib/tokens/model-rates";
 import {
   createRequestIds,
   releaseAiTokenReservation,
@@ -49,7 +49,7 @@ function estimateReservedAnswerTokens(
   body: GenerateAnswerRequest,
 ): number {
   const estimatedAmount = estimateGenerateAnswerTokens(body);
-  return adjustAnswerReservationForModel(model, estimatedAmount);
+  return adjustTextReservationForModel(model, estimatedAmount);
 }
 
 export async function POST(request: Request): Promise<Response> {

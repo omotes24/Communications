@@ -20,6 +20,7 @@ import {
   settleAiTokens,
   TokenBalanceError,
 } from "@/lib/tokens/service";
+import { adjustTextReservationForModel } from "@/lib/tokens/model-rates";
 import { calculateAppTokens, extractOpenAIUsage } from "@/lib/tokens/usage";
 
 export const dynamic = "force-dynamic";
@@ -122,10 +123,13 @@ export async function POST(request: Request): Promise<Response> {
       feature: "summarize-interview-experience",
       provider: env.AI_PROVIDER,
       model,
-      estimatedAmount: calculateAppTokens({
-        inputTokens: Math.ceil(transcript.length / 3),
-        outputTokens: 2_000,
-      }),
+      estimatedAmount: adjustTextReservationForModel(
+        model,
+        calculateAppTokens({
+          inputTokens: Math.ceil(transcript.length / 3),
+          outputTokens: 2_000,
+        }),
+      ),
     });
 
     if (env.AI_MOCK_MODE) {
@@ -144,7 +148,10 @@ export async function POST(request: Request): Promise<Response> {
         insights: ["結論から簡潔に話せるよう準備する。"],
         privacyWarnings: [],
       });
-      await settleAiTokens(reservation, { inputTokens: 600, outputTokens: 300 });
+      await settleAiTokens(reservation, {
+        inputTokens: 600,
+        outputTokens: 300,
+      });
       return Response.json({
         draft,
         sessionId: session.id,

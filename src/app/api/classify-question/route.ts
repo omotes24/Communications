@@ -14,6 +14,7 @@ import {
 } from "@/lib/schemas/interview";
 import { mockClassifyQuestion } from "@/lib/test/mock-openai";
 import { estimateClassifyTokens } from "@/lib/tokens/ai-estimates";
+import { adjustTextReservationForModel } from "@/lib/tokens/model-rates";
 import {
   createRequestIds,
   releaseAiTokenReservation,
@@ -47,7 +48,10 @@ export async function POST(request: Request): Promise<Response> {
       feature: "classify-question",
       provider: env.AI_PROVIDER,
       model: env.CLASSIFIER_MODEL,
-      estimatedAmount: estimateClassifyTokens(body),
+      estimatedAmount: adjustTextReservationForModel(
+        env.CLASSIFIER_MODEL,
+        estimateClassifyTokens(body),
+      ),
     });
 
     if (env.AI_MOCK_MODE) {

@@ -30,7 +30,7 @@ export default function SetupPage() {
   const providerName = "OpenAI API";
   const providerStatus = "OpenAI APIで動作";
   const modelRoleText =
-    "OpenAI APIを使う設定では、音声文字起こし、質問判定、回答生成、企業理解を用途別のOpenAIモデルに分けています。通常回答ではgpt-5.6-luna、企業理解ではgpt-5.6-terraとweb searchを使います。";
+    "OpenAI APIを使う設定では、音声文字起こし、質問判定、回答生成、面接前準備を用途別のOpenAIモデルに分けています。通常回答はgpt-5.6-luna、高精度回答はgpt-5.6-terra、会社調査と面接前学習はgpt-5.6-solを使います。会社調査ではweb searchも使います。";
   const envExample = `AI_PROVIDER=openai
 NEXT_PUBLIC_AI_PROVIDER=openai
 OPENAI_API_KEY=新しいAPIキー
@@ -41,6 +41,8 @@ OPENAI_AUDIO_NOISE_REDUCTION=far_field
 OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
 OPENAI_ANSWER_MODEL=gpt-5.6-luna
 OPENAI_RESEARCH_MODEL=gpt-5.6-terra
+OPENAI_COMPANY_RESEARCH_MODEL=gpt-5.6-sol
+OPENAI_INTERVIEW_LEARNING_MODEL=gpt-5.6-sol
 
 AI_MOCK_MODE=false`;
   const systemFlow = [

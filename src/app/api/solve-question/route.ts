@@ -21,6 +21,7 @@ import {
 } from "@/lib/question-solver/schemas";
 import { toPublicError } from "@/lib/privacy/logging";
 import { estimateSolveQuestionTokens } from "@/lib/tokens/ai-estimates";
+import { adjustTextReservationForModel } from "@/lib/tokens/model-rates";
 import {
   createRequestIds,
   releaseAiTokenReservation,
@@ -89,7 +90,8 @@ function corsHeaders(request: Request): HeadersInit {
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Credentials": "true",
-    "Access-Control-Allow-Headers": "Content-Type, X-Request-Id, X-Operation-Id",
+    "Access-Control-Allow-Headers":
+      "Content-Type, X-Request-Id, X-Operation-Id",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     Vary: "Origin",
   };
@@ -201,7 +203,10 @@ export async function POST(request: Request): Promise<Response> {
       feature: "solve-question",
       provider: env.AI_PROVIDER,
       model,
-      estimatedAmount: estimateSolveQuestionTokens(body),
+      estimatedAmount: adjustTextReservationForModel(
+        model,
+        estimateSolveQuestionTokens(body),
+      ),
       metadata: {
         route: "solve-question",
         source: body.question.source,
@@ -338,7 +343,11 @@ export async function POST(request: Request): Promise<Response> {
         { status: error.status },
       );
     }
-    return jsonWithCors(request, { error: toPublicError(error) }, { status: 400 });
+    return jsonWithCors(
+      request,
+      { error: toPublicError(error) },
+      { status: 400 },
+    );
   }
 }
 
@@ -379,7 +388,8 @@ function withQuestionDefaults(
         ? record.questionId
         : body.question.questionId,
     detectedSubject:
-      typeof record.detectedSubject === "string" && record.detectedSubject.trim()
+      typeof record.detectedSubject === "string" &&
+      record.detectedSubject.trim()
         ? record.detectedSubject
         : body.question.subject,
     answerType:

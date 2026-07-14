@@ -39,6 +39,69 @@ export const fallbackRateCard: TokenRateCard = {
   webSearchMultiplier: 1200,
 };
 
+const modelSpecificFallbackRates: Array<{
+  model: string;
+  inputTokenMultiplier: number;
+  cachedInputTokenMultiplier: number;
+  outputTokenMultiplier: number;
+}> = [
+  {
+    model: "gpt-5.6-luna",
+    inputTokenMultiplier: 0.12,
+    cachedInputTokenMultiplier: 0.012,
+    outputTokenMultiplier: 0.72,
+  },
+  {
+    model: "gpt-5.6-terra",
+    inputTokenMultiplier: 0.3,
+    cachedInputTokenMultiplier: 0.03,
+    outputTokenMultiplier: 1.8,
+  },
+  {
+    model: "gpt-5.6-sol",
+    inputTokenMultiplier: 0.6,
+    cachedInputTokenMultiplier: 0.06,
+    outputTokenMultiplier: 3.6,
+  },
+  {
+    model: "gpt-5.4-nano",
+    inputTokenMultiplier: 0.024,
+    cachedInputTokenMultiplier: 0.0024,
+    outputTokenMultiplier: 0.15,
+  },
+];
+
+export function fallbackRateCardForModel(model: string): TokenRateCard {
+  const normalized = model.trim().toLowerCase();
+  const rate = modelSpecificFallbackRates.find(
+    ({ model: candidate }) =>
+      normalized === candidate || normalized.startsWith(`${candidate}-`),
+  );
+  if (!rate) {
+    return fallbackRateCard;
+  }
+
+  return {
+    ...fallbackRateCard,
+    inputTokenMultiplier: rate.inputTokenMultiplier,
+    cachedInputTokenMultiplier: rate.cachedInputTokenMultiplier,
+    outputTokenMultiplier: rate.outputTokenMultiplier,
+    reasoningTokenMultiplier: rate.outputTokenMultiplier,
+  };
+}
+
+export function rateCardModelCandidates(model: string): string[] {
+  const normalized = model.trim().toLowerCase();
+  const family = modelSpecificFallbackRates.find(
+    ({ model: candidate }) =>
+      normalized === candidate || normalized.startsWith(`${candidate}-`),
+  )?.model;
+
+  return Array.from(new Set([model, family, "*"]).values()).filter(
+    (candidate): candidate is string => Boolean(candidate),
+  );
+}
+
 export function estimateTextTokens(text: string): number {
   return Math.max(1, Math.ceil(Array.from(text).length / 3));
 }

@@ -17,6 +17,12 @@ import {
   type AiFeature,
 } from "@/lib/tokens/usage";
 
+export const COMPANY_RESEARCH_MAX_OUTPUT_TOKENS = 6_000;
+export const INTERVIEW_LEARNING_MAX_OUTPUT_TOKENS = 3_000;
+
+const COMPANY_RESEARCH_INPUT_HEADROOM_TOKENS = 3_000;
+const INTERVIEW_LEARNING_INPUT_HEADROOM_TOKENS = 1_000;
+
 export function estimateClassifyTokens(body: ClassifyQuestionRequest): number {
   return estimateForText("classify-question", body.transcript, 180);
 }
@@ -52,8 +58,9 @@ export function estimateResearchCompanyTokens(
       body.desiredCourse,
       body.additionalNotes,
     ].join("\n"),
-    1800,
+    COMPANY_RESEARCH_MAX_OUTPUT_TOKENS,
     1,
+    COMPANY_RESEARCH_INPUT_HEADROOM_TOKENS,
   );
 }
 
@@ -70,7 +77,9 @@ export function estimateLearningTokens(
       body.additionalNotes,
       body.learningLanguage,
     ].join("\n"),
-    700,
+    INTERVIEW_LEARNING_MAX_OUTPUT_TOKENS,
+    0,
+    INTERVIEW_LEARNING_INPUT_HEADROOM_TOKENS,
   );
 }
 
@@ -181,10 +190,11 @@ function estimateForText(
   input: string,
   maxOutputTokens: number,
   webSearchCalls = 0,
+  inputTokenHeadroom = 0,
 ): number {
   void feature;
   return calculateAppTokens({
-    inputTokens: estimateTextTokens(input),
+    inputTokens: estimateTextTokens(input) + inputTokenHeadroom,
     outputTokens: maxOutputTokens,
     webSearchCalls,
   });

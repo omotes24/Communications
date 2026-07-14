@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireApiUser } from "@/lib/auth/server";
 import { createOpenAIClient } from "@/lib/openai/client";
-import { getServerEnv, structuredOutputModel } from "@/lib/openai/env";
+import { getServerEnv } from "@/lib/openai/env";
 import {
   buildInterviewLearningInstructions,
   buildInterviewLearningInput,
@@ -13,7 +13,10 @@ import {
   learnInterviewContextOutputSchema,
   learnInterviewContextRequestSchema,
 } from "@/lib/schemas/interview";
-import { estimateLearningTokens } from "@/lib/tokens/ai-estimates";
+import {
+  estimateLearningTokens,
+  INTERVIEW_LEARNING_MAX_OUTPUT_TOKENS,
+} from "@/lib/tokens/ai-estimates";
 import {
   createRequestIds,
   releaseAiTokenReservation,
@@ -24,6 +27,8 @@ import {
 import { extractOpenAIUsage } from "@/lib/tokens/usage";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const gatewayLearningOutputSchema = z.object({
   brief: z.string(),
@@ -44,7 +49,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const body = learnInterviewContextRequestSchema.parse(await request.json());
     const env = getServerEnv();
-    const model = structuredOutputModel(env);
+    const model = env.INTERVIEW_LEARNING_MODEL;
     const { requestId, operationId } = createRequestIds(request);
     const reservation = await reserveAiTokens({
       userId: auth.user.id,
@@ -105,6 +110,7 @@ export async function POST(request: Request): Promise<Response> {
                 content: buildInterviewLearningInput(body),
               },
             ],
+            max_completion_tokens: INTERVIEW_LEARNING_MAX_OUTPUT_TOKENS,
           },
           { signal: request.signal },
         );
@@ -127,6 +133,7 @@ export async function POST(request: Request): Promise<Response> {
             body.learningLanguage,
           ),
           input: buildInterviewLearningInput(body),
+          max_output_tokens: INTERVIEW_LEARNING_MAX_OUTPUT_TOKENS,
           text: {
             format: zodTextFormat(
               learnInterviewContextOutputSchema,

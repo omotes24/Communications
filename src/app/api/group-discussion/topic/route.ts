@@ -11,6 +11,7 @@ import {
 import { requireApiUser } from "@/lib/auth/server";
 import { createMockGroupDiscussionTopic } from "@/lib/group-discussion/mock";
 import { estimateGroupDiscussionTopicTokens } from "@/lib/tokens/ai-estimates";
+import { adjustTextReservationForModel } from "@/lib/tokens/model-rates";
 import {
   createRequestIds,
   releaseAiTokenReservation,
@@ -39,7 +40,10 @@ export async function POST(request: Request): Promise<Response> {
       feature: "group-discussion",
       provider: env.AI_PROVIDER,
       model: env.GROUP_DISCUSSION_MODEL,
-      estimatedAmount: estimateGroupDiscussionTopicTokens(body),
+      estimatedAmount: adjustTextReservationForModel(
+        env.GROUP_DISCUSSION_MODEL,
+        estimateGroupDiscussionTopicTokens(body),
+      ),
       metadata: { route: "group-discussion-topic" },
     });
 

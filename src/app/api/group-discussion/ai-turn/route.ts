@@ -14,6 +14,7 @@ import {
   type GroupDiscussionUtterance,
 } from "@/lib/schemas/groupDiscussion";
 import { estimateGroupDiscussionAiTurnTokens } from "@/lib/tokens/ai-estimates";
+import { adjustTextReservationForModel } from "@/lib/tokens/model-rates";
 import {
   createRequestIds,
   releaseAiTokenReservation,
@@ -31,7 +32,8 @@ function resolveParticipant(
 ): GroupDiscussionParticipant {
   return (
     participants.find(
-      (participant) => participant.id === speakerId && participant.type === "ai",
+      (participant) =>
+        participant.id === speakerId && participant.type === "ai",
     ) ??
     participants.find((participant) => participant.type === "ai") ?? {
       id: "ai-facilitator",
@@ -60,7 +62,10 @@ export async function POST(request: Request): Promise<Response> {
       feature: "group-discussion",
       provider: env.AI_PROVIDER,
       model: env.GROUP_DISCUSSION_MODEL,
-      estimatedAmount: estimateGroupDiscussionAiTurnTokens(body),
+      estimatedAmount: adjustTextReservationForModel(
+        env.GROUP_DISCUSSION_MODEL,
+        estimateGroupDiscussionAiTurnTokens(body),
+      ),
       metadata: { route: "group-discussion-ai-turn" },
     });
 

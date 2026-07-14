@@ -13,9 +13,24 @@ type TextPricing = {
   outputPerMillionUsd: number;
 };
 
-// OpenAI API standard pricing, verified 2026-07-14.
+// OpenAI API standard pricing, verified 2026-07-15.
 // Keep this table server-side and update it when model pricing changes.
 const textPricing: Record<string, TextPricing> = {
+  "gpt-5.6-sol": {
+    inputPerMillionUsd: 5,
+    cachedInputPerMillionUsd: 0.5,
+    outputPerMillionUsd: 30,
+  },
+  "gpt-5.6-terra": {
+    inputPerMillionUsd: 2.5,
+    cachedInputPerMillionUsd: 0.25,
+    outputPerMillionUsd: 15,
+  },
+  "gpt-5.6-luna": {
+    inputPerMillionUsd: 1,
+    cachedInputPerMillionUsd: 0.1,
+    outputPerMillionUsd: 6,
+  },
   "gpt-5.5": {
     inputPerMillionUsd: 5,
     cachedInputPerMillionUsd: 0.5,
@@ -50,8 +65,8 @@ function normalizeModel(model: string): string {
   const exact = Object.keys(textPricing)
     .sort((a, b) => b.length - a.length)
     .find(
-    (candidate) =>
-      normalized === candidate || normalized.startsWith(`${candidate}-`),
+      (candidate) =>
+        normalized === candidate || normalized.startsWith(`${candidate}-`),
     );
   if (exact) {
     return exact;
@@ -85,8 +100,7 @@ export function estimateOpenAiCostUsd(
     costUsd +=
       (uncachedInputTokens / 1_000_000) * text.inputPerMillionUsd +
       (cachedInputTokens / 1_000_000) * text.cachedInputPerMillionUsd +
-      (Math.max(usage.outputTokens, 0) / 1_000_000) *
-        text.outputPerMillionUsd;
+      (Math.max(usage.outputTokens, 0) / 1_000_000) * text.outputPerMillionUsd;
     priced = true;
   }
 
@@ -100,7 +114,7 @@ export function estimateOpenAiCostUsd(
 
 export function getOpenAiPricingReference() {
   return {
-    verifiedAt: "2026-07-14",
+    verifiedAt: "2026-07-15",
     sourceUrl: "https://developers.openai.com/api/docs/pricing",
   };
 }
