@@ -58,7 +58,7 @@ export async function POST(request: Request): Promise<Response> {
             currency: "jpy",
             unit_amount: plan.amountJpy,
             product_data: {
-              name: `Yell for You 1.2 ${plan.name} tokens`,
+              name: `Yell for You 1.3 ${plan.name} tokens`,
               description: `${plan.tokenAmount.toLocaleString()} app tokens`,
             },
           },

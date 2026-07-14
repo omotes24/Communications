@@ -3,15 +3,17 @@ import type { Metadata } from "next";
 import {
   appColorModeOptions,
   appColorModeStorageKey,
+  appThemeOptions,
   appThemeStorageKey,
   defaultAppColorMode,
+  resolveAppTheme,
 } from "@/lib/theme";
 import "./globals.css";
 
 const appDescription = "Web面接をAIで完全攻略。";
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.2",
+  title: process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.3",
   description: appDescription,
   openGraph: {
     description: appDescription,
@@ -26,14 +28,20 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const appTheme = resolveAppTheme(process.env.NEXT_PUBLIC_APP_THEME);
+  const allowedThemes = JSON.stringify(
+    appThemeOptions.map((option) => option.id),
+  );
   const allowedColorModes = JSON.stringify(
     appColorModeOptions.map((option) => option.id),
   );
   const themeBootstrapScript = `
 (() => {
   try {
-    document.documentElement.dataset.appTheme = "blue";
-    window.localStorage.setItem(${JSON.stringify(appThemeStorageKey)}, "blue");
+    const storedTheme = window.localStorage.getItem(${JSON.stringify(appThemeStorageKey)});
+    if (${allowedThemes}.includes(storedTheme)) {
+      document.documentElement.dataset.appTheme = storedTheme;
+    }
     const storedColorMode = window.localStorage.getItem(${JSON.stringify(appColorModeStorageKey)});
     if (${allowedColorModes}.includes(storedColorMode)) {
       document.documentElement.dataset.appMode = storedColorMode;
@@ -46,7 +54,7 @@ export default function RootLayout({
     <html
       lang="ja"
       suppressHydrationWarning
-      data-app-theme="blue"
+      data-app-theme={appTheme}
       data-app-mode={defaultAppColorMode}
       className="h-full antialiased"
     >

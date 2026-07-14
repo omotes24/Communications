@@ -41,7 +41,7 @@ function buildContactEmailText(input: ContactEmailInput): string {
     : [];
 
   return [
-    "Yell for You 1.2 問い合わせ",
+    "Yell for You 1.3 問い合わせ",
     "",
     `名前: ${input.name}`,
     `返信先: ${input.email}`,

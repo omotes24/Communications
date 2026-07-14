@@ -2,7 +2,7 @@
 
 ## 最終アプリ名とBundle ID候補
 
-- App name: `Yell for You 1.2`
+- App name: `Yell for You 1.3`
 - iOS Bundle ID候補: `jp.omotes.yellforyou`
 - Android applicationId候補: `jp.omotes.yellforyou`
 - Web production domain候補: `yell-for-you.app` または現行Vercel domain
@@ -12,8 +12,8 @@ Capacitor、iOS、Android、Apple In-App Purchase、Google Play Billingはこの
 ## 人間が先に行う設定
 
 1. Supabase projectを2つ作成します。
-   - `Yell for You 1.2 Staging`
-   - `Yell for You 1.2 Production`
+   - `Yell for You 1.3 Staging`
+   - `Yell for You 1.3 Production`
 2. 認証メール用SMTPを契約・設定します。
    - 推奨候補: Resend、Postmark、Amazon SES
    - Supabase標準メール配信のまま一般公開しないでください。
@@ -27,7 +27,7 @@ Capacitor、iOS、Android、Apple In-App Purchase、Google Play Billingはこの
 ```env
 NEXT_PUBLIC_SUPABASE_URL=<staging url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<staging anon key>
-NEXT_PUBLIC_APP_NAME=Yell for You 1.2
+NEXT_PUBLIC_APP_NAME=Yell for You 1.3
 NEXT_PUBLIC_SITE_URL=<preview deployment url>
 SUPABASE_SERVICE_ROLE_KEY=<staging service role key>
 SUPABASE_STORAGE_BUCKETS=
@@ -53,7 +53,7 @@ AI_MOCK_MODE=false
 ```env
 NEXT_PUBLIC_SUPABASE_URL=<production url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<production anon key>
-NEXT_PUBLIC_APP_NAME=Yell for You 1.2
+NEXT_PUBLIC_APP_NAME=Yell for You 1.3
 NEXT_PUBLIC_SITE_URL=https://communications-umber.vercel.app
 SUPABASE_SERVICE_ROLE_KEY=<production service role key>
 SUPABASE_STORAGE_BUCKETS=

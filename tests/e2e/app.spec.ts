@@ -100,6 +100,55 @@ test("public legal and help pages render", async ({ page }) => {
   }
 });
 
+test("theme customizer persists and stays on home surfaces", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  const root = page.locator("html");
+  const customize = page.getByRole("button", {
+    name: "Customize",
+    exact: true,
+  });
+
+  await expect(root).toHaveAttribute("data-app-theme", "blue");
+  await expect(customize).toHaveCount(1);
+  await customize.click();
+  await page.getByRole("radio", { name: "慶應カラー", exact: true }).click();
+  await page.getByRole("radio", { name: "ダーク", exact: true }).click();
+  await expect(root).toHaveAttribute("data-app-theme", "keio");
+  await expect(root).toHaveAttribute("data-app-mode", "dark");
+
+  await page.reload();
+  await expect(root).toHaveAttribute("data-app-theme", "keio");
+  await expect(root).toHaveAttribute("data-app-mode", "dark");
+
+  await page.goto("/terms");
+  await expect(customize).toHaveCount(0);
+  await expect(root).toHaveAttribute("data-app-theme", "keio");
+
+  await page.goto("/profile");
+  await expect(customize).toHaveCount(1);
+  await page.goto("/company");
+  await expect(customize).toHaveCount(0);
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/");
+  await customize.click();
+  const panel = page.locator("#theme-customizer");
+  const navigation = page.getByRole("navigation", { name: "主要画面" });
+  await expect(panel).toBeVisible();
+  const panelBox = await panel.boundingBox();
+  const navigationBox = await navigation.boundingBox();
+  expect(panelBox).not.toBeNull();
+  expect(navigationBox).not.toBeNull();
+  expect(panelBox!.x).toBeGreaterThanOrEqual(0);
+  expect(panelBox!.x + panelBox!.width).toBeLessThanOrEqual(375);
+  expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(navigationBox!.y);
+});
+
 test("group discussion practice flow works in mock mode", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "その他" }).click();

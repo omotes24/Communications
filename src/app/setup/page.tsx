@@ -24,7 +24,7 @@ const apiRoutes = [
 ];
 
 export default function SetupPage() {
-  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.2";
+  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.3";
   const companyInputCopy = getCompanyInputCopy();
   const aiProvider = "openai";
   const providerName = "OpenAI API";

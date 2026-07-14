@@ -2,13 +2,16 @@ export const appThemeStorageKey = "yell-for-you:theme";
 export const appColorModeStorageKey = "yell-for-you:color-mode";
 
 export const appThemeOptions = [
-  { id: "red", label: "赤", color: "#dc2626" },
-  { id: "orange", label: "オレンジ", color: "#ea580c" },
-  { id: "blue", label: "青", color: "#1d9bf0" },
-  { id: "green", label: "緑", color: "#059669" },
-  { id: "pink", label: "ピンク", color: "#db2777" },
-  { id: "purple", label: "紫", color: "#7c3aed" },
-  { id: "black", label: "黒", color: "#1d1d1f" },
+  { id: "blue", label: "水色", swatch: "#1d9bf0" },
+  { id: "purple", label: "紫", swatch: "#7c3aed" },
+  { id: "red", label: "赤", swatch: "#dc2626" },
+  {
+    id: "keio",
+    label: "慶應カラー",
+    swatch:
+      "linear-gradient(135deg, #001e62 0 52%, #c63527 52% 78%, #f1c400 78%)",
+  },
+  { id: "black", label: "黒", swatch: "#1d1d1f" },
 ] as const;
 
 export type AppTheme = (typeof appThemeOptions)[number]["id"];
