@@ -24,12 +24,14 @@
 `/admin` で、ユーザー数・トークン残高合計・機能別/日別の使用量・Stripe売上・
 最近の購入とトークンイベントをリアルタイム（30秒ごと自動更新）に確認できます。
 
-- 管理者は環境変数 `ADMIN_EMAILS`（カンマ区切りのメールアドレス）で指定します。
-  例: `ADMIN_EMAILS=owner@example.com,friend@example.com`
+- 管理者は環境変数 `ADMIN_USER_IDS`（カンマ区切りのSupabase Auth UUID）で指定します。
+  例: `ADMIN_USER_IDS=owner-uuid,friend-uuid`
+- `ADMIN_EMAILS` は既存環境からの移行用です。登録手順は
+  [`docs/admin-dashboard.md`](docs/admin-dashboard.md) を参照してください。
   Vercelの環境変数から変更できるため、デプロイ権限を持つメンバーが管理者を追加できます。
 - データはSupabaseの `token_wallets` / `token_ledger` / `ai_usage_events` /
   `stripe_checkout_grants` を集計しています（サービスロールキーが必要）。
-- ローカル開発（`LOCAL_AUTH_BYPASS=true`・`ADMIN_EMAILS`未設定）では
+- ローカル開発（`LOCAL_AUTH_BYPASS=true`・管理者設定未指定）では
   仮ユーザーが管理者として扱われ、レイアウトの確認ができます。
 
 ## セットアップ
@@ -280,12 +282,17 @@ Google Meetの相手側音声を拾う場合は、SafariではなくChromeまた
 ## データとプライバシー
 
 - 生音声は標準保存しません。
+- 将来の面接アーカイブはメタデータ契約のみで、音声・全文文字起こしの保存処理と通常ユーザーUIは未実装です。
+- 行動分析は既定で無効です。有効時もメール、氏名、IP、User-Agent、プロンプト、生音声、全文文字起こしは収集しません。
 - セッション終了時に取得済みMediaStreamTrackを停止します。
 - 文字起こし結果は画面表示と質問判定に使われます。
 - ユーザーが履歴保存した場合だけ、関連する質問・回答がSupabaseへ保存されます。
 - グループディスカッション練習では、ユーザーが開始した練習の発話ログ、議論マップ、評価結果を履歴再表示のために保存します。
 - アカウント削除時はSupabase Authユーザー、DBデータ、設定済みStorage bucket内のユーザーprefix配下ファイルを削除します。
 - Stripe側の取引記録はStripeの保持ポリシーに従います。
+
+分析CSV仕様は [`docs/analytics-data-dictionary.md`](docs/analytics-data-dictionary.md)、
+将来のJobTrack統合境界は [`docs/jobtrack-interview-module.md`](docs/jobtrack-interview-module.md) を参照してください。
 
 ## テスト
 

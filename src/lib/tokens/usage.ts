@@ -7,7 +7,8 @@ export type AiFeature =
   | "import-profile-file"
   | "realtime-session"
   | "group-discussion"
-  | "solve-question";
+  | "solve-question"
+  | "summarize-interview-experience";
 
 export type TokenRateCard = {
   version: string;
@@ -29,13 +30,13 @@ export type UsageParts = {
 };
 
 export const fallbackRateCard: TokenRateCard = {
-  version: "default-v2",
-  inputTokenMultiplier: 1,
-  cachedInputTokenMultiplier: 0.25,
-  outputTokenMultiplier: 4,
-  reasoningTokenMultiplier: 4,
-  audioSecondMultiplier: 40,
-  webSearchMultiplier: 550,
+  version: "margin-v3",
+  inputTokenMultiplier: 0.6,
+  cachedInputTokenMultiplier: 0.06,
+  outputTokenMultiplier: 3.6,
+  reasoningTokenMultiplier: 3.6,
+  audioSecondMultiplier: 34,
+  webSearchMultiplier: 1200,
 };
 
 export function estimateTextTokens(text: string): number {
@@ -49,11 +50,18 @@ export function calculateAppTokens(
   const inputTokens = usage.inputTokens ?? 0;
   const cachedInputTokens = usage.cachedInputTokens ?? 0;
   const billableInputTokens = Math.max(inputTokens - cachedInputTokens, 0);
+  // OpenAI の output_tokens は reasoning_tokens を内包する。表示出力と
+  // reasoning を分離し、同じトークンを二重課金しない。
+  const reasoningTokens = usage.reasoningTokens ?? 0;
+  const visibleOutputTokens = Math.max(
+    (usage.outputTokens ?? 0) - reasoningTokens,
+    0,
+  );
   const total =
     billableInputTokens * rateCard.inputTokenMultiplier +
     cachedInputTokens * rateCard.cachedInputTokenMultiplier +
-    (usage.outputTokens ?? 0) * rateCard.outputTokenMultiplier +
-    (usage.reasoningTokens ?? 0) * rateCard.reasoningTokenMultiplier +
+    visibleOutputTokens * rateCard.outputTokenMultiplier +
+    reasoningTokens * rateCard.reasoningTokenMultiplier +
     (usage.audioSeconds ?? 0) * rateCard.audioSecondMultiplier +
     (usage.webSearchCalls ?? 0) * rateCard.webSearchMultiplier;
 

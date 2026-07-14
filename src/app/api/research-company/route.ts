@@ -55,6 +55,8 @@ function mockResearchCompany(request: ResearchCompanyRequest): CompanyProfile {
     id: crypto.randomUUID(),
     label: `${companyHint} 調査メモ`,
     companyName: companyHint,
+    sourceSystem: "standalone",
+    jobtrackCatalogRef: null,
     business:
       companyInputMode === "url"
         ? "指定されたWebサイトと志望内容をもとに、事業内容・採用情報・職種要件を調査して整理します。"
@@ -111,6 +113,8 @@ function toCompanyProfile(
     id: crypto.randomUUID(),
     label: companyName ? `${companyName} 調査メモ` : output.label,
     companyName,
+    sourceSystem: "standalone",
+    jobtrackCatalogRef: null,
     researchInput: [
       `自分スロット: ${body.selfInfo}`,
       `会社名: ${body.companyName}`,

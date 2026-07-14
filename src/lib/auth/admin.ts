@@ -3,10 +3,16 @@ import "server-only";
 import { getCurrentUser, type AuthenticatedUser } from "@/lib/auth/server";
 
 /**
- * 管理者はメールアドレスで指定する。
- * 環境変数 ADMIN_EMAILS にカンマ区切りで設定（例: "a@example.com,b@example.com"）。
- * Vercelの環境変数から変更できるので、デプロイ権限を持つ人（友人）が管理できる。
+ * 管理者は変更されにくい Supabase Auth の user UUID で指定する。
+ * ADMIN_EMAILS は既存環境から安全に移行するための互換設定として残す。
  */
+export function getAdminUserIds(): string[] {
+  return (process.env.ADMIN_USER_IDS ?? "")
+    .split(",")
+    .map((id) => id.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export function getAdminEmails(): string[] {
   return (process.env.ADMIN_EMAILS ?? "")
     .split(",")
@@ -31,9 +37,31 @@ export function isAdminEmail(email: string | null): boolean {
   return isLocalDevBypass() && admins.length === 0;
 }
 
+export function isAdminUser(user: AuthenticatedUser | null): boolean {
+  if (!user) {
+    return false;
+  }
+
+  const adminUserIds = getAdminUserIds();
+  if (adminUserIds.includes(user.id.toLowerCase())) {
+    return true;
+  }
+
+  // ADMIN_EMAILS は移行用。新しい管理者は ADMIN_USER_IDS へ登録する。
+  if (user.email && getAdminEmails().includes(user.email.toLowerCase())) {
+    return true;
+  }
+
+  return (
+    isLocalDevBypass() &&
+    adminUserIds.length === 0 &&
+    getAdminEmails().length === 0
+  );
+}
+
 export async function getAdminUser(): Promise<AuthenticatedUser | null> {
   const user = await getCurrentUser();
-  if (!user || !isAdminEmail(user.email)) {
+  if (!isAdminUser(user)) {
     return null;
   }
   return user;
@@ -44,23 +72,12 @@ export async function requireAdminApiUser(): Promise<
   | { ok: false; response: Response }
 > {
   const user = await getCurrentUser();
-  if (!user) {
+  if (!isAdminUser(user)) {
+    // 管理APIの存在を一般ユーザーへ知らせない。JobTrack と同じ fail-closed 方針。
     return {
       ok: false,
-      response: Response.json(
-        { error: "ログインが必要です。" },
-        { status: 401 },
-      ),
+      response: Response.json({ error: "Not found" }, { status: 404 }),
     };
   }
-  if (!isAdminEmail(user.email)) {
-    return {
-      ok: false,
-      response: Response.json(
-        { error: "管理者権限がありません。" },
-        { status: 403 },
-      ),
-    };
-  }
-  return { ok: true, user };
+  return { ok: true, user: user! };
 }
