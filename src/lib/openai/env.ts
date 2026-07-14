@@ -13,7 +13,7 @@ const enabledBooleanEnvSchema = z
   .default("true")
   .transform((value) => value === "true" || value === "1");
 
-const defaultCompanyIntelligenceResearchModel = "gpt-5.5";
+const defaultCompanyIntelligenceResearchModel = "gpt-5.6-terra";
 const miniModelPattern = /(?:^|[-_.])mini(?:$|[-_.])/;
 
 const serverEnvSchema = z.object({
@@ -29,17 +29,17 @@ const serverEnvSchema = z.object({
     .enum(["near_field", "far_field", "off"])
     .default("far_field"),
   OPENAI_CLASSIFIER_MODEL: z.string().default("gpt-5.4-nano"),
-  OPENAI_ANSWER_MODEL: z.string().default("gpt-5.4-mini"),
-  OPENAI_RESEARCH_MODEL: z.string().default("gpt-5.5"),
-  OPENAI_QUESTION_SOLVER_MODEL: z.string().default("gpt-5.5"),
-  OPENAI_GROUP_DISCUSSION_MODEL: z.string().default("gpt-5.5"),
+  OPENAI_ANSWER_MODEL: z.string().default("gpt-5.6-luna"),
+  OPENAI_RESEARCH_MODEL: z.string().default("gpt-5.6-terra"),
+  OPENAI_QUESTION_SOLVER_MODEL: z.string().default("gpt-5.6-terra"),
+  OPENAI_GROUP_DISCUSSION_MODEL: z.string().default("gpt-5.6-terra"),
   OPENAI_GD_MOCK_MODE: booleanEnvSchema,
   COMPANY_INTELLIGENCE_STRICT_MODE: enabledBooleanEnvSchema,
   COMPANY_INTELLIGENCE_MOCK_MODE: booleanEnvSchema,
   COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL: z
     .string()
     .default(defaultCompanyIntelligenceResearchModel),
-  COMPANY_INTELLIGENCE_SYNTHESIS_MODEL: z.string().default("gpt-5.5"),
+  COMPANY_INTELLIGENCE_SYNTHESIS_MODEL: z.string().default("gpt-5.6-terra"),
   OPENAI_MOCK_MODE: booleanEnvSchema,
   GROQ_API_KEY: z.string().trim().min(1).optional(),
   GROQ_TRANSCRIPTION_MODEL: z.string().default("whisper-large-v3-turbo"),
@@ -75,8 +75,7 @@ export function getServerEnv(): ServerEnv {
     OPENAI_ANSWER_MODEL: process.env.OPENAI_ANSWER_MODEL,
     OPENAI_RESEARCH_MODEL: process.env.OPENAI_RESEARCH_MODEL,
     OPENAI_QUESTION_SOLVER_MODEL: process.env.OPENAI_QUESTION_SOLVER_MODEL,
-    OPENAI_GROUP_DISCUSSION_MODEL:
-      process.env.OPENAI_GROUP_DISCUSSION_MODEL,
+    OPENAI_GROUP_DISCUSSION_MODEL: process.env.OPENAI_GROUP_DISCUSSION_MODEL,
     OPENAI_GD_MOCK_MODE: process.env.OPENAI_GD_MOCK_MODE,
     COMPANY_INTELLIGENCE_STRICT_MODE:
       process.env.COMPANY_INTELLIGENCE_STRICT_MODE,
@@ -155,7 +154,9 @@ function isUnsuitableCompanyIntelligenceResearchModel(model: string): boolean {
   );
 }
 
-export function resolveCompanyIntelligenceResearchModel(env: ServerEnv): string {
+export function resolveCompanyIntelligenceResearchModel(
+  env: ServerEnv,
+): string {
   const configured = env.COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL.trim();
   if (!configured) {
     return defaultCompanyIntelligenceResearchModel;
@@ -163,10 +164,7 @@ export function resolveCompanyIntelligenceResearchModel(env: ServerEnv): string 
 
   if (isUnsuitableCompanyIntelligenceResearchModel(configured)) {
     const fallback = env.OPENAI_RESEARCH_MODEL.trim();
-    if (
-      fallback &&
-      !isUnsuitableCompanyIntelligenceResearchModel(fallback)
-    ) {
+    if (fallback && !isUnsuitableCompanyIntelligenceResearchModel(fallback)) {
       return fallback;
     }
     return defaultCompanyIntelligenceResearchModel;

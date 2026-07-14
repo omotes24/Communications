@@ -30,7 +30,7 @@ export default function SetupPage() {
   const providerName = "OpenAI API";
   const providerStatus = "OpenAI APIで動作";
   const modelRoleText =
-    "OpenAI APIを使う設定では、音声文字起こし、質問判定、回答生成、企業理解を用途別のOpenAIモデルに分けています。企業理解ではgpt-5.5とweb searchを使います。";
+    "OpenAI APIを使う設定では、音声文字起こし、質問判定、回答生成、企業理解を用途別のOpenAIモデルに分けています。通常回答ではgpt-5.6-luna、企業理解ではgpt-5.6-terraとweb searchを使います。";
   const envExample = `AI_PROVIDER=openai
 NEXT_PUBLIC_AI_PROVIDER=openai
 OPENAI_API_KEY=新しいAPIキー
@@ -39,8 +39,8 @@ OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
 OPENAI_TRANSCRIPTION_DELAY=high
 OPENAI_AUDIO_NOISE_REDUCTION=far_field
 OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
-OPENAI_ANSWER_MODEL=gpt-5.4-mini
-OPENAI_RESEARCH_MODEL=gpt-5.5
+OPENAI_ANSWER_MODEL=gpt-5.6-luna
+OPENAI_RESEARCH_MODEL=gpt-5.6-terra
 
 AI_MOCK_MODE=false`;
   const systemFlow = [
@@ -121,7 +121,8 @@ AI_MOCK_MODE=false`;
                 バックエンド
               </h2>
               <p className="mt-3 text-sm font-medium leading-7 text-[#6e6e73]">
-                サーバー側のRoute HandlerがAI APIを呼びます。文字起こし、質問判定、回答生成、企業リサーチはすべてサーバー経由で処理します。
+                サーバー側のRoute HandlerがAI
+                APIを呼びます。文字起こし、質問判定、回答生成、企業リサーチはすべてサーバー経由で処理します。
               </p>
               <div className="mt-4 grid gap-2 text-xs font-semibold text-[#424245]">
                 {apiRoutes.map((route) => (
@@ -220,7 +221,8 @@ AI_MOCK_MODE=false`;
               キーの変更場所
             </h2>
             <p className="mt-3 text-sm font-medium leading-7 text-[#6e6e73]">
-              ローカルではプロジェクト直下の `.env.local`、VercelではProject SettingsのEnvironment Variablesを変更します。
+              ローカルではプロジェクト直下の `.env.local`、VercelではProject
+              SettingsのEnvironment Variablesを変更します。
             </p>
           </div>
 

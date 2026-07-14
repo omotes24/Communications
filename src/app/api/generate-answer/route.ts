@@ -19,6 +19,7 @@ import {
 } from "@/lib/schemas/interview";
 import { mockGenerateAnswer, streamMockAnswer } from "@/lib/test/mock-openai";
 import { estimateGenerateAnswerTokens } from "@/lib/tokens/ai-estimates";
+import { adjustAnswerReservationForModel } from "@/lib/tokens/model-rates";
 import {
   createRequestIds,
   releaseAiTokenReservation,
@@ -48,10 +49,7 @@ function estimateReservedAnswerTokens(
   body: GenerateAnswerRequest,
 ): number {
   const estimatedAmount = estimateGenerateAnswerTokens(body);
-  if (model === "gpt-5.4-mini") {
-    return Math.max(1, Math.ceil(estimatedAmount / 3));
-  }
-  return estimatedAmount;
+  return adjustAnswerReservationForModel(model, estimatedAmount);
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -126,6 +124,11 @@ export async function POST(request: Request): Promise<Response> {
             model,
             instructions: buildAnswerInstructions(body.answerLanguage),
             input: buildAnswerInput(body),
+            ...(env.AI_PROVIDER === "openai" &&
+            !env.OPENAI_BASE_URL &&
+            model === "gpt-5.6-luna"
+              ? { reasoning: { effort: "none" as const } }
+              : {}),
             text: {
               format: zodTextFormat(answerDraftSchema, "answer_draft"),
               ...(env.AI_PROVIDER === "openai"

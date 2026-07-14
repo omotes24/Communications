@@ -68,8 +68,8 @@ const answerModelOptions: Array<{
         { mode: "fermi", label: "Groq 120B", description: "高精度" },
       ]
     : [
-        { mode: "standard", label: "5.4 mini", description: "高速" },
-        { mode: "fermi", label: "5.5", description: "高精度" },
+        { mode: "standard", label: "5.6 Luna", description: "高速" },
+        { mode: "fermi", label: "5.6 Terra", description: "高精度" },
       ];
 
 const remoteAnswerDuplicateWindowMs = 60_000;

@@ -70,7 +70,9 @@ export function buildVisualExtractionInput(question: DetectedQuestion): string {
 export function formatVisualExtraction(extraction: VisualExtraction): string {
   return [
     `信頼度: ${Math.round(extraction.confidence * 100)}%`,
-    extraction.extractedText ? `抽出テキスト:\n${extraction.extractedText}` : "",
+    extraction.extractedText
+      ? `抽出テキスト:\n${extraction.extractedText}`
+      : "",
     extraction.tableMarkdown ? `表:\n${extraction.tableMarkdown}` : "",
     extraction.graphDescription
       ? `グラフ・図の説明:\n${extraction.graphDescription}`
@@ -84,9 +86,10 @@ export function formatVisualExtraction(extraction: VisualExtraction): string {
         ].join("\n")
       : "",
     extraction.warnings.length
-      ? ["読み取り注意:", ...extraction.warnings.map((warning) => `- ${warning}`)].join(
-          "\n",
-        )
+      ? [
+          "読み取り注意:",
+          ...extraction.warnings.map((warning) => `- ${warning}`),
+        ].join("\n")
       : "",
   ]
     .filter(Boolean)
@@ -154,7 +157,7 @@ export function createMockSolvedQuestion(body: SolveQuestionRequest) {
     explanation:
       body.mode === "hint"
         ? "このモードでは答えを直接出しすぎず、どこに注目すべきかを示します。"
-        : "モック回答です。実APIではGPT-5.5が問題文・本文・選択肢をもとに解答と解説を返します。",
+        : "モック回答です。実APIではGPT-5.6 Terraが問題文・本文・選択肢をもとに解答と解説を返します。",
     steps: [
       {
         title: "条件整理",

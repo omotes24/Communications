@@ -75,7 +75,16 @@ const questionSolverRateCardMigration = readFileSync(
   ),
   "utf8",
 );
-const allMigrations = `${migration}\n${hardeningMigration}\n${billingMigration}\n${pricingMigration}\n${serviceRoleGrantsMigration}\n${researchWebSearchMultiplierMigration}\n${gpt54MiniAnswerRateMigration}\n${questionSolverRateCardMigration}`;
+const gpt56LunaAnswerRateMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202607150001_gpt56_luna_answer_rate.sql",
+  ),
+  "utf8",
+);
+const allMigrations = `${migration}\n${hardeningMigration}\n${billingMigration}\n${pricingMigration}\n${serviceRoleGrantsMigration}\n${researchWebSearchMultiplierMigration}\n${gpt54MiniAnswerRateMigration}\n${questionSolverRateCardMigration}\n${gpt56LunaAnswerRateMigration}`;
 
 describe("Supabase migration", () => {
   it("enables RLS for user data tables and defines token functions", () => {
@@ -91,7 +100,9 @@ describe("Supabase migration", () => {
       "token_reservations",
       "ai_usage_events",
     ]) {
-      expect(migration).toContain(`alter table public.${table} enable row level security`);
+      expect(migration).toContain(
+        `alter table public.${table} enable row level security`,
+      );
     }
 
     for (const fn of [
@@ -150,6 +161,12 @@ describe("Supabase migration", () => {
     expect(gpt54MiniAnswerRateMigration).toContain("'generate-answer'");
     expect(gpt54MiniAnswerRateMigration).toContain("0.3333");
     expect(gpt54MiniAnswerRateMigration).toContain("1.3333");
+    expect(gpt56LunaAnswerRateMigration).toContain("'gpt-5.6-luna'");
+    expect(gpt56LunaAnswerRateMigration).toContain("'generate-answer'");
+    expect(gpt56LunaAnswerRateMigration).toContain("'gpt56-luna-v1'");
+    expect(gpt56LunaAnswerRateMigration).toContain("0.4444");
+    expect(gpt56LunaAnswerRateMigration).toContain("0.1111");
+    expect(gpt56LunaAnswerRateMigration).toContain("1.7777");
     expect(pricingMigration).toContain(
       "('default-v2', '*', 'research-company', 1, 0.25, 4, 4, 0, 550, true)",
     );

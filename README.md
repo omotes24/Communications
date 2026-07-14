@@ -56,14 +56,14 @@ OPENAI_TRANSCRIPTION_MODEL=gpt-realtime-whisper
 OPENAI_TRANSCRIPTION_DELAY=high
 OPENAI_AUDIO_NOISE_REDUCTION=far_field
 OPENAI_CLASSIFIER_MODEL=gpt-5.4-nano
-OPENAI_ANSWER_MODEL=gpt-5.4-mini
-OPENAI_RESEARCH_MODEL=gpt-5.5
-OPENAI_GROUP_DISCUSSION_MODEL=gpt-5.5
+OPENAI_ANSWER_MODEL=gpt-5.6-luna
+OPENAI_RESEARCH_MODEL=gpt-5.6-terra
+OPENAI_GROUP_DISCUSSION_MODEL=gpt-5.6-terra
 OPENAI_GD_MOCK_MODE=false
 COMPANY_INTELLIGENCE_STRICT_MODE=true
 COMPANY_INTELLIGENCE_MOCK_MODE=false
-COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL=gpt-5.5
-COMPANY_INTELLIGENCE_SYNTHESIS_MODEL=gpt-5.5
+COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL=gpt-5.6-terra
+COMPANY_INTELLIGENCE_SYNTHESIS_MODEL=gpt-5.6-terra
 
 AI_MOCK_MODE=false
 
@@ -176,8 +176,8 @@ OpenAIへ送信される情報:
 
 - `COMPANY_INTELLIGENCE_STRICT_MODE`: `true` の場合、根拠なしの高速プレビューを表示しません。
 - `COMPANY_INTELLIGENCE_MOCK_MODE`: 複数の会社を比較する機能だけをモックにします。
-- `COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL`: 複数の会社を比較する調査用モデル。既定は `gpt-5.5` です。Organization認証が必要な `*-deep-research` 系モデルや `mini` 系モデルを設定している場合も、実行時は `OPENAI_RESEARCH_MODEL` へフォールバックします。
-- `COMPANY_INTELLIGENCE_SYNTHESIS_MODEL`: 正規化用モデル。既定は `gpt-5.5` です。
+- `COMPANY_INTELLIGENCE_DEEP_RESEARCH_MODEL`: 複数の会社を比較する調査用モデル。既定は `gpt-5.6-terra` です。Organization認証が必要な `*-deep-research` 系モデルや `mini` 系モデルを設定している場合も、実行時は `OPENAI_RESEARCH_MODEL` へフォールバックします。
+- `COMPANY_INTELLIGENCE_SYNTHESIS_MODEL`: 正規化用モデル。既定は `gpt-5.6-terra` です。
 
 未実装:
 
@@ -222,7 +222,7 @@ OpenAIへ送信される情報:
 
 追加環境変数:
 
-- `OPENAI_GROUP_DISCUSSION_MODEL`: GDテーマ生成、AI参加者、最終評価で使うモデル。既定は `gpt-5.5` です。
+- `OPENAI_GROUP_DISCUSSION_MODEL`: GDテーマ生成、AI参加者、最終評価で使うモデル。既定は `gpt-5.6-terra` です。
 - `OPENAI_GD_MOCK_MODE`: GD機能だけをモックにします。
 
 保存とプライバシー:
