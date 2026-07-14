@@ -17,9 +17,11 @@ export default function Home() {
           </p>
           <TypingHeadline />
           <p className="mx-auto mt-6 max-w-5xl text-base font-medium leading-7 text-[#6e6e73] sm:text-lg sm:leading-8">
-            LINEで面接予定を登録。面接前に自動で通知。
+            LINEでリマインダー通知。(まもなく使用可能)
+            <br className="sm:hidden" />
+            面接前に自動で通知。
             <br />
-            面接中は、あなたと応募先の情報をもとに、AIが回答案をリアルタイムで自動生成します。(まもなく使用可能です。)
+            面接中は、あなたと応募先の情報をもとに、AIが回答案をリアルタイムで自動生成します。
           </p>
           <p className="mt-4 text-sm font-semibold text-[#86868b]">
             Chromeのみに対応しています。

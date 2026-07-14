@@ -118,16 +118,20 @@ test("home message and theme customizer stay available", async ({ page }) => {
     }),
   ).toBeVisible();
   await expect(
-    page.getByText("LINEで面接予定を登録。面接前に自動で通知。", {
-      exact: false,
-    }),
-  ).toBeVisible();
-  await expect(
     page.getByText(
-      "面接中は、あなたと応募先の情報をもとに、AIが回答案をリアルタイムで自動生成します。(まもなく使用可能です。)",
+      "LINEでリマインダー通知。(まもなく使用可能)面接前に自動で通知。",
       { exact: false },
     ),
   ).toBeVisible();
+  await expect(
+    page.getByText(
+      "面接中は、あなたと応募先の情報をもとに、AIが回答案をリアルタイムで自動生成します。",
+      { exact: false },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText("LINEで面接予定を登録", { exact: false }),
+  ).toHaveCount(0);
   await expect(customize).toHaveCount(1);
   await customize.click();
   await page.getByRole("radio", { name: "慶應カラー", exact: true }).click();
