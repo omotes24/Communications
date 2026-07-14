@@ -162,6 +162,30 @@ test("home message and theme customizer stay available", async ({ page }) => {
   expect(documentWidth).toBeLessThanOrEqual(375);
 });
 
+test("company detail memo stays readable in Keio dark mode", async ({
+  page,
+}) => {
+  await page.goto("/company");
+  await page.evaluate(() => {
+    localStorage.setItem("yell-for-you:theme", "keio");
+    localStorage.setItem("yell-for-you:color-mode", "dark");
+  });
+  await page.reload();
+
+  const root = page.locator("html");
+  const detailMemo = page.getByTestId("company-detail-memo");
+  const detailMemoBody = page.getByTestId("company-detail-memo-body");
+
+  await expect(root).toHaveAttribute("data-app-theme", "keio");
+  await expect(root).toHaveAttribute("data-app-mode", "dark");
+  await expect(detailMemo).toHaveCSS("background-color", "rgb(35, 35, 38)");
+  await expect(detailMemo.locator("summary")).toHaveCSS(
+    "color",
+    "rgb(245, 245, 247)",
+  );
+  await expect(detailMemoBody).toHaveCSS("color", "rgb(161, 161, 170)");
+});
+
 test("group discussion practice flow works in mock mode", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "その他" }).click();

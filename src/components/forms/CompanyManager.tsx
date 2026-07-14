@@ -692,14 +692,20 @@ export function CompanyManager() {
               </p>
             ) : null}
 
-            <details className="mt-5 rounded-2xl border border-neutral-950/10 bg-neutral-50 p-4">
-              <summary className="cursor-pointer text-sm font-semibold">
+            <details
+              data-testid="company-detail-memo"
+              className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-[var(--foreground)]"
+            >
+              <summary className="cursor-pointer text-sm font-semibold text-[var(--foreground)]">
                 詳細メモ
               </summary>
-              <div className="mt-4 grid gap-4 text-sm leading-6 text-neutral-700">
+              <div
+                data-testid="company-detail-memo-body"
+                className="mt-4 grid gap-4 text-sm leading-6 text-[var(--muted)]"
+              >
                 {draft.fitHypotheses.length > 0 ? (
                   <div>
-                    <p className="font-semibold text-neutral-950">
+                    <p className="font-semibold text-[var(--foreground)]">
                       自己情報との接続
                     </p>
                     <ul className="mt-2 grid gap-2">
@@ -711,7 +717,7 @@ export function CompanyManager() {
                 ) : null}
                 {draft.interviewAngles.length > 0 ? (
                   <div>
-                    <p className="font-semibold text-neutral-950">
+                    <p className="font-semibold text-[var(--foreground)]">
                       面接で使う切り口
                     </p>
                     <ul className="mt-2 grid gap-2">
@@ -723,7 +729,9 @@ export function CompanyManager() {
                 ) : null}
                 {draft.reverseQuestions ? (
                   <div>
-                    <p className="font-semibold text-neutral-950">逆質問</p>
+                    <p className="font-semibold text-[var(--foreground)]">
+                      逆質問
+                    </p>
                     <p className="mt-2 whitespace-pre-wrap">
                       {draft.reverseQuestions}
                     </p>
