@@ -100,9 +100,7 @@ test("public legal and help pages render", async ({ page }) => {
   }
 });
 
-test("theme customizer persists and stays on home surfaces", async ({
-  page,
-}) => {
+test("previous home and theme customizer stay available", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -114,6 +112,9 @@ test("theme customizer persists and stays on home surfaces", async ({
   });
 
   await expect(root).toHaveAttribute("data-app-theme", "blue");
+  await expect(
+    page.getByRole("heading", { name: "Web面接を AIで完全攻略。" }),
+  ).toBeVisible();
   await expect(customize).toHaveCount(1);
   await customize.click();
   await page.getByRole("radio", { name: "慶應カラー", exact: true }).click();
@@ -126,13 +127,8 @@ test("theme customizer persists and stays on home surfaces", async ({
   await expect(root).toHaveAttribute("data-app-mode", "dark");
 
   await page.goto("/terms");
-  await expect(customize).toHaveCount(0);
-  await expect(root).toHaveAttribute("data-app-theme", "keio");
-
-  await page.goto("/profile");
   await expect(customize).toHaveCount(1);
-  await page.goto("/company");
-  await expect(customize).toHaveCount(0);
+  await expect(root).toHaveAttribute("data-app-theme", "keio");
 
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/");

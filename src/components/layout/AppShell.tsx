@@ -54,7 +54,6 @@ export function AppShell({
     null,
   );
   const displayedPathname = intent?.from === pathname ? intent.to : pathname;
-  const showThemeCustomizer = pathname === "/" || pathname === "/profile";
   const canCollapse =
     displayedPathname.startsWith("/support") ||
     displayedPathname.startsWith("/english-interview");
@@ -130,7 +129,7 @@ export function AppShell({
           <Link href="/terms">規約</Link>
           <Link href="/help">問い合わせ</Link>
           <Link href="/setup">仕組み</Link>
-          {showThemeCustomizer ? <ThemeCustomizer tone={variant} /> : null}
+          <ThemeCustomizer tone={variant} />
         </footer>
       </div>
 
