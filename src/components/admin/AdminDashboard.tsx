@@ -261,7 +261,7 @@ export function AdminDashboard() {
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Metric
               icon={JapaneseYen}
-              label="30日売上"
+              label="売り上げ"
               value={`¥${n(stats.revenue?.last30dJpy)}`}
               detail={`累計 ¥${n(stats.revenue?.totalJpy)} / ${n(stats.revenue?.purchases)}件`}
               tone="blue"
