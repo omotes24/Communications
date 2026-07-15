@@ -2,8 +2,11 @@ import Link from "next/link";
 import { Languages } from "lucide-react";
 
 import { ChromeStartButton } from "@/components/home/ChromeStartButton";
+import { AdminHomeLink } from "@/components/home/AdminHomeLink";
 import { TypingHeadline } from "@/components/home/TypingHeadline";
 import { AppShell } from "@/components/layout/AppShell";
+
+export const dynamic = "force-dynamic";
 
 export default function Home() {
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Yell for You 1.3";
@@ -41,6 +44,7 @@ export default function Home() {
               <Languages className="h-4 w-4" aria-hidden />
               英語面接
             </Link>
+            <AdminHomeLink />
           </div>
         </div>
 

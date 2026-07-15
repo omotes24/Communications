@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 
 import { AdminAnalyticsDashboard } from "@/components/admin/AdminAnalyticsDashboard";
 import { AppShell } from "@/components/layout/AppShell";
@@ -10,7 +10,7 @@ export default async function AdminAnalyticsPage() {
   const admin = await getAdminUser();
 
   if (!admin) {
-    notFound();
+    redirect("/");
   }
 
   return (
