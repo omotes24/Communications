@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { AnalyticsPrivacyControl } from "@/components/privacy/AnalyticsPrivacyControl";
 
 export default function PrivacyPage() {
   return (
@@ -30,6 +31,19 @@ export default function PrivacyPage() {
           <p className="mt-2">
             認証・DB保存にはSupabase、ホスティングにはVercel、AI処理にはOpenAI、決済にはStripe、認証メールと問い合わせメール送信には設定済みのメール配信事業者を利用します。
           </p>
+        </section>
+        <section>
+          <h2 className="text-xl font-semibold text-[var(--foreground)]">
+            アクセス解析
+          </h2>
+          <p className="mt-2">
+            サービス改善のため、閲覧したページグループ、閲覧日時、画面幅によるデバイス区分、タブを閉じるまで有効なランダムなセッションIDを収集する場合があります。セッションIDはサーバー側で一方向にハッシュ化し、生の値は保存しません。IPアドレス、User-Agent、参照元URL、クエリ文字列、氏名、メールアドレス、入力内容は収集しません。
+          </p>
+          <p className="mt-2">
+            生のアクセス記録は90日で削除します。Do Not TrackまたはGlobal Privacy
+            Controlが有効なブラウザでは収集せず、下の設定からブラウザ単位でいつでも無効にできます。
+          </p>
+          <AnalyticsPrivacyControl />
         </section>
         <section>
           <h2 className="text-xl font-semibold text-[#1d1d1f]">決済データ</h2>

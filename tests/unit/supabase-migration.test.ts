@@ -84,6 +84,15 @@ const gpt56LunaAnswerRateMigration = readFileSync(
   ),
   "utf8",
 );
+const webAnalyticsMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202607150003_web_analytics.sql",
+  ),
+  "utf8",
+);
 const allMigrations = `${migration}\n${hardeningMigration}\n${billingMigration}\n${pricingMigration}\n${serviceRoleGrantsMigration}\n${researchWebSearchMultiplierMigration}\n${gpt54MiniAnswerRateMigration}\n${questionSolverRateCardMigration}\n${gpt56LunaAnswerRateMigration}`;
 
 describe("Supabase migration", () => {
@@ -209,5 +218,24 @@ describe("Supabase migration", () => {
       expect(serviceRoleGrantsMigration).toContain(`public.${table}`);
     }
     expect(serviceRoleGrantsMigration).toContain("to service_role");
+  });
+
+  it("keeps anonymous web analytics service-only and expires raw rows", () => {
+    expect(webAnalyticsMigration).toContain(
+      "alter table public.web_analytics_page_views enable row level security",
+    );
+    expect(webAnalyticsMigration).toContain(
+      "revoke all on table public.web_analytics_page_views from anon, authenticated",
+    );
+    expect(webAnalyticsMigration).toContain("interval '90 days'");
+    expect(webAnalyticsMigration).toContain(
+      "function public.get_web_analytics_summary",
+    );
+    expect(webAnalyticsMigration).toContain(
+      "grant execute on function public.get_web_analytics_summary(integer) to service_role",
+    );
+    expect(webAnalyticsMigration).toContain(
+      "page_view.path_group not like '/admin%'",
+    );
   });
 });

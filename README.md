@@ -17,12 +17,14 @@
 - Stripe Checkoutによるトークン購入
 - Stripe webhook検証後のトークン付与
 - 公開ページ: `/privacy`, `/terms`, `/account-deletion`, `/help`, `/pricing`
-- 管理ダッシュボード: `/admin`（管理者のみ）
+- 管理ダッシュボード: `/admin`、Webアクセス分析: `/admin/analytics`（管理者のみ）
 
 ## 管理ダッシュボード
 
 `/admin` で、ユーザー数・トークン残高合計・機能別/日別の使用量・Stripe売上・
 最近の購入とトークンイベントをリアルタイム（30秒ごと自動更新）に確認できます。
+`/admin/analytics` では、7日・30日・90日のページビュー、匿名セッション、
+日別推移、ページ別・デバイス別の内訳を確認できます。
 
 - 管理者は環境変数 `ADMIN_USER_IDS`（カンマ区切りのSupabase Auth UUID）で指定します。
   例: `ADMIN_USER_IDS=owner-uuid,friend-uuid`
@@ -31,6 +33,10 @@
   Vercelの環境変数から変更できるため、デプロイ権限を持つメンバーが管理者を追加できます。
 - データはSupabaseの `token_wallets` / `token_ledger` / `ai_usage_events` /
   `stripe_checkout_grants` を集計しています（サービスロールキーが必要）。
+- Webアクセスは `NEXT_PUBLIC_PRODUCT_ANALYTICS_ENABLED=true` のときだけ収集します。
+  タブ単位のランダムIDをサーバーでHMAC/SHA-256化し、IP、User-Agent、
+  参照元URL、クエリ文字列、氏名、メール、入力内容は保存しません。
+  生のページビューは90日で削除し、`/admin` 以下は集計しません。
 - ローカル開発（`LOCAL_AUTH_BYPASS=true`・管理者設定未指定）では
   仮ユーザーが管理者として扱われ、レイアウトの確認ができます。
 
@@ -285,7 +291,7 @@ Google Meetの相手側音声を拾う場合は、SafariではなくChromeまた
 
 - 生音声は標準保存しません。
 - 将来の面接アーカイブはメタデータ契約のみで、音声・全文文字起こしの保存処理と通常ユーザーUIは未実装です。
-- 行動分析は既定で無効です。有効時もメール、氏名、IP、User-Agent、プロンプト、生音声、全文文字起こしは収集しません。
+- 行動分析は既定で無効です。有効時はページグループ、日時、画面幅によるデバイス区分、タブ単位の匿名セッションだけを90日間保持します。メール、氏名、IP、User-Agent、参照元URL、クエリ文字列、プロンプト、生音声、全文文字起こしは収集しません。Do Not Track / Global Privacy Controlと公開プライバシー画面のブラウザ別オプトアウトを尊重します。
 - セッション終了時に取得済みMediaStreamTrackを停止します。
 - 文字起こし結果は画面表示と質問判定に使われます。
 - ユーザーが履歴保存した場合だけ、関連する質問・回答がSupabaseへ保存されます。
