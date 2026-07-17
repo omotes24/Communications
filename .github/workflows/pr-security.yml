@@ -38,5 +38,5 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Build without production secrets
-        run: npm run build
+      - name: Build Cloudflare Worker without production secrets
+        run: npm run build:cloudflare

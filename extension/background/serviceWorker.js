@@ -2,7 +2,7 @@ const tabQuestions = new Map();
 const tabFrameDetections = new Map();
 // トークン課金残高を使うため、送信先は常に本番サイトに固定する
 // （ユーザーが変更できる設定は置かない）。
-const API_BASE_URL = "https://communications-umber.vercel.app";
+const API_BASE_URL = "https://www.yell-for-you.jp";
 
 function notifyRuntime(message) {
   chrome.runtime.sendMessage(message, () => {
@@ -97,7 +97,6 @@ function sendDetectionToTab(tabId, message, sendResponse, retry = true) {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 });
-
 chrome.action.onClicked.addListener((tab) => {
   if (tab.id) {
     chrome.sidePanel.open({ tabId: tab.id });

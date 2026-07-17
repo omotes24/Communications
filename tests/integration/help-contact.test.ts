@@ -1,7 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  checkRateLimit: vi.fn(),
   sendContactEmail: vi.fn(),
+}));
+
+vi.mock("@/lib/api/rate-limit", () => ({
+  checkRateLimit: mocks.checkRateLimit,
+  rateLimitResponse: (retryAfterSeconds: number) =>
+    Response.json(
+      { error: "rate limited" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfterSeconds) },
+      },
+    ),
 }));
 
 vi.mock("@/lib/help/contact-email", async (importOriginal) => {
@@ -74,6 +87,7 @@ function buildMultipartContactRequest(
 describe("help contact route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.checkRateLimit.mockReturnValue({ ok: true });
     process.env.RESEND_API_KEY = "re_test";
     process.env.HELP_CONTACT_FROM_EMAIL = "Yell for You <support@example.com>";
     process.env.HELP_CONTACT_TO_EMAIL = "owner@example.com";
@@ -99,6 +113,27 @@ describe("help contact route", () => {
       subject: "送信テスト",
       message: "問い合わせフォームの送信テストです。",
       userAgent: "vitest",
+    });
+  });
+
+  it("uses Cloudflare's connecting IP before proxy fallback headers", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/help/contact", {
+        method: "POST",
+        headers: {
+          "cf-connecting-ip": "198.51.100.25",
+          "x-forwarded-for": "203.0.113.20, 203.0.113.21",
+          "x-real-ip": "203.0.113.22",
+        },
+        body: JSON.stringify(validBody),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.checkRateLimit).toHaveBeenCalledWith({
+      key: "help-contact:198.51.100.25",
+      limit: 5,
+      windowMs: 10 * 60_000,
     });
   });
 

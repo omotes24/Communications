@@ -29,7 +29,8 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-xl font-semibold text-[#1d1d1f]">外部送信先</h2>
           <p className="mt-2">
-            認証・DB保存にはSupabase、ホスティングにはVercel、AI処理にはOpenAI、決済にはStripe、認証メールと問い合わせメール送信には設定済みのメール配信事業者を利用します。
+            認証・DB保存にはSupabase、ホスティングにはCloudflare
+            Workers、AI処理にはOpenAI、決済にはStripe、認証メールと問い合わせメール送信には設定済みのメール配信事業者を利用します。
           </p>
         </section>
         <section>

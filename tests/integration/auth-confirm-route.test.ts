@@ -28,19 +28,19 @@ describe("auth confirmation routes", () => {
 
   it("exchanges PKCE codes and redirects to the default profile page", async () => {
     const response = await confirmGET(
-      request("https://communications-umber.vercel.app/auth/confirm?code=abc"),
+      request("https://www.yell-for-you.jp/auth/confirm?code=abc"),
     );
 
     expect(authMocks.exchangeCodeForSession).toHaveBeenCalledWith("abc");
     expect(response.headers.get("location")).toBe(
-      "https://communications-umber.vercel.app/profile",
+      "https://www.yell-for-you.jp/profile",
     );
   });
 
   it("verifies token hash confirmation links and respects safe next paths", async () => {
     const response = await confirmGET(
       request(
-        "https://communications-umber.vercel.app/auth/confirm?token_hash=hash&type=email&next=/account",
+        "https://www.yell-for-you.jp/auth/confirm?token_hash=hash&type=email&next=/account",
       ),
     );
 
@@ -49,69 +49,69 @@ describe("auth confirmation routes", () => {
       type: "email",
     });
     expect(response.headers.get("location")).toBe(
-      "https://communications-umber.vercel.app/account",
+      "https://www.yell-for-you.jp/account",
     );
   });
 
   it("redirects recovery links to the password reset page", async () => {
     const response = await confirmGET(
       request(
-        "https://communications-umber.vercel.app/auth/confirm?token_hash=hash&type=recovery&next=/account",
+        "https://www.yell-for-you.jp/auth/confirm?token_hash=hash&type=recovery&next=/account",
       ),
     );
 
     expect(authMocks.verifyOtp).not.toHaveBeenCalled();
     expect(response.headers.get("location")).toBe(
-      "https://communications-umber.vercel.app/auth/reset-password?token_hash=hash&type=recovery",
+      "https://www.yell-for-you.jp/auth/reset-password?token_hash=hash&type=recovery",
     );
   });
 
   it("keeps old password reset code links off the protected account page", async () => {
     const response = await confirmGET(
       request(
-        "https://communications-umber.vercel.app/auth/confirm?code=abc&next=/account",
+        "https://www.yell-for-you.jp/auth/confirm?code=abc&next=/account",
       ),
     );
 
     expect(authMocks.exchangeCodeForSession).not.toHaveBeenCalled();
     expect(response.headers.get("location")).toBe(
-      "https://communications-umber.vercel.app/auth/reset-password?code=abc",
+      "https://www.yell-for-you.jp/auth/reset-password?code=abc",
     );
   });
 
   it("passes recovery PKCE codes to the browser reset flow", async () => {
     const response = await confirmGET(
       request(
-        "https://communications-umber.vercel.app/auth/confirm?code=abc&type=recovery",
+        "https://www.yell-for-you.jp/auth/confirm?code=abc&type=recovery",
       ),
     );
 
     expect(authMocks.exchangeCodeForSession).not.toHaveBeenCalled();
     expect(response.headers.get("location")).toBe(
-      "https://communications-umber.vercel.app/auth/reset-password?code=abc",
+      "https://www.yell-for-you.jp/auth/reset-password?code=abc",
     );
   });
 
   it("falls back to the profile page for unsafe next paths", async () => {
     const response = await confirmGET(
       request(
-        "https://communications-umber.vercel.app/auth/confirm?code=abc&next=https://evil.example",
+        "https://www.yell-for-you.jp/auth/confirm?code=abc&next=https://evil.example",
       ),
     );
 
     expect(response.headers.get("location")).toBe(
-      "https://communications-umber.vercel.app/profile",
+      "https://www.yell-for-you.jp/profile",
     );
   });
 
   it("keeps the legacy callback route compatible", async () => {
     const response = await callbackGET(
-      request("https://communications-umber.vercel.app/auth/callback?code=abc"),
+      request("https://www.yell-for-you.jp/auth/callback?code=abc"),
     );
 
     expect(authMocks.exchangeCodeForSession).toHaveBeenCalledWith("abc");
     expect(response.headers.get("location")).toBe(
-      "https://communications-umber.vercel.app/profile",
+      "https://www.yell-for-you.jp/profile",
     );
   });
 
@@ -121,11 +121,11 @@ describe("auth confirmation routes", () => {
     });
 
     const response = await confirmGET(
-      request("https://communications-umber.vercel.app/auth/confirm?code=bad"),
+      request("https://www.yell-for-you.jp/auth/confirm?code=bad"),
     );
 
     expect(response.headers.get("location")).toBe(
-      "https://communications-umber.vercel.app/auth/login?auth_callback=failed",
+      "https://www.yell-for-you.jp/auth/login?auth_callback=failed",
     );
   });
 });

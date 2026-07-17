@@ -6,6 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy:staging": "opennextjs-cloudflare build && opennextjs-cloudflare deploy -- --config wrangler.staging.jsonc --keep-vars",
+    "deploy:production": "opennextjs-cloudflare build && opennextjs-cloudflare deploy -- --config wrangler.jsonc --keep-vars",
+    "upload:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare upload -- --keep-vars",
+    "cf:typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -18,12 +24,15 @@
     "format": "prettier --check .",
     "format:write": "prettier --write ."
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "clsx": "^2.1.1",
     "lucide-react": "^1.21.0",
-    "next": "16.2.9",
+    "next": "16.2.10",
     "openai": "^6.44.0",
     "pdfjs-dist": "^5.4.296",
     "react": "19.2.4",
@@ -33,6 +42,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.1",
     "@playwright/test": "^1.61.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
@@ -43,13 +53,19 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^9",
-    "eslint-config-next": "16.2.9",
+    "eslint-config-next": "16.2.10",
     "eslint-config-prettier": "^10.1.8",
     "jsdom": "^29.1.1",
     "prettier": "^3.8.4",
     "supabase": "^2.107.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "wrangler": "^4.112.0"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.19"
+    }
   }
 }

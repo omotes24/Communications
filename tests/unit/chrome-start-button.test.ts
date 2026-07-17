@@ -15,13 +15,13 @@ describe("ChromeStartButton helpers", () => {
   it("uses normal navigation on smartphones", () => {
     expect(
       getChromeStartHref(
-        "https://communications-umber.vercel.app/",
+        "https://www.yell-for-you.jp/",
         "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/143.0.0.0 Mobile/15E148 Safari/604.1",
       ),
     ).toBe("/profile");
     expect(
       getChromeStartHref(
-        "https://communications-umber.vercel.app/",
+        "https://www.yell-for-you.jp/",
         "Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36",
       ),
     ).toBe("/profile");
@@ -30,15 +30,15 @@ describe("ChromeStartButton helpers", () => {
   it("opens desktop Safari and other desktop browsers through Chrome", () => {
     expect(
       getChromeStartHref(
-        "https://communications-umber.vercel.app/company",
+        "https://www.yell-for-you.jp/company",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
       ),
-    ).toBe("google-chrome://https://communications-umber.vercel.app/profile");
+    ).toBe("google-chrome://https://www.yell-for-you.jp/profile");
   });
 
   it("builds macOS Chrome launch URLs", () => {
-    expect(toDesktopChromeUrl("https://communications-umber.vercel.app/profile")).toBe(
-      "google-chrome://https://communications-umber.vercel.app/profile",
+    expect(toDesktopChromeUrl("https://www.yell-for-you.jp/profile")).toBe(
+      "google-chrome://https://www.yell-for-you.jp/profile",
     );
   });
 

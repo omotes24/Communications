@@ -6,7 +6,7 @@
 
 ## アプリ側の認可
 
-Vercel Productionの `ADMIN_USER_IDS` には、オーナーのSupabase Auth `User UID`
+Cloudflare Production WorkerのSecret `ADMIN_USER_IDS` には、オーナーのSupabase Auth `User UID`
 （UUID）を1件だけ登録します。
 
 ```text
@@ -30,7 +30,7 @@ ADMIN_USER_IDS=<owner-supabase-user-uuid>
 | ---------------------------- | ---------- | -------- |
 | GitHub作業ブランチ・PR       | 可         | 可       |
 | `main` への取り込み          | 不可       | 可       |
-| Vercel Production            | 不可       | 可       |
+| Cloudflare Production Worker | 不可       | 可       |
 | Supabase Production          | 不可       | 可       |
 | Stripe / OpenAI / 本番秘密鍵 | 不可       | 可       |
 | `/admin` と管理API           | 不可       | 可       |
@@ -46,13 +46,13 @@ rulesetでも次を設定します。
 - force pushとブランチ削除を禁止する
 - 共同編集者をbypass対象へ追加しない
 
-共同編集者を現在のVercelチームや本番Supabaseプロジェクトへ招待してはいけません。
+共同編集者をCloudflare本番アカウントや本番Supabaseプロジェクトへ招待してはいけません。
 本番デプロイ権限がある人は、管理画面の認可コードを変更したりService Roleを使う
 コードをデプロイできるため、アプリ内のアクセス制御だけでは情報を守れません。
 
 ## Preview / Staging
 
-共同編集者による動作確認が必要なら、本番と別のVercelプロジェクト、Supabase
+共同編集者による動作確認が必要なら、本番と別のCloudflare Worker、Supabase
 プロジェクト、Stripeテスト環境を使います。本番のService Role、Stripe Secret、
 OpenAIキー、ユーザーデータをPreviewへ渡しません。オーナーアカウントで共同編集者の
 Previewへログインもしません。
@@ -75,7 +75,7 @@ INTERVIEW_EXPERIENCE_ENABLED=false
 ## アカウント防御
 
 - オーナーアカウントは共有しない
-- Supabase AuthとVercelでMFAを有効にする
+- Supabase AuthとCloudflareでMFAを有効にする
 - パスワードが会話、画面共有、ログへ出た場合は直ちに変更する
 - パスワード変更時は既存セッションも失効させる
 - CSVにはメール、氏名、生のプロンプト、生音声、全文文字起こしを含めない
