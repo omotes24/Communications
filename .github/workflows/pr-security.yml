@@ -40,3 +40,6 @@ jobs:
 
       - name: Build Cloudflare Worker without production secrets
         run: npm run build:cloudflare
+
+      - name: Enforce Cloudflare Free bundle limit
+        run: npm run check:cloudflare-size
