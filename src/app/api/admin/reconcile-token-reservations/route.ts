@@ -2,7 +2,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 
 import { z } from "zod";
 
-import { jsonError, toPublicError } from "@/lib/privacy/logging";
+import { toPublicError } from "@/lib/privacy/logging";
+import { privateJson } from "@/lib/privacy/private-response";
 import { reconcileExpiredTokenReservations } from "@/lib/tokens/service";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export async function POST(request: Request): Promise<Response> {
 
 async function reconcile(request: Request): Promise<Response> {
   if (!hasValidCronAuthorization(request)) {
-    return jsonError("認証に失敗しました。", 401);
+    return privateJson({ error: "認証に失敗しました。" }, { status: 401 });
   }
 
   try {
@@ -30,16 +31,10 @@ async function reconcile(request: Request): Promise<Response> {
     const body = rawBody
       ? reconcileRequestSchema.catch({}).parse(JSON.parse(rawBody))
       : {};
-    return Response.json(
-      await reconcileExpiredTokenReservations(body.limit ?? 100),
-      {
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      },
-    );
+    const result = await reconcileExpiredTokenReservations(body.limit ?? 100);
+    return privateJson({ released: result.released });
   } catch (error) {
-    return jsonError(toPublicError(error), 400);
+    return privateJson({ error: toPublicError(error) }, { status: 400 });
   }
 }
 

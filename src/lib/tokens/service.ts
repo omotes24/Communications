@@ -318,14 +318,9 @@ export async function reserveAiTokens({
 
 export async function reconcileExpiredTokenReservations(limit = 100): Promise<{
   released: number;
-  reservations: Array<{
-    request_id: string;
-    user_id: string;
-    released_amount: number;
-  }>;
 }> {
   if (shouldUseMemoryTokenStore()) {
-    return { released: 0, reservations: [] };
+    return { released: 0 };
   }
 
   if (!isTokenSystemConfigured()) {
@@ -344,15 +339,7 @@ export async function reconcileExpiredTokenReservations(limit = 100): Promise<{
     throw error;
   }
 
-  const reservations = (data ?? []) as unknown as Array<{
-    request_id: string;
-    user_id: string;
-    released_amount: number;
-  }>;
-  return {
-    released: reservations.length,
-    reservations,
-  };
+  return { released: Array.isArray(data) ? data.length : 0 };
 }
 
 export async function settleAiTokens(

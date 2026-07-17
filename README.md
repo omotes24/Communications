@@ -26,19 +26,20 @@
 `/admin/analytics` では、7日・30日・90日のページビュー、匿名セッション、
 日別推移、ページ別・デバイス別の内訳を確認できます。
 
-- 管理者は環境変数 `ADMIN_USER_IDS`（カンマ区切りのSupabase Auth UUID）で指定します。
-  例: `ADMIN_USER_IDS=owner-uuid,friend-uuid`
-- `ADMIN_EMAILS` は既存環境からの移行用です。登録手順は
+- 経営管理情報へアクセスできるのは単一オーナーだけです。`ADMIN_USER_IDS` には
+  オーナーのSupabase Auth UUIDを1件だけ指定し、サーバーはUUIDとオーナーメールの
+  両方が一致した場合だけ許可します。複数値、旧 `ADMIN_EMAILS`、開発用バイパスは
+  すべて拒否します。
+- 共同編集者にはGitHubの作業ブランチ・PR作成権限だけを付与します。本番Vercel、
+  本番Supabase、Stripe、OpenAI、本番環境変数への権限は付与しません。詳しい手順は
   [`docs/admin-dashboard.md`](docs/admin-dashboard.md) を参照してください。
-  Vercelの環境変数から変更できるため、デプロイ権限を持つメンバーが管理者を追加できます。
 - データはSupabaseの `token_wallets` / `token_ledger` / `ai_usage_events` /
   `stripe_checkout_grants` を集計しています（サービスロールキーが必要）。
 - Webアクセスは `NEXT_PUBLIC_PRODUCT_ANALYTICS_ENABLED=true` のときだけ収集します。
   タブ単位のランダムIDをサーバーでHMAC/SHA-256化し、IP、User-Agent、
   参照元URL、クエリ文字列、氏名、メール、入力内容は保存しません。
   生のページビューは90日で削除し、`/admin` 以下は集計しません。
-- ローカル開発（`LOCAL_AUTH_BYPASS=true`・管理者設定未指定）では
-  仮ユーザーが管理者として扱われ、レイアウトの確認ができます。
+- ローカル開発でも管理ダッシュボードの認可は緩和されません。
 
 ## セットアップ
 

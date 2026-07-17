@@ -549,7 +549,7 @@ export function AdminDashboard() {
 
           <p className="px-1 text-xs font-medium leading-5 text-[#6e6e73]">
             管理者は変更されにくいSupabase Auth
-            UUID（ADMIN_USER_IDS）で指定します。匿名IDを環境間で安定させるにはADMIN_AUDIT_HMAC_SECRETを設定してください。管理者以外には管理画面・APIとも404を返します。
+            単一オーナーのUUID（ADMIN_USER_IDS）と登録メールの両方で認証します。匿名IDを環境間で安定させるにはADMIN_AUDIT_HMAC_SECRETを設定してください。オーナー以外には管理画面・APIとも情報を返しません。
           </p>
         </div>
       ) : null}

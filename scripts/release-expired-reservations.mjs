@@ -33,4 +33,4 @@ if (error) {
   process.exit(1);
 }
 
-console.log(JSON.stringify({ released: data?.length ?? 0, reservations: data }, null, 2));
+console.log(JSON.stringify({ released: data?.length ?? 0 }, null, 2));

@@ -74,7 +74,11 @@ describe("administrator web analytics route", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("cache-control")).toBe(
+      "private, no-store, max-age=0",
+    );
+    expect(response.headers.get("pragma")).toBe("no-cache");
+    expect(response.headers.get("vary")).toContain("Cookie");
     expect(body).toMatchObject({
       configured: true,
       collectionEnabled: true,

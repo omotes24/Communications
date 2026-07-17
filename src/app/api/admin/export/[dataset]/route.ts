@@ -2,6 +2,10 @@ import { createHash, createHmac } from "node:crypto";
 
 import { requireAdminApiUser } from "@/lib/auth/admin";
 import { estimateOpenAiCostUsd } from "@/lib/billing/openai-cost";
+import {
+  privateJson,
+  privateNoStoreHeaders,
+} from "@/lib/privacy/private-response";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getServerSupabaseConfig } from "@/lib/supabase/server-config";
 
@@ -57,7 +61,9 @@ async function paginate<T>(
 
 function csvCell(value: unknown): string {
   if (value == null) return "";
-  const text = typeof value === "object" ? JSON.stringify(value) : String(value);
+  let text = typeof value === "object" ? JSON.stringify(value) : String(value);
+  // Spreadsheet applications must not interpret exported user-controlled text as a formula.
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
@@ -72,13 +78,11 @@ function csvResponse(
     .join("\r\n")}\r\n`;
   const date = new Date().toISOString().slice(0, 10);
   return new Response(body, {
-    headers: {
+    headers: privateNoStoreHeaders({
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="yfy-${dataset}-${date}.csv"`,
-      "Cache-Control": "private, no-store",
-      "X-Content-Type-Options": "nosniff",
       "X-Export-Truncated": truncated ? "true" : "false",
-    },
+    }),
   });
 }
 
@@ -172,10 +176,10 @@ export async function GET(
 
   const { dataset } = await params;
   if (!supportedDatasets.has(dataset)) {
-    return Response.json({ error: "Not found" }, { status: 404 });
+    return privateJson({ error: "Not found" }, { status: 404 });
   }
   if (!getServerSupabaseConfig()?.serviceRoleKey) {
-    return Response.json({ error: "Export unavailable" }, { status: 503 });
+    return privateJson({ error: "Export unavailable" }, { status: 503 });
   }
 
   const supabase = createSupabaseServiceClient();
@@ -186,7 +190,9 @@ export async function GET(
     const result = await paginate<PurchaseRow>((from, to) =>
       supabase
         .from("stripe_checkout_grants")
-        .select("user_id, plan_id, amount_jpy, token_amount, livemode, created_at")
+        .select(
+          "user_id, plan_id, amount_jpy, token_amount, livemode, created_at",
+        )
         .order("created_at", { ascending: false })
         .range(from, to),
     );
@@ -400,7 +406,9 @@ export async function GET(
       paginate<PurchaseRow>((from, to) =>
         supabase
           .from("stripe_checkout_grants")
-          .select("user_id, plan_id, amount_jpy, token_amount, livemode, created_at")
+          .select(
+            "user_id, plan_id, amount_jpy, token_amount, livemode, created_at",
+          )
           .order("created_at", { ascending: false })
           .range(from, to),
       ),
@@ -545,7 +553,8 @@ export async function GET(
     value.count += 1;
     value.amount += Number(row.amount_jpy || 0);
     value.tokens += Number(row.token_amount || 0);
-    if (!value.lastAt || row.created_at > value.lastAt) value.lastAt = row.created_at;
+    if (!value.lastAt || row.created_at > value.lastAt)
+      value.lastAt = row.created_at;
     purchases.set(row.user_id, value);
   }
   const usageByUser = new Map<

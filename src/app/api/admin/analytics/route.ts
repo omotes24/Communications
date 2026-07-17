@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { requireAdminApiUser } from "@/lib/auth/admin";
+import { privateJson } from "@/lib/privacy/private-response";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getServerSupabaseConfig } from "@/lib/supabase/server-config";
 
@@ -50,13 +51,6 @@ const summarySchema = z.object({
     }),
   ),
 });
-
-function privateJson(body: unknown, init?: ResponseInit): Response {
-  const headers = new Headers(init?.headers);
-  headers.set("Cache-Control", "private, no-store");
-  headers.set("X-Content-Type-Options", "nosniff");
-  return Response.json(body, { ...init, headers });
-}
 
 function rangeFromRequest(request: Request): number | null {
   const raw = new URL(request.url).searchParams.get("days");

@@ -1,0 +1,16 @@
+# Management authorization, production configuration, and every other change
+# require review by the sole production owner.
+* @omotes24
+
+/.github/ @omotes24
+/src/lib/auth/ @omotes24
+/src/lib/admin/ @omotes24
+/src/lib/supabase/ @omotes24
+/src/lib/privacy/ @omotes24
+/src/app/admin/ @omotes24
+/src/app/api/admin/ @omotes24
+/src/app/api/interview-experiences/ @omotes24
+/supabase/ @omotes24
+/.env.example @omotes24
+/README.md @omotes24
+/docs/admin-dashboard.md @omotes24

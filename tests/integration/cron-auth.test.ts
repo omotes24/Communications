@@ -8,10 +8,7 @@ vi.mock("@/lib/tokens/service", () => ({
   reconcileExpiredTokenReservations: mocks.reconcileExpiredTokenReservations,
 }));
 
-import {
-  GET,
-  POST,
-} from "@/app/api/admin/reconcile-token-reservations/route";
+import { GET, POST } from "@/app/api/admin/reconcile-token-reservations/route";
 
 describe("expired reservation reconciliation cron auth", () => {
   beforeEach(() => {
@@ -20,7 +17,6 @@ describe("expired reservation reconciliation cron auth", () => {
     delete process.env.VERCEL_CRON_SECRET;
     mocks.reconcileExpiredTokenReservations.mockResolvedValue({
       released: 0,
-      reservations: [],
     });
   });
 
@@ -41,6 +37,16 @@ describe("expired reservation reconciliation cron auth", () => {
 
   it("accepts the Vercel Cron GET Authorization bearer token", async () => {
     process.env.CRON_SECRET = "cron-secret-value";
+    mocks.reconcileExpiredTokenReservations.mockResolvedValue({
+      released: 1,
+      reservations: [
+        {
+          request_id: "private-request-id",
+          user_id: "private-user-id",
+          released_amount: 100,
+        },
+      ],
+    });
 
     const response = await GET(
       new Request("http://localhost/api/admin/reconcile-token-reservations", {
@@ -52,6 +58,10 @@ describe("expired reservation reconciliation cron auth", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.reconcileExpiredTokenReservations).toHaveBeenCalledWith(100);
+    expect(await response.json()).toEqual({ released: 1 });
+    expect(response.headers.get("cache-control")).toBe(
+      "private, no-store, max-age=0",
+    );
   });
 
   it("accepts protected manual POST execution with a limit", async () => {

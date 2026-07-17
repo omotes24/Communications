@@ -1,25 +1,66 @@
-# 管理ダッシュボード運用手順
+# オーナー専用管理画面と共同編集の運用手順
 
-経営管理画面は `/admin`、Webアクセス分析は `/admin/analytics` です。管理者以外にはページ・APIとも一律404を返すため、機能の存在を判別できません。管理者アカウントはメールアドレスではなく、変更されにくい Supabase Auth の user UUID で指定します。
+経営管理画面は `/admin`、Webアクセス分析は `/admin/analytics` です。アクセス数、
+売上、購入数、利用量、原価などの経営管理情報は `kotaro3150@keio.jp` の単一
+オーナーだけが閲覧できます。この制約を共同編集の利便性より常に優先します。
 
-## 友人を管理者として登録する
+## アプリ側の認可
 
-1. 友人本人に、通常のYell for You新規登録画面から自分専用のアカウントを作成してもらいます。パスワードや確認メールを共有しないでください。
-2. 友人に確認メールを開いて認証を完了し、一度ログインしてもらいます。
-3. オーナーが Supabase Dashboard の `Authentication` → `Users` を開き、対象ユーザーのメールアドレスを確認します。
-4. 対象行の `User UID`（UUID）をコピーします。メールアドレスではありません。
-5. VercelのProject Settings → Environment Variablesで `ADMIN_USER_IDS` にUUIDを登録します。複数人はカンマ区切りです。
-
-   ```text
-   ADMIN_USER_IDS=owner-uuid,friend-uuid
-   ```
-
-6. Productionと必要なPreview環境を選び、再デプロイします。
-7. 友人がログインした状態で `/admin` を直接開き、管理画面が見えることを確認します。一般ユーザーでは404になることも別アカウントで確認します。
-
-## 推奨する追加環境変数
+Vercel Productionの `ADMIN_USER_IDS` には、オーナーのSupabase Auth `User UID`
+（UUID）を1件だけ登録します。
 
 ```text
+ADMIN_USER_IDS=<owner-supabase-user-uuid>
+```
+
+サーバーは次の条件をすべて満たしたときだけ管理画面と管理APIを許可します。
+
+1. `ADMIN_USER_IDS` が正しいUUIDを1件だけ含む
+2. ログイン中ユーザーのUUIDがその値と一致する
+3. ログイン中ユーザーのメールが `kotaro3150@keio.jp` と一致する
+
+設定なし、不正なUUID、複数UUID、UUIDだけの一致、メールだけの一致はすべて拒否
+します。旧 `ADMIN_EMAILS` とローカル認証バイパスでは管理権限を付与しません。
+
+## 共同編集者へ渡す権限
+
+共同編集者にはGitHubリポジトリの作業ブランチ作成とPR作成だけを許可します。
+
+| 対象                         | 共同編集者 | オーナー |
+| ---------------------------- | ---------- | -------- |
+| GitHub作業ブランチ・PR       | 可         | 可       |
+| `main` への取り込み          | 不可       | 可       |
+| Vercel Production            | 不可       | 可       |
+| Supabase Production          | 不可       | 可       |
+| Stripe / OpenAI / 本番秘密鍵 | 不可       | 可       |
+| `/admin` と管理API           | 不可       | 可       |
+
+`.github/CODEOWNERS` とPR検査だけでは強制にならないため、GitHubの `main`
+rulesetでも次を設定します。
+
+- Pull requestを必須にする
+- Code ownerの承認を必須にする
+- 新しいコミット時に古い承認を無効化する
+- PR作成者以外による最新コミットの承認を必須にする
+- `PR Security Gate` の成功を必須にする
+- force pushとブランチ削除を禁止する
+- 共同編集者をbypass対象へ追加しない
+
+共同編集者を現在のVercelチームや本番Supabaseプロジェクトへ招待してはいけません。
+本番デプロイ権限がある人は、管理画面の認可コードを変更したりService Roleを使う
+コードをデプロイできるため、アプリ内のアクセス制御だけでは情報を守れません。
+
+## Preview / Staging
+
+共同編集者による動作確認が必要なら、本番と別のVercelプロジェクト、Supabase
+プロジェクト、Stripeテスト環境を使います。本番のService Role、Stripe Secret、
+OpenAIキー、ユーザーデータをPreviewへ渡しません。オーナーアカウントで共同編集者の
+Previewへログインもしません。
+
+## 本番環境変数
+
+```text
+ADMIN_USER_IDS=<owner-supabase-user-uuid>
 ADMIN_AUDIT_HMAC_SECRET=<32バイト以上のランダム値>
 OPENAI_USD_JPY_RATE=150
 OPENAI_WEB_SEARCH_USD_PER_CALL=0.01
@@ -27,18 +68,17 @@ NEXT_PUBLIC_PRODUCT_ANALYTICS_ENABLED=false
 INTERVIEW_EXPERIENCE_ENABLED=false
 ```
 
-- `ADMIN_AUDIT_HMAC_SECRET` は管理画面とCSVの匿名IDを安定させます。本番投入後は不用意に変更しないでください。
-- 為替レートは推定原価の円換算に使います。実際の請求照合時に更新してください。
-- 行動分析は既定で無効です。有効化すると、公開プライバシー画面の説明・ブラウザ別オプトアウト・DNT/GPC尊重の方針に従って収集します。生データの保持期間は90日です。
-- 面接体験談・過去問は準備機能です。通常ユーザーへ公開しない間は必ず `false` のままにします。有効にしても管理者限定です。
+`ADMIN_AUDIT_HMAC_SECRET` は管理画面とCSVの匿名IDを安定させます。本番投入後は
+不用意に変更しません。行動分析は、プライバシー表示、保持期間、同意方針を確認した
+うえで有効にします。面接体験談・過去問は公開準備が整うまで `false` のままにします。
 
-## 権限を取り消す
+## アカウント防御
 
-`ADMIN_USER_IDS` から対象UUIDを削除して再デプロイします。本人の通常アカウントを残したまま管理権限だけを外せます。退職・紛失時はSupabase Auth側のセッション失効も行ってください。
+- オーナーアカウントは共有しない
+- Supabase AuthとVercelでMFAを有効にする
+- パスワードが会話、画面共有、ログへ出た場合は直ちに変更する
+- パスワード変更時は既存セッションも失効させる
+- CSVにはメール、氏名、生のプロンプト、生音声、全文文字起こしを含めない
 
-## 運用上の注意
-
-- 共有管理者アカウントは作らず、一人一アカウントにします。
-- 友人へVercel、Supabase Service Role、Stripe Secret、OpenAI APIキーを渡す必要はありません。
-- `ADMIN_EMAILS` は既存環境からの移行専用です。新規管理者には使いません。
-- CSVにはメール、氏名、生のプロンプト、生音声、全文文字起こしを含めません。
+共同編集を終了するときはGitHubの共同編集権限を削除します。通常ユーザーアカウントを
+残したままでも、上記の単一オーナー認可により管理権限は付与されません。

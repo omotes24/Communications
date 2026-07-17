@@ -2,10 +2,15 @@ import { createHash, createHmac } from "node:crypto";
 
 import { requireAdminApiUser } from "@/lib/auth/admin";
 import {
+  publicRecentPurchases,
+  type PrivatePurchaseRow,
+} from "@/lib/admin/public-stats";
+import {
   estimateOpenAiCostUsd,
   getOpenAiPricingReference,
 } from "@/lib/billing/openai-cost";
 import { toPublicError } from "@/lib/privacy/logging";
+import { privateJson } from "@/lib/privacy/private-response";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getServerSupabaseConfig } from "@/lib/supabase/server-config";
 
@@ -42,14 +47,7 @@ type UsageRow = {
   created_at: string;
 };
 
-type GrantRow = {
-  user_id: string;
-  amount_jpy: number;
-  token_amount: number;
-  plan_id: string;
-  livemode: boolean;
-  created_at: string;
-};
+type GrantRow = PrivatePurchaseRow;
 
 type LedgerRow = {
   event_type: string;
@@ -133,7 +131,7 @@ export async function GET(): Promise<Response> {
   if (!auth.ok) return auth.response;
 
   if (!getServerSupabaseConfig()?.serviceRoleKey) {
-    return Response.json({
+    return privateJson({
       configured: false,
       generatedAt: new Date().toISOString(),
     });
@@ -171,7 +169,9 @@ export async function GET(): Promise<Response> {
         .limit(10_000),
       supabase
         .from("stripe_checkout_grants")
-        .select("user_id, amount_jpy, token_amount, plan_id, livemode, created_at")
+        .select(
+          "user_id, amount_jpy, token_amount, plan_id, livemode, created_at",
+        )
         .order("created_at", { ascending: false })
         .limit(10_000),
       supabase
@@ -333,7 +333,7 @@ export async function GET(): Promise<Response> {
       };
     });
 
-    return Response.json({
+    return privateJson({
       configured: true,
       generatedAt: new Date().toISOString(),
       users: {
@@ -355,7 +355,7 @@ export async function GET(): Promise<Response> {
         totalJpy: revenueTotalJpy,
         last30dJpy: revenue30dJpy,
         purchases: grants.length,
-        recent: grants.slice(0, 10),
+        recent: publicRecentPurchases(grants),
       },
       economics: {
         estimatedOpenAiCost30dUsd: Number(total30d.costUsd.toFixed(4)),
@@ -402,8 +402,9 @@ export async function GET(): Promise<Response> {
           .slice(0, 10),
       },
       customers: {
-        purchasers: customerMetrics.filter((customer) => customer.purchaseCount > 0)
-          .length,
+        purchasers: customerMetrics.filter(
+          (customer) => customer.purchaseCount > 0,
+        ).length,
         repeatPurchasers: customerMetrics.filter(
           (customer) => customer.purchaseCount > 1,
         ).length,
@@ -429,6 +430,6 @@ export async function GET(): Promise<Response> {
       },
     });
   } catch (error) {
-    return Response.json({ error: toPublicError(error) }, { status: 500 });
+    return privateJson({ error: toPublicError(error) }, { status: 500 });
   }
 }
