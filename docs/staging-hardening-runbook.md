@@ -48,6 +48,7 @@ APP_REALTIME_SESSION_RESERVATION_SECONDS=180
 CRON_SECRET=<staging cron secret>
 STRIPE_SECRET_KEY=<stripe test secret key>
 STRIPE_WEBHOOK_SECRET=<stripe staging webhook secret>
+# 問い合わせメールを有効にする場合だけ設定
 RESEND_API_KEY=<staging Resend key>
 HELP_CONTACT_FROM_EMAIL=<staging verified sender>
 HELP_CONTACT_TO_EMAIL=<staging inbox>
@@ -84,6 +85,7 @@ APP_REALTIME_SESSION_RESERVATION_SECONDS=180
 CRON_SECRET=<production cron secret>
 STRIPE_SECRET_KEY=<stripe live secret key>
 STRIPE_WEBHOOK_SECRET=<stripe production webhook secret>
+# 問い合わせメールを有効にする場合だけ設定
 RESEND_API_KEY=<production Resend key>
 HELP_CONTACT_FROM_EMAIL=<production verified sender>
 HELP_CONTACT_TO_EMAIL=<production inbox>

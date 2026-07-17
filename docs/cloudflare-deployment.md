@@ -63,7 +63,7 @@ Cloudflare DashboardのBuild Variablesは
 Productionへ送らないでください。
 
 実行時の非機密値は `wrangler.jsonc` の `vars` で管理します。現在の設定が要求する
-runtime Secretsは次の12件です。
+runtime Secretsは次の9件です。
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL
@@ -72,9 +72,6 @@ SUPABASE_SERVICE_ROLE_KEY
 OPENAI_API_KEY
 STRIPE_SECRET_KEY
 STRIPE_WEBHOOK_SECRET
-RESEND_API_KEY
-HELP_CONTACT_FROM_EMAIL
-HELP_CONTACT_TO_EMAIL
 CRON_SECRET
 ADMIN_USER_IDS
 ADMIN_AUDIT_HMAC_SECRET
@@ -82,7 +79,7 @@ ADMIN_AUDIT_HMAC_SECRET
 
 上の2つの `NEXT_PUBLIC_SUPABASE_*` は公開クライアント設定ですが、現在のWorker設定では
 runtime bindingとしても必要です。Build Variablesと対象Workerのruntimeの両方へ同じ
-環境の値を登録します。残り10件はブラウザへ渡さないサーバー専用値です。
+環境の値を登録します。残り7件はブラウザへ渡さないサーバー専用値です。
 
 Secretは値を引数や標準出力へ出さず、対象Workerを明示して対話入力します。
 
@@ -91,13 +88,14 @@ npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --name <worker-name>
 npx wrangler secret put OPENAI_API_KEY --name <worker-name>
 npx wrangler secret put STRIPE_SECRET_KEY --name <worker-name>
 npx wrangler secret put STRIPE_WEBHOOK_SECRET --name <worker-name>
-npx wrangler secret put RESEND_API_KEY --name <worker-name>
-npx wrangler secret put HELP_CONTACT_FROM_EMAIL --name <worker-name>
-npx wrangler secret put HELP_CONTACT_TO_EMAIL --name <worker-name>
 npx wrangler secret put CRON_SECRET --name <worker-name>
 npx wrangler secret put ADMIN_USER_IDS --name <worker-name>
 npx wrangler secret put ADMIN_AUDIT_HMAC_SECRET --name <worker-name>
 ```
+
+問い合わせメールを有効にする場合だけ、同じWorkerへ `RESEND_API_KEY`、
+`HELP_CONTACT_FROM_EMAIL`、`HELP_CONTACT_TO_EMAIL` を追加します。未設定時は問い合わせAPIが
+503でfail closedし、他の画面・認証・面接機能には影響しません。
 
 `NEXT_PUBLIC_SUPABASE_URL` と `NEXT_PUBLIC_SUPABASE_ANON_KEY` も同じ対象Workerへruntime
 bindingとして登録します。StagingではStaging用UUIDと乱数を使い、Productionオーナーの
