@@ -65,6 +65,17 @@ Cloudflare DashboardのBuild Variablesは
 からbuildします。Production値を使ったartifactをStagingへ、Staging値を使ったartifactを
 Productionへ送らないでください。
 
+`npm run build:cloudflare` は開始前に上の2項目を検査し、生成後にもサーバー用・
+ブラウザ用artifactを検査します。Supabase公開設定が空、両artifactで不一致、またはURLが
+HTTPSでない場合は値を表示せずbuildを失敗させます。この検査を迂回して `.open-next` を
+直接deployしないでください。
+
+`npm run build:cloudflare:production`、`npm run deploy:production`、
+`npm run upload:cloudflare` はさらにProduction Supabase URLとanon keyを組み合わせた
+SHA-256指紋を照合し、StagingやCI用の設定では本番artifactの生成・upload・deployを
+開始しません。Production Supabase projectまたはanon keyを正式に移行する場合だけ、
+オーナーが新しい設定を確認して検査scriptの指紋を更新します。
+
 実行時の非機密値は `wrangler.jsonc` の `vars` で管理します。現在の設定が要求する
 runtime Secretsは次の9件です。
 
@@ -146,8 +157,10 @@ npm run deploy:staging
 
 Workers Buildsを使う場合は、Staging Workerに対してbuild commandを
 `npm run build:cloudflare`、deploy commandを
-`npx opennextjs-cloudflare deploy -- --keep-vars` に設定します。Production用のBuildsは
-保護された `main` 以外から起動しません。
+`npm run check:cloudflare-public-config && npx opennextjs-cloudflare deploy -- --keep-vars`
+に設定します。Production Workerではbuild commandを
+`npm run build:cloudflare:production`、deploy commandを同じartifact検査付きcommandに
+設定し、保護された `main` 以外から起動しません。
 
 5. 発行された `https://<staging-worker-name>.<subdomain>.workers.dev` をSupabase
    StagingのRedirect URLsとStripe test modeのWebhook endpointへ一時的に追加します。

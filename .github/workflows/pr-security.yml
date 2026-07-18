@@ -39,6 +39,9 @@ jobs:
         run: npm test
 
       - name: Build Cloudflare Worker without production secrets
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-build.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-public-anon-key-not-a-secret-000000000000
         run: npm run build:cloudflare
 
       - name: Enforce Cloudflare Free bundle limit
