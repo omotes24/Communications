@@ -1,5 +1,7 @@
 import "server-only";
 
+import { maskSensitiveText } from "@/lib/privacy/logging";
+
 function appendVary(headers: Headers, value: string): void {
   const current = headers.get("Vary");
   const values = (current ?? "")
@@ -27,4 +29,8 @@ export function privateJson(body: unknown, init?: ResponseInit): Response {
     ...init,
     headers: privateNoStoreHeaders(init?.headers),
   });
+}
+
+export function privateJsonError(message: string, status = 400): Response {
+  return privateJson({ error: maskSensitiveText(message) }, { status });
 }

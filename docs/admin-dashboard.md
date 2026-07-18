@@ -16,11 +16,28 @@ ADMIN_USER_IDS=<owner-supabase-user-uuid>
 サーバーは次の条件をすべて満たしたときだけ管理画面と管理APIを許可します。
 
 1. `ADMIN_USER_IDS` が正しいUUIDを1件だけ含む
-2. ログイン中ユーザーのUUIDがその値と一致する
-3. ログイン中ユーザーのメールが `kotaro3150@keio.jp` と一致する
+2. Supabase Authで検証されたログインセッションである
+3. ログイン中ユーザーのUUIDがその値と一致する
+4. ログイン中ユーザーのメールが `kotaro3150@keio.jp` と一致する
 
 設定なし、不正なUUID、複数UUID、UUIDだけの一致、メールだけの一致はすべて拒否
-します。旧 `ADMIN_EMAILS` とローカル認証バイパスでは管理権限を付与しません。
+します。旧 `ADMIN_EMAILS`、テスト認証、ローカル認証バイパスでは管理権限を付与
+しません。
+
+## 拒否時の表示とXYZ文言
+
+管理画面へ非オーナーが直接アクセスした場合は、管理情報を一切描画せず、固定文言
+`XYZキーが必要です。` だけを表示します。管理APIは同じ文言を含む403応答を返し、
+データベースやService Roleへ到達しません。管理APIとCSVは
+`private, no-store`、`Vary: Cookie`、`noindex` とします。管理画面のHTMLとRSCにも
+`private, no-store` と `noindex` を適用し、App Routerが必要とする `Vary` 値は
+上書きしません。
+
+XYZは不正なアクセスをオーナーへ申告させるための案内文言であり、実在する認証キー
+ではありません。入力欄、環境変数、URLパラメータ、HTTPヘッダー、Cookie、POST本文
+によるXYZ照合や権限昇格は実装しません。Cloudflare Cronの
+`/api/admin/reconcile-token-reservations` は人間向け管理APIではなく、実在する
+`CRON_SECRET` のBearer認証だけを使用します。
 
 ## 共同編集者へ渡す権限
 
@@ -43,6 +60,7 @@ rulesetでも次を設定します。
 - 新しいコミット時に古い承認を無効化する
 - PR作成者以外による最新コミットの承認を必須にする
 - `PR Security Gate` の成功を必須にする
+- `Sole Owner Approval` の成功を必須にする
 - force pushとブランチ削除を禁止する
 - 共同編集者をbypass対象へ追加しない
 
@@ -69,8 +87,10 @@ INTERVIEW_EXPERIENCE_ENABLED=false
 ```
 
 `ADMIN_AUDIT_HMAC_SECRET` は管理画面とCSVの匿名IDを安定させます。本番投入後は
-不用意に変更しません。行動分析は、プライバシー表示、保持期間、同意方針を確認した
-うえで有効にします。面接体験談・過去問は公開準備が整うまで `false` のままにします。
+不用意に変更しません。32バイト未満または未設定の場合、統計とCSVは匿名IDを単純な
+ハッシュへフォールバックせず、データ取得前にfail-closedします。行動分析は、
+プライバシー表示、保持期間、同意方針を確認したうえで有効にします。面接体験談・
+過去問は公開準備が整うまで `false` のままにします。
 
 ## アカウント防御
 

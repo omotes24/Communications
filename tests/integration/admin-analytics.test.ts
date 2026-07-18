@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  requireAdminApiUser: vi.fn(),
+  getCurrentUser: vi.fn(),
   createSupabaseServiceClient: vi.fn(),
   getServerSupabaseConfig: vi.fn(),
   rpc: vi.fn(),
 }));
 
-vi.mock("@/lib/auth/admin", () => ({
-  requireAdminApiUser: mocks.requireAdminApiUser,
+vi.mock("@/lib/auth/server", () => ({
+  getCurrentUser: mocks.getCurrentUser,
 }));
 
 vi.mock("@/lib/supabase/server-config", () => ({
@@ -20,6 +20,8 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 import { GET } from "@/app/api/admin/analytics/route";
+
+const ownerId = "12345678-1234-4abc-8def-1234567890ab";
 
 const summary = {
   rangeDays: 30,
@@ -48,10 +50,13 @@ const summary = {
 describe("administrator web analytics route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.ADMIN_USER_IDS = ownerId;
     process.env.NEXT_PUBLIC_PRODUCT_ANALYTICS_ENABLED = "true";
-    mocks.requireAdminApiUser.mockResolvedValue({
-      ok: true,
-      user: { id: "admin-id", email: "admin@example.com" },
+    delete process.env.XYZ_KEY;
+    mocks.getCurrentUser.mockResolvedValue({
+      id: ownerId,
+      email: "kotaro3150@keio.jp",
+      source: "supabase",
     });
     mocks.getServerSupabaseConfig.mockReturnValue({
       url: "https://example.supabase.co",
@@ -86,24 +91,56 @@ describe("administrator web analytics route", () => {
       sessions: 40,
       retentionDays: 90,
     });
-    expect(JSON.stringify(body)).not.toContain("admin-id");
+    expect(JSON.stringify(body)).not.toContain(ownerId);
     expect(JSON.stringify(body)).not.toContain("session_hash");
     expect(mocks.rpc).toHaveBeenCalledWith("get_web_analytics_summary", {
       p_days: 30,
     });
   });
 
-  it("returns 404 before touching analytics storage for non-admins", async () => {
-    mocks.requireAdminApiUser.mockResolvedValue({
-      ok: false,
-      response: Response.json({ error: "Not found" }, { status: 404 }),
+  it("returns the fixed denial before storage and ignores fake XYZ inputs", async () => {
+    process.env.XYZ_KEY = "fake-environment-key";
+    mocks.getCurrentUser.mockResolvedValue({
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      email: "kotaro3150@keio.jp",
+      source: "supabase",
     });
+
+    const response = await GET(
+      new Request(
+        "http://localhost/api/admin/analytics?days=30&xyzKey=anything",
+        {
+          headers: {
+            Authorization: "Bearer XYZ",
+            Cookie: "xyzKey=anything",
+            "X-XYZ-Key": "anything",
+          },
+        },
+      ),
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: "XYZキーが必要です。",
+    });
+    expect(response.headers.get("cache-control")).toBe(
+      "private, no-store, max-age=0",
+    );
+    expect(response.headers.get("vary")).toContain("Cookie");
+    expect(mocks.createSupabaseServiceClient).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the authentication backend errors", async () => {
+    mocks.getCurrentUser.mockRejectedValue(new Error("auth unavailable"));
 
     const response = await GET(
       new Request("http://localhost/api/admin/analytics?days=30"),
     );
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: "XYZキーが必要です。",
+    });
     expect(mocks.createSupabaseServiceClient).not.toHaveBeenCalled();
   });
 

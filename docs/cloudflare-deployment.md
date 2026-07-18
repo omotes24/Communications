@@ -12,6 +12,9 @@ Production Workerへcustom domainを割り当てます。
   できるのはオーナーだけとする。共同編集者へCloudflare Production権限を渡さない。
 - ProductionのWorkers BuildsをGitHub連携する場合は、owner review必須の保護された
   `main` だけをProduction deploy元にし、共同編集者のbranchを自動deployしない。
+- 共同編集者のPRは `.github/CODEOWNERS`、`PR Security Gate`、
+  `Sole Owner Approval` を必須にし、オーナーが現在のコミットを承認した場合だけ
+  取り込む。
 - `ADMIN_USER_IDS` はProductionオーナーのSupabase Auth UUIDを1件だけ登録する。
 - ProductionのService Role、Stripe Secret、OpenAI key、ユーザーデータをStagingへ
   コピーしない。
@@ -28,10 +31,10 @@ Production Workerへcustom domainを割り当てます。
 | `cloudflare-worker.ts` | OpenNext WorkerとScheduled Handlerのentry point             |
 | `public/_headers`      | 静的assetのcache header                                     |
 
-現在の `wrangler.jsonc` は `workers_dev: true`、`preview_urls: false` です。そのため、
-custom domainを接続する前に固定の `workers.dev` endpointで確認できます。Stagingには
-`yell-for-you-staging` などProductionと異なるWorker名を使い、同じWorkerのSecretsを
-差し替えて共用しません。
+Productionの `wrangler.jsonc` は `workers_dev: false`、`preview_urls: false` とし、
+本番custom domain以外の公開endpointを閉じます。切替前検証用のStagingだけは
+`workers_dev: true` にした専用設定を使い、`yell-for-you-staging` などProductionと
+異なるWorker名にします。同じWorkerのSecretsを差し替えて共用しません。
 
 ## 事前条件
 
@@ -160,7 +163,9 @@ Workers Buildsを使う場合は、Staging Workerに対してbuild commandを
 - Stripe test Checkoutと署名付きWebhookが1回だけtokenを付与する。
 - OpenAI経由の文字起こし、回答生成、会社・面接前学習が動く。
 - Staging ownerだけがホームの管理ボタンと `/admin`、`/admin/analytics` を利用できる。
-  一般ユーザーの管理ページ直アクセスはホームへ戻り、管理APIは404を返す。
+  一般ユーザーの管理ページ直アクセスは管理情報を描画せず
+  `XYZキーが必要です。` だけを表示し、管理APIは同文言の403を返す。XYZ値を
+  ヘッダー、Cookie、URL、本文へ追加しても認可されない。
 - `wrangler.jsonc` のCron TriggerとScheduled Handlerが動き、期限切れ予約を解放する。
 - ログへSecret、メール、プロンプト、生音声、全文文字起こしが出ていない。
 
@@ -212,7 +217,8 @@ secretを流用しません。
 5. TLSが有効になったことを確認し、本番URLでログイン、Supabase callback、Stripe
    Webhook、AI API、管理画面、静的assetを再確認します。
 6. 一般ユーザーと共同編集者ではホームに管理ボタンが出ず、`/admin` と
-   `/admin/analytics` の直アクセスはホームへ戻り、管理APIは404になることを別セッション
+   `/admin/analytics` の直アクセスでは管理情報を描画せず
+   `XYZキーが必要です。` だけを表示し、管理APIが同文言の403になることを別セッション
    で確認します。
 7. 本番custom domainでの確認後、`wrangler.jsonc` の `workers_dev` を `false` にして
    `npm run deploy:production` を再実行し、代替の `workers.dev` endpointを閉じます。

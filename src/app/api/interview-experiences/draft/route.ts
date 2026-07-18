@@ -6,7 +6,8 @@ import { requireAdminApiUser } from "@/lib/auth/admin";
 import { isInterviewExperienceEnabled } from "@/lib/features/server";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv, structuredOutputModel } from "@/lib/openai/env";
-import { jsonError, toPublicError } from "@/lib/privacy/logging";
+import { toPublicError } from "@/lib/privacy/logging";
+import { privateJson, privateJsonError } from "@/lib/privacy/private-response";
 import {
   generateInterviewExperienceRequestSchema,
   interviewExperienceDraftSchema,
@@ -57,13 +58,16 @@ Rules:
 - difficulty is 1 to 5, or null if there is insufficient evidence.`;
 
 export async function POST(request: Request): Promise<Response> {
-  if (!isInterviewExperienceEnabled()) {
-    return Response.json({ error: "Not found" }, { status: 404 });
-  }
   const auth = await requireAdminApiUser();
   if (!auth.ok) return auth.response;
+  if (!isInterviewExperienceEnabled()) {
+    return privateJson({ error: "Not found" }, { status: 404 });
+  }
   if (!getServerSupabaseConfig()?.serviceRoleKey) {
-    return jsonError("面接体験レポートの保存設定が不足しています。", 503);
+    return privateJsonError(
+      "面接体験レポートの保存設定が不足しています。",
+      503,
+    );
   }
 
   try {
@@ -78,7 +82,9 @@ export async function POST(request: Request): Promise<Response> {
       .eq("user_id", auth.user.id)
       .maybeSingle();
     if (sessionError) throw new Error(sessionError.message);
-    if (!sessionData) return jsonError("面接履歴が見つかりません。", 404);
+    if (!sessionData) {
+      return privateJsonError("面接履歴が見つかりません。", 404);
+    }
     const session = sessionData as SessionRow;
 
     const { data: messageData, error: messageError } = await supabase
@@ -90,7 +96,9 @@ export async function POST(request: Request): Promise<Response> {
       .limit(500);
     if (messageError) throw new Error(messageError.message);
     const messages = (messageData ?? []) as MessageRow[];
-    if (!messages.length) return jsonError("文字起こしがまだありません。", 400);
+    if (!messages.length) {
+      return privateJsonError("文字起こしがまだありません。", 400);
+    }
 
     let company: CompanyRow | null = null;
     if (session.company_slot_id) {
@@ -152,7 +160,7 @@ export async function POST(request: Request): Promise<Response> {
         inputTokens: 600,
         outputTokens: 300,
       });
-      return Response.json({
+      return privateJson({
         draft,
         sessionId: session.id,
         companySlotId: session.company_slot_id,
@@ -191,10 +199,13 @@ export async function POST(request: Request): Promise<Response> {
       );
       if (!response.output_parsed) {
         await releaseAiTokenReservation(reservation, "parse_failed");
-        return jsonError("面接体験レポートを解析できませんでした。", 502);
+        return privateJsonError(
+          "面接体験レポートを解析できませんでした。",
+          502,
+        );
       }
       await settleAiTokens(reservation, extractOpenAIUsage(response));
-      return Response.json({
+      return privateJson({
         draft: response.output_parsed,
         sessionId: session.id,
         companySlotId: session.company_slot_id,
@@ -210,8 +221,8 @@ export async function POST(request: Request): Promise<Response> {
     }
   } catch (error) {
     if (error instanceof TokenBalanceError) {
-      return jsonError(error.message, error.status);
+      return privateJsonError(error.message, error.status);
     }
-    return jsonError(toPublicError(error), 400);
+    return privateJsonError(toPublicError(error), 400);
   }
 }

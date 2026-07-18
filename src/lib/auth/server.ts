@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export type AuthenticatedUser = {
   id: string;
   email: string | null;
+  source: "supabase" | "test" | "local-dev";
 };
 
 function shouldUseTestAuth(): boolean {
@@ -34,6 +35,7 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
     return {
       id: process.env.TEST_AUTH_USER_ID!,
       email: "test@example.com",
+      source: "test",
     };
   }
 
@@ -41,6 +43,7 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
     return {
       id: process.env.LOCAL_AUTH_USER_ID || "local-dev-user",
       email: process.env.LOCAL_AUTH_EMAIL || "local@example.com",
+      source: "local-dev",
     };
   }
 
@@ -60,6 +63,7 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   return {
     id: user.id,
     email: user.email ?? null,
+    source: "supabase",
   };
 }
 
@@ -72,8 +76,7 @@ export async function requireCurrentUser(): Promise<AuthenticatedUser> {
 }
 
 export async function requireApiUser(): Promise<
-  | { ok: true; user: AuthenticatedUser }
-  | { ok: false; response: Response }
+  { ok: true; user: AuthenticatedUser } | { ok: false; response: Response }
 > {
   const user = await getCurrentUser();
   if (!user) {

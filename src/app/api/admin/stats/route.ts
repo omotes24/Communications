@@ -1,6 +1,8 @@
-import { createHash, createHmac } from "node:crypto";
-
 import { requireAdminApiUser } from "@/lib/auth/admin";
+import {
+  adminAccountCode,
+  getAdminAuditHmacSecret,
+} from "@/lib/admin/audit-identity";
 import {
   publicRecentPurchases,
   type PrivatePurchaseRow,
@@ -76,14 +78,6 @@ function positiveNumber(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function anonymousAccountCode(userId: string): string {
-  const secret = process.env.ADMIN_AUDIT_HMAC_SECRET?.trim();
-  const digest = secret
-    ? createHmac("sha256", secret).update(userId).digest("hex")
-    : createHash("sha256").update(userId).digest("hex");
-  return `yfy_${digest.slice(0, 12)}`;
-}
-
 function emptyAggregate(): UsageAggregate {
   return {
     requests: 0,
@@ -135,6 +129,14 @@ export async function GET(): Promise<Response> {
       configured: false,
       generatedAt: new Date().toISOString(),
     });
+  }
+
+  const auditSecret = getAdminAuditHmacSecret();
+  if (!auditSecret) {
+    return privateJson(
+      { error: "管理用匿名化キーが未設定です。" },
+      { status: 503 },
+    );
   }
 
   try {
@@ -319,7 +321,7 @@ export async function GET(): Promise<Response> {
       const wallet = walletsByUser.get(profile.user_id);
       const activity = byUser.get(profile.user_id) ?? emptyAggregate();
       return {
-        anonymousId: anonymousAccountCode(profile.user_id),
+        anonymousId: adminAccountCode(profile.user_id, auditSecret),
         signedUpAt: profile.created_at,
         totalPurchaseJpy: purchases.totalJpy,
         purchaseCount: purchases.purchaseCount,
@@ -339,7 +341,7 @@ export async function GET(): Promise<Response> {
       users: {
         total: profilesResult.count ?? profiles.length,
         recent: profiles.slice(0, 12).map((profile) => ({
-          anonymousId: anonymousAccountCode(profile.user_id),
+          anonymousId: adminAccountCode(profile.user_id, auditSecret),
           createdAt: profile.created_at,
           updatedAt: profile.updated_at,
         })),
@@ -395,7 +397,7 @@ export async function GET(): Promise<Response> {
           .slice(0, 14),
         topConsumers: Array.from(byUser.entries())
           .map(([userId, aggregate]) => ({
-            anonymousId: anonymousAccountCode(userId),
+            anonymousId: adminAccountCode(userId, auditSecret),
             ...publicAggregate(aggregate),
           }))
           .sort((a, b) => b.tokens - a.tokens)
@@ -419,8 +421,8 @@ export async function GET(): Promise<Response> {
       reservations: { active: reservationsResult.count ?? 0 },
       recentLedger: (ledgerResult.data ?? []) as LedgerRow[],
       privacy: {
-        accountIdentifiers: "HMAC/SHA-256 pseudonyms only",
-        hmacConfigured: Boolean(process.env.ADMIN_AUDIT_HMAC_SECRET?.trim()),
+        accountIdentifiers: "HMAC-SHA-256 pseudonyms only",
+        hmacConfigured: true,
         rawPromptsIncluded: false,
         rawAudioIncluded: false,
       },

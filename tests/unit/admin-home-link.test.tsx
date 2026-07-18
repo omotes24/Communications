@@ -20,6 +20,7 @@ describe("administrator home link", () => {
     mocks.getAdminUser.mockResolvedValue({
       id: "admin-user-id",
       email: "admin@example.com",
+      source: "supabase",
     });
 
     render(await AdminHomeLink());

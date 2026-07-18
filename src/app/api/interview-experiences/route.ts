@@ -2,7 +2,8 @@ import { z } from "zod";
 
 import { requireAdminApiUser } from "@/lib/auth/admin";
 import { isInterviewExperienceEnabled } from "@/lib/features/server";
-import { jsonError, toPublicError } from "@/lib/privacy/logging";
+import { toPublicError } from "@/lib/privacy/logging";
+import { privateJson, privateJsonError } from "@/lib/privacy/private-response";
 import { saveInterviewExperienceRequestSchema } from "@/lib/schemas/interview-experience";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getServerSupabaseConfig } from "@/lib/supabase/server-config";
@@ -11,12 +12,14 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(): Promise<Response> {
-  if (!isInterviewExperienceEnabled()) {
-    return Response.json({ error: "Not found" }, { status: 404 });
-  }
   const auth = await requireAdminApiUser();
   if (!auth.ok) return auth.response;
-  if (!getServerSupabaseConfig()?.serviceRoleKey) return Response.json({ items: [] });
+  if (!isInterviewExperienceEnabled()) {
+    return privateJson({ error: "Not found" }, { status: 404 });
+  }
+  if (!getServerSupabaseConfig()?.serviceRoleKey) {
+    return privateJson({ items: [] });
+  }
 
   const supabase = createSupabaseServiceClient();
   const { data, error } = await supabase
@@ -27,22 +30,27 @@ export async function GET(): Promise<Response> {
     .eq("user_id", auth.user.id)
     .order("updated_at", { ascending: false })
     .limit(100);
-  if (error) return jsonError(toPublicError(error), 400);
-  return Response.json({ items: data ?? [] });
+  if (error) return privateJsonError(toPublicError(error), 400);
+  return privateJson({ items: data ?? [] });
 }
 
 export async function POST(request: Request): Promise<Response> {
-  if (!isInterviewExperienceEnabled()) {
-    return Response.json({ error: "Not found" }, { status: 404 });
-  }
   const auth = await requireAdminApiUser();
   if (!auth.ok) return auth.response;
+  if (!isInterviewExperienceEnabled()) {
+    return privateJson({ error: "Not found" }, { status: 404 });
+  }
   if (!getServerSupabaseConfig()?.serviceRoleKey) {
-    return jsonError("面接体験レポートの保存設定が不足しています。", 503);
+    return privateJsonError(
+      "面接体験レポートの保存設定が不足しています。",
+      503,
+    );
   }
 
   try {
-    const body = saveInterviewExperienceRequestSchema.parse(await request.json());
+    const body = saveInterviewExperienceRequestSchema.parse(
+      await request.json(),
+    );
     const supabase = createSupabaseServiceClient();
     const { data: session, error: sessionError } = await supabase
       .from("interview_sessions")
@@ -51,10 +59,12 @@ export async function POST(request: Request): Promise<Response> {
       .eq("user_id", auth.user.id)
       .maybeSingle();
     if (sessionError) throw new Error(sessionError.message);
-    if (!session) return jsonError("面接履歴が見つかりません。", 404);
+    if (!session) return privateJsonError("面接履歴が見つかりません。", 404);
 
-    const companySlotId = body.companySlotId ??
-      ((session as { company_slot_id: string | null }).company_slot_id ?? null);
+    const companySlotId =
+      body.companySlotId ??
+      (session as { company_slot_id: string | null }).company_slot_id ??
+      null;
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("interview_experience_reports")
@@ -80,7 +90,7 @@ export async function POST(request: Request): Promise<Response> {
           review_status: "reviewed",
           research_consent: body.researchConsent,
           consent_version: body.researchConsent
-            ? body.consentVersion ?? "yfy-research-v1"
+            ? (body.consentVersion ?? "yfy-research-v1")
             : null,
           contributed_at: body.researchConsent ? now : null,
         },
@@ -99,22 +109,22 @@ export async function POST(request: Request): Promise<Response> {
       if (companyError) throw new Error(companyError.message);
     }
 
-    return Response.json({ ok: true, report: data });
+    return privateJson({ ok: true, report: data });
   } catch (error) {
-    return jsonError(toPublicError(error), 400);
+    return privateJsonError(toPublicError(error), 400);
   }
 }
 
 export async function DELETE(request: Request): Promise<Response> {
-  if (!isInterviewExperienceEnabled()) {
-    return Response.json({ error: "Not found" }, { status: 404 });
-  }
   const auth = await requireAdminApiUser();
   if (!auth.ok) return auth.response;
+  if (!isInterviewExperienceEnabled()) {
+    return privateJson({ error: "Not found" }, { status: 404 });
+  }
   const parsed = z
     .object({ reportId: z.string().uuid() })
     .safeParse(await request.json());
-  if (!parsed.success) return jsonError("削除対象が不正です。", 400);
+  if (!parsed.success) return privateJsonError("削除対象が不正です。", 400);
 
   const supabase = createSupabaseServiceClient();
   const { error } = await supabase
@@ -127,6 +137,6 @@ export async function DELETE(request: Request): Promise<Response> {
     })
     .eq("id", parsed.data.reportId)
     .eq("user_id", auth.user.id);
-  if (error) return jsonError(toPublicError(error), 400);
-  return Response.json({ ok: true });
+  if (error) return privateJsonError(toPublicError(error), 400);
+  return privateJson({ ok: true });
 }
