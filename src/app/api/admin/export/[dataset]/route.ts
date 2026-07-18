@@ -1,5 +1,7 @@
-import { createHash, createHmac } from "node:crypto";
-
+import {
+  adminAccountCode,
+  getAdminAuditHmacSecret,
+} from "@/lib/admin/audit-identity";
 import { requireAdminApiUser } from "@/lib/auth/admin";
 import { estimateOpenAiCostUsd } from "@/lib/billing/openai-cost";
 import {
@@ -27,14 +29,6 @@ type QueryResult = {
   data: unknown[] | null;
   error: { message: string } | null;
 };
-
-function accountCode(userId: string): string {
-  const secret = process.env.ADMIN_AUDIT_HMAC_SECRET?.trim();
-  const digest = secret
-    ? createHmac("sha256", secret).update(userId).digest("hex")
-    : createHash("sha256").update(userId).digest("hex");
-  return `yfy_${digest.slice(0, 12)}`;
-}
 
 function daysFromRequest(request: Request): number {
   const value = Number(new URL(request.url).searchParams.get("days") ?? 90);
@@ -182,6 +176,14 @@ export async function GET(
     return privateJson({ error: "Export unavailable" }, { status: 503 });
   }
 
+  const auditSecret = getAdminAuditHmacSecret();
+  if (!auditSecret) {
+    return privateJson(
+      { error: "管理用匿名化キーが未設定です。" },
+      { status: 503 },
+    );
+  }
+
   const supabase = createSupabaseServiceClient();
   const days = daysFromRequest(request);
   const since = isoDaysAgo(days);
@@ -208,7 +210,7 @@ export async function GET(
       ],
       result.rows.map((row) => [
         row.created_at,
-        accountCode(row.user_id),
+        adminAccountCode(row.user_id, auditSecret),
         row.plan_id,
         row.amount_jpy,
         row.token_amount,
@@ -249,7 +251,7 @@ export async function GET(
       ],
       result.rows.map((row) => [
         row.created_at,
-        accountCode(row.user_id),
+        adminAccountCode(row.user_id, auditSecret),
         row.feature,
         row.model,
         row.status,
@@ -297,7 +299,7 @@ export async function GET(
       ],
       result.rows.map((row) => [
         row.created_at,
-        accountCode(row.user_id),
+        adminAccountCode(row.user_id, auditSecret),
         row.session_hash.slice(0, 16),
         row.event_name,
         row.feature,
@@ -331,8 +333,8 @@ export async function GET(
       const questions = Array.isArray(report.questions) ? report.questions : [];
       const base = [
         report.contributed_at,
-        accountCode(report.user_id),
-        accountCode(report.interview_session_id),
+        adminAccountCode(report.user_id, auditSecret),
+        adminAccountCode(report.interview_session_id, auditSecret),
         report.jobtrack_catalog_ref,
         report.company_name_snapshot,
         report.interview_month,
@@ -600,7 +602,7 @@ export async function GET(
       const purchase = purchases.get(profile.user_id);
       const usage = usageByUser.get(profile.user_id);
       return [
-        accountCode(profile.user_id),
+        adminAccountCode(profile.user_id, auditSecret),
         profile.created_at,
         profile.updated_at,
         purchase?.count ?? 0,

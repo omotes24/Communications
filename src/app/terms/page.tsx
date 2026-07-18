@@ -50,7 +50,8 @@ export default function TermsPage() {
             音声は文字起こし処理のためOpenAIへ送信されます。本サービスは音声ファイルそのものを永続保存しません。文字起こし結果は画面表示と質問判定に使われ、ユーザーが履歴保存した場合に限り関連する質問・回答がSupabaseへ保存されます。
           </p>
           <p className="mt-2">
-            認証・DB保存にはSupabase、ホスティングにはVercel、AI処理にはOpenAI、決済にはStripe、認証メールと問い合わせメール送信には設定済みのメール配信事業者を利用します。
+            認証・DB保存にはSupabase、ホスティングにはCloudflare
+            Workers、AI処理にはOpenAI、決済にはStripe、認証メールと問い合わせメール送信には設定済みのメール配信事業者を利用します。
           </p>
         </section>
         <section>

@@ -14,6 +14,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const maxAudioFileBytes = 12 * 1024 * 1024;
+
 export async function POST(request: Request): Promise<Response> {
   const auth = await requireApiUser();
   if (!auth.ok) {
@@ -21,12 +23,15 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    const env = getServerEnv();
     const formData = await request.formData();
     const audio = formData.get("audio");
     if (!(audio instanceof File)) {
       return jsonError("音声ファイルが送信されていません", 400);
     }
+    if (audio.size > maxAudioFileBytes) {
+      return jsonError("音声ファイルは12MB以下にしてください。", 413);
+    }
+    const env = getServerEnv();
     const { requestId, operationId } = createRequestIds(request);
     const estimate = estimateAudioTokens(audio);
     const reservation = await reserveAiTokens({
@@ -41,7 +46,9 @@ export async function POST(request: Request): Promise<Response> {
     });
 
     if (env.AI_MOCK_MODE) {
-      await settleAiTokens(reservation, { audioSeconds: estimate.audioSeconds });
+      await settleAiTokens(reservation, {
+        audioSeconds: estimate.audioSeconds,
+      });
       return Response.json({
         text: "モックモードでは実音声の文字起こしは行いません。手動入力を使用してください。",
       });
@@ -56,7 +63,9 @@ export async function POST(request: Request): Promise<Response> {
         prompt: japaneseInterviewTranscriptionPrompt,
       });
 
-      await settleAiTokens(reservation, { audioSeconds: estimate.audioSeconds });
+      await settleAiTokens(reservation, {
+        audioSeconds: estimate.audioSeconds,
+      });
       return Response.json({ text: transcription.text ?? "" });
     } catch (error) {
       await releaseAiTokenReservation(reservation, "api_failed");

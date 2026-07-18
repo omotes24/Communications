@@ -18,7 +18,7 @@ export default function AccountDeletionPage() {
         <section>
           <h2 className="text-xl font-semibold text-[#1d1d1f]">保存期間</h2>
           <p className="mt-2">
-            アカウント削除後、通常のアプリDB上のユーザーデータは削除されます。Vercel、Supabase、Stripe、メール配信事業者、OpenAI/Groq側のログ保持期間は各事業者のポリシーに従います。
+            アカウント削除後、通常のアプリDB上のユーザーデータは削除されます。Cloudflare、Supabase、Stripe、メール配信事業者、OpenAI/Groq側のログ保持期間は各事業者のポリシーに従います。
           </p>
         </section>
         <section>

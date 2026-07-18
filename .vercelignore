@@ -2,6 +2,8 @@
 !.env.example
 .vercel
 .next
+.open-next
+.wrangler
 node_modules
 test-results
 playwright-report

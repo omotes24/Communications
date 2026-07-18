@@ -4,7 +4,7 @@
 
 1. Supabase projectを作成します。
 2. SQL editor または Supabase CLI で `supabase/migrations` のmigrationを順番に適用します。
-3. AuthenticationのEmail providerを有効にし、Site URLをVercel本番URLへ設定します。
+3. AuthenticationのEmail providerを有効にし、Site URLをCloudflare本番URLへ設定します。
 4. Redirect URLsに以下を追加します。
    - `http://localhost:3000/auth/callback`
    - `https://<your-domain>/auth/callback`
@@ -12,9 +12,10 @@
 
 Staging/Production分離、SMTP、Previewデプロイ、RLS検証、rollbackは `docs/staging-hardening-runbook.md` を参照してください。
 
-## Vercel
+## Cloudflare Workers
 
-Vercel Environment Variablesに次を設定します。
+Cloudflare WorkerのVariables and Secretsに次を設定します。秘密値は必ずSecretとして
+登録し、`NEXT_PUBLIC_*` はWorkers BuildsのBuild Variablesにも登録します。
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=

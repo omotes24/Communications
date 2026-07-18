@@ -35,7 +35,7 @@ describe("expired reservation reconciliation cron auth", () => {
     expect(mocks.reconcileExpiredTokenReservations).not.toHaveBeenCalled();
   });
 
-  it("accepts the Vercel Cron GET Authorization bearer token", async () => {
+  it("accepts the scheduled handler GET Authorization bearer token", async () => {
     process.env.CRON_SECRET = "cron-secret-value";
     mocks.reconcileExpiredTokenReservations.mockResolvedValue({
       released: 1,

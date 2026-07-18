@@ -223,8 +223,8 @@ AI_MOCK_MODE=false`;
               キーの変更場所
             </h2>
             <p className="mt-3 text-sm font-medium leading-7 text-[#6e6e73]">
-              ローカルではプロジェクト直下の `.env.local`、VercelではProject
-              SettingsのEnvironment Variablesを変更します。
+              ローカルではプロジェクト直下の `.env.local`、CloudflareではWorker
+              SettingsのVariables and Secretsを変更します。
             </p>
           </div>
 

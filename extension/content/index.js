@@ -23,7 +23,6 @@ const QUESTION_WORDS = [
 
 const APP_HOSTS = new Set([
   "www.yell-for-you.jp",
-  "communications-umber.vercel.app",
   "localhost",
   "127.0.0.1",
 ]);

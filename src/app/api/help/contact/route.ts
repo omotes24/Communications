@@ -56,6 +56,10 @@ const categoryLabels = {
 class ContactAttachmentError extends Error {}
 
 function getClientIp(request: Request): string {
+  const cloudflare = request.headers.get("cf-connecting-ip")?.trim();
+  if (cloudflare) {
+    return cloudflare;
+  }
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) {
     return forwarded.split(",")[0]?.trim() || "unknown";

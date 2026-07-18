@@ -294,6 +294,7 @@ export function AdminAnalyticsDashboard() {
       setStats(data);
       setError(null);
     } catch (cause) {
+      setStats(null);
       setError(
         cause instanceof Error
           ? cause.message
@@ -307,9 +308,19 @@ export function AdminAnalyticsDashboard() {
   useEffect(() => {
     const initial = window.setTimeout(() => void load(), 0);
     const timer = window.setInterval(() => void load(), REFRESH_INTERVAL_MS);
+    const clearSensitiveState = () => setStats(null);
+    const refreshAfterRestore = () => {
+      setStats(null);
+      setLoading(true);
+      void load();
+    };
+    window.addEventListener("pagehide", clearSensitiveState);
+    window.addEventListener("pageshow", refreshAfterRestore);
     return () => {
       window.clearTimeout(initial);
       window.clearInterval(timer);
+      window.removeEventListener("pagehide", clearSensitiveState);
+      window.removeEventListener("pageshow", refreshAfterRestore);
     };
   }, [load]);
 

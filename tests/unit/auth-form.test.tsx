@@ -148,7 +148,7 @@ describe("AuthForm", () => {
 
   it("uses the configured public site URL for signup confirmation emails", async () => {
     process.env.NEXT_PUBLIC_SITE_URL =
-      "https://communications-umber.vercel.app/";
+      "https://www.yell-for-you.jp/";
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -176,7 +176,7 @@ describe("AuthForm", () => {
       email: "new@example.com",
       password: "password123",
       options: {
-        emailRedirectTo: "https://communications-umber.vercel.app/auth/confirm",
+        emailRedirectTo: "https://www.yell-for-you.jp/auth/confirm",
       },
     });
   });
@@ -209,7 +209,7 @@ describe("AuthForm", () => {
 
   it("sends password reset emails to the dedicated reset password page", async () => {
     process.env.NEXT_PUBLIC_SITE_URL =
-      "https://communications-umber.vercel.app/";
+      "https://www.yell-for-you.jp/";
     recoveryAuthMocks.resetPasswordForEmail.mockResolvedValue({ error: null });
 
     render(<AuthForm mode="forgot-password" />);
@@ -225,7 +225,7 @@ describe("AuthForm", () => {
       "user@example.com",
       {
         redirectTo:
-          "https://communications-umber.vercel.app/auth/reset-password",
+          "https://www.yell-for-you.jp/auth/reset-password",
       },
     );
   });

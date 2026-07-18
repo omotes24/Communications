@@ -187,6 +187,7 @@ export function AdminDashboard() {
       setStats(data);
       setError(null);
     } catch (cause) {
+      setStats(null);
       setError(
         cause instanceof Error ? cause.message : "統計を取得できませんでした。",
       );
@@ -198,9 +199,19 @@ export function AdminDashboard() {
   useEffect(() => {
     const initial = window.setTimeout(() => void load(), 0);
     const timer = window.setInterval(() => void load(), REFRESH_INTERVAL_MS);
+    const clearSensitiveState = () => setStats(null);
+    const refreshAfterRestore = () => {
+      setStats(null);
+      setLoading(true);
+      void load();
+    };
+    window.addEventListener("pagehide", clearSensitiveState);
+    window.addEventListener("pageshow", refreshAfterRestore);
     return () => {
       window.clearTimeout(initial);
       window.clearInterval(timer);
+      window.removeEventListener("pagehide", clearSensitiveState);
+      window.removeEventListener("pageshow", refreshAfterRestore);
     };
   }, [load]);
 
