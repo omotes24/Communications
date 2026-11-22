@@ -61,6 +61,29 @@ export type MercuryStructuredResult<T> = {
 // 形が合わなかったときに作り直す回数
 const MAX_RETRIES = 1;
 
+// 推論トークンは max_completion_tokens に含まれる。実測では medium で 1,500 前後まで
+// 膨らむことがあり、本文の分まで使い切ると finish_reason=length で JSON が途中で切れる。
+// 呼び出し側の maxOutputTokens（本文の上限）に、推論の強さに応じた余白を足して送る。
+const reasoningHeadroomTokens: Record<string, number> = {
+  none: 0,
+  instant: 0,
+  minimal: 512,
+  low: 2048,
+  medium: 4096,
+  high: 8192,
+  xhigh: 8192,
+  max: 8192,
+};
+
+export function mercuryMaxCompletionTokens(
+  maxOutputTokens: number,
+  providerReasoningEffort: string,
+): number {
+  return (
+    maxOutputTokens + (reasoningHeadroomTokens[providerReasoningEffort] ?? 4096)
+  );
+}
+
 const SCHEMA_INSTRUCTIONS =
   "出力は次の JSON Schema に厳密に従う JSON オブジェクト1つだけにしてください。キー名は英語のまま変えず、required のキーをすべて含めてください。";
 
@@ -120,19 +143,25 @@ export function buildMercuryRequestBody<Schema extends z.ZodType>(
     { role: "system", content: system },
     { role: "user", content: request.input },
   ];
+  const reasoningEffort = toProviderReasoningEffort(
+    request.env.MERCURY_BASE_URL,
+    request.reasoningEffort ?? reasoningEffortFor(request.env, request.speed),
+  );
 
   return {
     model: request.model,
     messages,
     response_format: responseFormat,
     ...(request.maxOutputTokens
-      ? { max_completion_tokens: request.maxOutputTokens }
+      ? {
+          max_completion_tokens: mercuryMaxCompletionTokens(
+            request.maxOutputTokens,
+            reasoningEffort,
+          ),
+        }
       : {}),
     // Mercury 独自の値（instant など）を含むため OpenAI SDK の型から外れる。
-    reasoning_effort: toProviderReasoningEffort(
-      request.env.MERCURY_BASE_URL,
-      request.reasoningEffort ?? reasoningEffortFor(request.env, request.speed),
-    ),
+    reasoning_effort: reasoningEffort,
   };
 }
 

@@ -105,6 +105,7 @@ export async function POST(request: Request): Promise<Response> {
           maxOutputTokens: INTERVIEW_LEARNING_MAX_OUTPUT_TOKENS,
           schema: learnInterviewContextOutputSchema,
           name: "interview_learning",
+          reasoningEffort: env.MERCURY_LEARNING_REASONING_EFFORT,
           signal: request.signal,
         });
         if (!response.output_parsed) {

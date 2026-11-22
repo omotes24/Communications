@@ -86,6 +86,10 @@ const serverEnvSchema = z.object({
   MERCURY_REASONING_EFFORT: mercuryReasoningEffortSchema.default("medium"),
   // 面接中のフェルミ推定。medium だと実測で約21秒かかるため、既定は low。
   MERCURY_FERMI_REASONING_EFFORT: mercuryReasoningEffortSchema.default("low"),
+  // 面接前メモの学習。実測（入力約5,500トークン）で low は約3秒、medium は 4〜10秒で
+  // 推論が膨らむことがある。内容に差がないので既定は low。
+  MERCURY_LEARNING_REASONING_EFFORT:
+    mercuryReasoningEffortSchema.default("low"),
   MERCURY_DISABLE_AFTER: z.string().trim().default(defaultMercuryDisableAfter),
 });
 
@@ -149,6 +153,8 @@ export function getServerEnv(): ServerEnv {
     MERCURY_REASONING_EFFORT: process.env.MERCURY_REASONING_EFFORT || undefined,
     MERCURY_FERMI_REASONING_EFFORT:
       process.env.MERCURY_FERMI_REASONING_EFFORT || undefined,
+    MERCURY_LEARNING_REASONING_EFFORT:
+      process.env.MERCURY_LEARNING_REASONING_EFFORT || undefined,
     MERCURY_DISABLE_AFTER: process.env.MERCURY_DISABLE_AFTER || undefined,
   });
   const textProvider = resolveTextProvider(parsed);

@@ -77,6 +77,7 @@ describe("Mercury text provider env", () => {
     expect(env.MERCURY_FAST_REASONING_EFFORT).toBe("none");
     expect(env.MERCURY_REASONING_EFFORT).toBe("medium");
     expect(env.MERCURY_FERMI_REASONING_EFFORT).toBe("low");
+    expect(env.MERCURY_LEARNING_REASONING_EFFORT).toBe("low");
   });
 
   it("keeps transcription, company research and the question solver on OpenAI", () => {
@@ -173,6 +174,33 @@ describe("Mercury requests", () => {
         reasoningEffort: "low",
       }).reasoning_effort,
     ).toBe("low");
+  });
+
+  it("leaves room for hidden reasoning tokens in max_completion_tokens", () => {
+    // 推論トークンも上限に数えられるため、本文の上限だけを渡すと JSON が途中で切れる。
+    const build = (reasoningEffort: "none" | "low" | "medium") =>
+      buildMercuryRequestBody({
+        env: mercuryEnv(),
+        model: "inception/mercury-3",
+        input: "質問",
+        schema: draftSchema,
+        name: "draft",
+        maxOutputTokens: 3000,
+        reasoningEffort,
+      });
+
+    expect(build("none").max_completion_tokens).toBe(3000);
+    expect(build("low").max_completion_tokens).toBe(5048);
+    expect(build("medium").max_completion_tokens).toBe(7096);
+    expect(
+      buildMercuryRequestBody({
+        env: mercuryEnv(),
+        model: "inception/mercury-3",
+        input: "質問",
+        schema: draftSchema,
+        name: "draft",
+      }),
+    ).not.toHaveProperty("max_completion_tokens");
   });
 
   it("retries once when the JSON does not match the schema and adds up usage", async () => {
