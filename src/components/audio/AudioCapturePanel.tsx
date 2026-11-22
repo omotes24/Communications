@@ -17,10 +17,12 @@ import {
   createTranscriptSubmitFingerprint,
   extractLikelyInterviewQuestion,
   findRecentTranscriptSubmitFingerprint,
+  isLikelyContinuationFragment,
   isSubmittableTranscript,
   looksCompleteInterviewQuestion,
   looksLikeInterviewQuestion,
   normalizeTranscriptForSubmit,
+  remoteTranscriptContinuationWindowMs,
   remoteTranscriptDuplicateWindowMs,
   remoteTranscriptMinimumAutoSubmitGapMs,
   remoteTranscriptQuestionCueDelayMs,
@@ -178,6 +180,18 @@ export function AudioCapturePanel({
         return;
       }
       const now = Date.now();
+      if (
+        lastAutoSubmittedAtRef.current > 0 &&
+        now - lastAutoSubmittedAtRef.current <
+          remoteTranscriptContinuationWindowMs &&
+        isLikelyContinuationFragment(normalizedText)
+      ) {
+        // 直前に送った質問の続き（区切られて届いた断片）。別の質問として回答を作らない。
+        submittedIdsRef.current.add(
+          createTranscriptSubmitKey(id, normalizedText),
+        );
+        return;
+      }
       const fingerprint = createTranscriptSubmitFingerprint(normalizedText);
       if (
         findRecentTranscriptSubmitFingerprint(
@@ -253,10 +267,7 @@ export function AudioCapturePanel({
       return;
     }
 
-    if (
-      isCompleteQuestion &&
-      !pendingQuestionCueSubmitTimerRef.current
-    ) {
+    if (isCompleteQuestion && !pendingQuestionCueSubmitTimerRef.current) {
       const remainingGapMs =
         remoteTranscriptMinimumAutoSubmitGapMs -
         (Date.now() - lastAutoSubmittedAtRef.current);
