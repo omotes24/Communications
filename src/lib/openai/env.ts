@@ -1,6 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
+import { DEFAULT_MERCURY_DISABLE_AFTER } from "@/lib/ai/text-provider";
 import { realtimeTranscriptionDelays } from "@/lib/openai/transcription-delay";
 
 const booleanEnvSchema = z
@@ -30,7 +31,7 @@ const mercuryReasoningEffortSchema = z.enum([
 
 // Inception の Mercury API は 2026-12-28 で終了する。この日時を過ぎたら
 // AI_TEXT_PROVIDER=mercury でも自動で AI_PROVIDER に戻す。
-const defaultMercuryDisableAfter = "2026-12-28T00:00:00+09:00";
+const defaultMercuryDisableAfter = DEFAULT_MERCURY_DISABLE_AFTER;
 
 export type MercuryReasoningEffort = z.infer<
   typeof mercuryReasoningEffortSchema

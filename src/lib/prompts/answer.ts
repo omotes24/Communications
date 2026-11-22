@@ -122,6 +122,17 @@ export function buildEvidenceBlock(
   ].join("\n\n");
 }
 
+// 選択中の自分スロットをすべて並べる版。面接前メモの学習で使う。
+export function buildMultiProfileEvidenceBlock(
+  profiles: UserProfile[],
+  company: CompanyProfile | null,
+): string {
+  return [
+    formatMultiSection("選択中の自分スロット", profiles, profileLabels),
+    formatSection("応募企業・求人情報", company, companyLabels),
+  ].join("\n\n");
+}
+
 export function buildAnswerInstructions(
   language: AnswerLanguage = "ja",
 ): string {
@@ -152,6 +163,7 @@ export function buildAnswerInstructions(
     "16a. フェルミ推定モードがONのときは、ユーザーが提示していない公的データ名、調査名、統計値、出典名を作らない。必要な数値は必ず『仮に〜と置く』と明示する",
     "16b. フェルミ推定モードがONのときは、『国土交通省のデータ』『統計によると』『公表値では』のような出典参照表現を使わない",
     "17. 自分スロット追加メモがある場合は、登録プロフィールよりも当日の制約・前提として優先する",
+    "17a. 応募先は「選択中の会社スロット」（なければ応募企業・求人情報）の会社として答える。自分スロットや面接前理解メモに別の会社名が含まれていても、その会社への志望や入社意欲として話さない",
     "18. 回答本文では、面接で特に強調すべき重要語句または重要文を最大3箇所だけ **...** で囲む",
   ];
 

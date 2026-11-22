@@ -70,7 +70,11 @@ export function estimateLearningTokens(
   return estimateForText(
     "learn-interview-context",
     [
-      body.profile ? JSON.stringify(body.profile) : "",
+      body.profiles && body.profiles.length > 0
+        ? JSON.stringify(body.profiles)
+        : body.profile
+          ? JSON.stringify(body.profile)
+          : "",
       body.company ? JSON.stringify(body.company) : "",
       body.selfInfo,
       body.desiredCourse,

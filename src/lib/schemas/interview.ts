@@ -160,12 +160,20 @@ export const preInterviewLearningSchema = z.object({
   learnedAt: z.string(),
   companyId: z.string().nullable(),
   language: z.enum(["ja", "en"]).default("ja"),
+  // 学習に使った会社スロットの updatedAt と、自分スロットの id@updatedAt。
+  // 会社スロットの上書きや自分スロットの切り替え・編集を検知して、古いメモを使わないために保存する。
+  // 古いデータにはないので optional（その場合は learnedAt との比較で判定する）。
+  companyUpdatedAt: z.string().optional(),
+  profileIds: z.array(z.string()).optional(),
+  profileKey: z.string().optional(),
 });
 
 export type PreInterviewLearning = z.infer<typeof preInterviewLearningSchema>;
 
 export const learnInterviewContextRequestSchema = z.object({
   profile: userProfileSchema.nullable(),
+  // 選択中の自分スロットすべて。空なら profile だけを使う（旧クライアント互換）。
+  profiles: z.array(userProfileSchema).max(8).default([]),
   company: companyProfileSchema.nullable(),
   selfInfo: z.string().default(""),
   desiredCourse: z.string().default(""),

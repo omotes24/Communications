@@ -21,6 +21,8 @@ import {
   getCompanyInputMode,
   type CompanyInputMode,
 } from "@/lib/company-input-mode";
+import { requestInterviewLearning } from "@/lib/learning/client";
+import { isLearningCurrent } from "@/lib/learning/freshness";
 import {
   companyProfileSchema,
   createEmptyCompanyProfile,
@@ -169,6 +171,14 @@ export function CompanyManager() {
   const [status, setStatus] = useState<string | null>(null);
   const progressDoneTimer = useRef<number | null>(null);
   const researchStartedAt = researchProgress?.startedAt ?? null;
+  // 「学習済み」は、この会社スロットの今の内容と、選択中の自分スロットで作ったメモがあるときだけ。
+  const isCompanyLearned = (company: CompanyProfile) =>
+    isLearningCurrent({
+      learning: storage.learning,
+      company,
+      profiles: activeProfiles,
+      language: storage.learning?.language ?? "ja",
+    });
 
   const selectCompany = useCallback(
     (company: CompanyProfile, makeActive = false) => {
@@ -314,8 +324,35 @@ export function CompanyManager() {
       setDraft(companyToSave);
       actions.saveCompany(companyToSave);
       setAutoSelectedCompanyId(companyToSave.id);
-      setStatus("会社スロットに保存しました。");
       finishProgress();
+      if (activeProfiles.length === 0) {
+        setStatus("会社スロットに保存しました。");
+        return;
+      }
+      // 会社スロットを作ったら、選択中の自分スロットと合わせた面接前メモまで続けて作る。
+      // （以前の会社向けのメモが残って回答に混ざらないようにする）
+      setStatus(
+        "会社スロットに保存しました。続けて、自分スロットと合わせた面接前メモを学習しています…",
+      );
+      try {
+        const learning = await requestInterviewLearning({
+          profiles: activeProfiles,
+          company: companyToSave,
+          language: "ja",
+        });
+        actions.saveLearning(learning);
+        setStatus(
+          "会社スロットに保存し、自分スロットと合わせた面接前メモも学習しました。面接ページの回答に使われます。",
+        );
+      } catch (learningError) {
+        setStatus(
+          `会社スロットに保存しました。面接前メモの学習は失敗しました（${
+            learningError instanceof Error
+              ? learningError.message
+              : "面接前学習に失敗しました"
+          }）。面接ページで自動的に再学習します。`,
+        );
+      }
     } catch (error) {
       setStatus(
         error instanceof Error ? error.message : "企業調査に失敗しました",
@@ -443,16 +480,14 @@ export function CompanyManager() {
                       <span
                         className={cn(
                           "text-[11px] font-semibold",
-                          storage.learning?.companyId === company.id
+                          isCompanyLearned(company)
                             ? "text-emerald-700"
                             : draft.id === company.id
                               ? "text-[#6e6e73]"
                               : "text-[#86868b]",
                         )}
                       >
-                        {storage.learning?.companyId === company.id
-                          ? "学習済み"
-                          : "未学習"}
+                        {isCompanyLearned(company) ? "学習済み" : "未学習"}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -681,12 +716,12 @@ export function CompanyManager() {
               <p
                 className={cn(
                   "mt-4 inline-flex rounded-full px-3 py-1.5 text-xs font-semibold",
-                  storage.learning?.companyId === draft.id
+                  isCompanyLearned(draft)
                     ? "bg-emerald-50 text-emerald-800"
                     : "bg-neutral-100 text-neutral-600",
                 )}
               >
-                {storage.learning?.companyId === draft.id
+                {isCompanyLearned(draft)
                   ? "この会社は学習済み"
                   : "この会社は未学習"}
               </p>

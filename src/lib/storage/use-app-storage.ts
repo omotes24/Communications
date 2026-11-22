@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   addSessionRecord,
@@ -37,6 +44,28 @@ import type {
 const ACTIVE_COMPANY_SESSION_KEY =
   "jp-interview-assistant:active-company-id:v1";
 
+// useAppStorage() はコンポーネントごとに状態を持つ。面接ページでは学習パネル・回答チャット・
+// 画面本体が別々に保持しているため、どれかが保存した内容（面接前メモなど）を同じページの
+// 他のインスタンスへすぐ配る。配らないと、回答チャットが古いメモを使い続けたり、
+// 古いコピーの保存でクラウドの新しいメモを上書きしたりする。
+const APP_STORAGE_SYNC_EVENT = "jp-interview-assistant:storage-sync";
+
+type AppStorageSyncDetail = {
+  sourceId: string;
+  storage: AppStorage;
+};
+
+function broadcastStorage(sourceId: string, storage: AppStorage): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent<AppStorageSyncDetail>(APP_STORAGE_SYNC_EVENT, {
+      detail: { sourceId, storage },
+    }),
+  );
+}
+
 function readPreferredActiveCompanyId(): string | null {
   if (typeof window === "undefined") {
     return null;
@@ -68,17 +97,34 @@ function preferSessionActiveCompany(storage: AppStorage): AppStorage {
 }
 
 export function useAppStorage() {
+  const instanceId = useId();
   const [storage, setStorage] = useState<AppStorage>(defaultStorage);
   const [ready, setReady] = useState(false);
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
   const storageRef = useRef<AppStorage>(defaultStorage);
   const pendingCloudSaveRef = useRef(false);
   const initialCloudLoadCompletedRef = useRef(false);
+  const lastSyncedAtRef = useRef(0);
 
   const applyStorage = useCallback((next: AppStorage) => {
     storageRef.current = next;
     setStorage(next);
   }, []);
+
+  useEffect(() => {
+    function handleSync(event: Event) {
+      const detail = (event as CustomEvent<AppStorageSyncDetail>).detail;
+      if (!detail || detail.sourceId === instanceId) {
+        return;
+      }
+      lastSyncedAtRef.current = Date.now();
+      applyStorage(detail.storage);
+    }
+    window.addEventListener(APP_STORAGE_SYNC_EVENT, handleSync);
+    return () => {
+      window.removeEventListener(APP_STORAGE_SYNC_EVENT, handleSync);
+    };
+  }, [applyStorage, instanceId]);
 
   const persistCloudStorage = useCallback((next: AppStorage) => {
     void fetch("/api/storage", {
@@ -92,6 +138,7 @@ export function useAppStorage() {
     let cancelled = false;
 
     async function loadCloudStorage() {
+      const loadStartedAt = Date.now();
       try {
         const response = await fetch("/api/storage", {
           headers: { Accept: "application/json" },
@@ -113,6 +160,11 @@ export function useAppStorage() {
           pendingCloudSaveRef.current = false;
           setCloudSyncEnabled(true);
           persistCloudStorage(storageRef.current);
+          return;
+        }
+        if (lastSyncedAtRef.current > loadStartedAt) {
+          // 読み込み中に同じページの別コンポーネントが保存した。そちらの方が新しい。
+          setCloudSyncEnabled(true);
           return;
         }
         applyStorage(preferSessionActiveCompany(data.storage));
@@ -146,6 +198,7 @@ export function useAppStorage() {
       const next = buildNext(storageRef.current);
       writePreferredActiveCompanyId(next.activeCompanyId);
       applyStorage(next);
+      broadcastStorage(instanceId, next);
       if (cloudSyncEnabled) {
         persistCloudStorage(next);
       } else {
@@ -153,7 +206,7 @@ export function useAppStorage() {
         pendingCloudSaveRef.current = !initialCloudLoadCompletedRef.current;
       }
     },
-    [applyStorage, cloudSyncEnabled, persistCloudStorage],
+    [applyStorage, cloudSyncEnabled, instanceId, persistCloudStorage],
   );
 
   const actions = useMemo(
@@ -258,6 +311,7 @@ export function useAppStorage() {
           "declined",
         );
         applyStorage(defaultStorage);
+        broadcastStorage(instanceId, defaultStorage);
         pendingCloudSaveRef.current = false;
         if (cloudSyncEnabled) {
           void fetch("/api/storage", {
@@ -271,7 +325,7 @@ export function useAppStorage() {
         }
       },
     }),
-    [applyStorage, cloudSyncEnabled, commit],
+    [applyStorage, cloudSyncEnabled, commit, instanceId],
   );
 
   return {
