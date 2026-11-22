@@ -2,6 +2,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
 import { requireApiUser } from "@/lib/auth/server";
+import { generateMercuryStructured } from "@/lib/ai/mercury";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
 import {
@@ -56,7 +57,7 @@ export async function POST(request: Request): Promise<Response> {
       requestId,
       operationId,
       feature: "learn-interview-context",
-      provider: env.AI_PROVIDER,
+      provider: env.TEXT_PROVIDER,
       model,
       estimatedAmount: estimateLearningTokens(body),
     });
@@ -93,6 +94,28 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     try {
+      if (env.TEXT_PROVIDER === "mercury") {
+        const response = await generateMercuryStructured({
+          env,
+          model,
+          instructions: buildInterviewLearningInstructions(
+            body.learningLanguage,
+          ),
+          input: buildInterviewLearningInput(body),
+          maxOutputTokens: INTERVIEW_LEARNING_MAX_OUTPUT_TOKENS,
+          schema: learnInterviewContextOutputSchema,
+          name: "interview_learning",
+          reasoningEffort: env.MERCURY_LEARNING_REASONING_EFFORT,
+          signal: request.signal,
+        });
+        if (!response.output_parsed) {
+          await releaseAiTokenReservation(reservation, "parse_failed");
+          return jsonError("面接前学習メモの解析に失敗しました", 502);
+        }
+        await settleAiTokens(reservation, extractOpenAIUsage(response));
+        return Response.json(response.output_parsed);
+      }
+
       const client = createOpenAIClient();
       if (env.OPENAI_BASE_URL) {
         const response = await client.chat.completions.create(

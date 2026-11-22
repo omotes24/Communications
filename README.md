@@ -252,6 +252,21 @@ OpenAIへ送信される情報:
 - 参加者別評価
 - 過去セッション比較と弱点トレンド
 
+## テキスト生成に Mercury（拡散型LLM）を使う
+
+`AI_TEXT_PROVIDER=mercury` にすると、回答案・質問判定・GD・学習メモ・プロフィール取り込み・面接体験記のテキスト生成を、Vercel AI Gateway 経由の Inception Labs Mercury 3 で行います。文字起こし・リアルタイム音声・Web検索付き企業調査・問題解答（solve-question）は `AI_PROVIDER` のままです。
+
+```env
+AI_TEXT_PROVIDER=mercury
+MERCURY_API_KEY=
+```
+
+- `MERCURY_API_KEY` は Vercel ダッシュボードの AI Gateway → API Keys で作るキー（`vck_...`）です。Mercury 3 は AI Gateway の無料枠の対象外なので、AI Gateway Credits の購入が必要です。
+- 既定値は `MERCURY_BASE_URL=https://ai-gateway.vercel.sh/v1`、モデルは `inception/mercury-3`、推論の強さは速度優先 `none`・精度優先 `medium`、面接中のフェルミ推定は `low` です（`medium` だと実測で約21秒かかるため）。Gateway は Mercury 独自の `instant` を受け付けないため、`instant` は `none` に読み替えます。
+- Gateway 経由では `response_format` の JSON Schema がモデルに届かないため、`src/lib/ai/mercury.ts` がスキーマ本文をシステムプロンプトにも書き、形が合わないときは 1 回だけ作り直します。
+- Inception の Mercury API は 2026-12-28 で終了します。`MERCURY_DISABLE_AFTER`（既定 `2026-12-28T00:00:00+09:00`）を過ぎると、再デプロイなしで自動的に `AI_PROVIDER` に戻ります。
+- 料金表に Mercury の行が無い場合、回答案・GD・面接体験記・学習メモは、置き換える前の OpenAI モデルと同じ行で精算します。
+
 ## Vercelデプロイ
 
 PreviewとProductionで環境変数を分けます。

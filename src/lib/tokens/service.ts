@@ -458,7 +458,7 @@ async function getRateCard(
   feature: AiFeature,
   model: string,
 ): Promise<TokenRateCard> {
-  const fallbackRateCard = fallbackRateCardForModel(model);
+  const fallbackRateCard = fallbackRateCardForModel(model, feature);
   if (shouldUseMemoryTokenStore() || !isTokenSystemConfigured()) {
     return fallbackRateCard;
   }
@@ -471,7 +471,7 @@ async function getRateCard(
     )
     .eq("active", true)
     .eq("feature", feature)
-    .in("model", rateCardModelCandidates(model))
+    .in("model", rateCardModelCandidates(model, feature))
     .order("model", { ascending: false })
     .order("active_from", { ascending: false })
     .limit(1);

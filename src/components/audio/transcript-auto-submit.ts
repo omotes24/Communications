@@ -2,6 +2,10 @@ export const remoteTranscriptAutoSubmitDelayMs = 2200;
 export const remoteTranscriptQuestionCueDelayMs = 1400;
 export const remoteTranscriptMinimumAutoSubmitGapMs = 1500;
 export const remoteTranscriptDuplicateWindowMs = 60_000;
+// 文字起こしは約1.8秒ごとに区切られるため、1つの質問が「…どう活かせる?」「また教えてください。」
+// のように割れて届くことがある。直前の自動送信から間もない短い断片は、新しい質問として送らない。
+export const remoteTranscriptContinuationWindowMs = 3_500;
+const maximumContinuationFragmentLength = 16;
 
 const minimumTranscriptLength = 8;
 const maximumQuestionCandidateLength = 180;
@@ -140,12 +144,27 @@ export function looksLikeInterviewQuestion(text: string): boolean {
   );
 }
 
+// 直前の質問の続き（言い直し・言い足し）に見える短い断片か。
+// 質問の主題（自己紹介・志望・強みなど）や理由を問う語を含むものは、新しい質問として扱う。
+export function isLikelyContinuationFragment(text: string): boolean {
+  const normalized = trimLeadingFiller(text);
+  if (!normalized || normalized.length > maximumContinuationFragmentLength) {
+    return false;
+  }
+  return (
+    !topicCuePatterns.some((pattern) => pattern.test(normalized)) &&
+    !reasoningCuePatterns.some((pattern) => pattern.test(normalized))
+  );
+}
+
 export function looksCompleteInterviewQuestion(text: string): boolean {
   const normalized = normalizeTranscriptForSubmit(text);
   if (!looksLikeInterviewQuestion(normalized)) {
     return false;
   }
-  return completeQuestionEndPatterns.some((pattern) => pattern.test(normalized));
+  return completeQuestionEndPatterns.some((pattern) =>
+    pattern.test(normalized),
+  );
 }
 
 function trimLeadingFiller(text: string): string {
@@ -364,8 +383,7 @@ export function areSimilarTranscriptSubmitFingerprints(
     return true;
   }
   if (
-    countCommonSuffixLength(left, right) >=
-    minimumSharedSuffixFingerprintLength
+    countCommonSuffixLength(left, right) >= minimumSharedSuffixFingerprintLength
   ) {
     return true;
   }

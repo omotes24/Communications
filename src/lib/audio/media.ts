@@ -30,7 +30,7 @@ export async function requestDisplayAudio(): Promise<MediaStream> {
   if (stream.getAudioTracks().length === 0) {
     stopMediaStream(stream);
     throw new Error(
-      "音声トラックを取得できませんでした。ChromeまたはEdgeでZoom/Meetのブラウザタブを選び、「タブ音声を共有」をオンにしてください。Safari、画面全体、ウィンドウ共有では相手の声を取得できない場合があります。",
+      "音声トラックを取得できませんでした。ChromeまたはEdgeでharutaka・Zoom・Meetのタブを選び、「タブの音声も共有する」をオンにしてください。ウィンドウや画面全体を共有する場合は「システム音声を共有」をオンにする必要があります（MacはChrome 141以降・macOS 14.2以降）。",
     );
   }
   return stream;

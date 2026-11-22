@@ -2,6 +2,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 
 import { requireApiUser } from "@/lib/auth/server";
 import { createMockFinalEvaluation } from "@/lib/group-discussion/mock";
+import { generateMercuryStructured } from "@/lib/ai/mercury";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
 import { buildGroupDiscussionFinalPrompt } from "@/lib/prompts/group-discussion";
@@ -41,7 +42,7 @@ export async function POST(request: Request): Promise<Response> {
       requestId,
       operationId,
       feature: "group-discussion",
-      provider: env.AI_PROVIDER,
+      provider: env.TEXT_PROVIDER,
       model: env.GROUP_DISCUSSION_MODEL,
       estimatedAmount: adjustTextReservationForModel(
         env.GROUP_DISCUSSION_MODEL,
@@ -60,21 +61,31 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     try {
-      const client = createOpenAIClient({ timeoutMs: 55_000 });
-      const response = await client.responses.parse(
-        {
-          model: env.GROUP_DISCUSSION_MODEL,
-          input: buildGroupDiscussionFinalPrompt(body),
-          text: {
-            format: zodTextFormat(
-              groupDiscussionFinalizeOutputSchema,
-              "group_discussion_final",
-            ),
-          },
-          store: false,
-        },
-        { signal: request.signal },
-      );
+      const response =
+        env.TEXT_PROVIDER === "mercury"
+          ? await generateMercuryStructured({
+              env,
+              model: env.GROUP_DISCUSSION_MODEL,
+              input: buildGroupDiscussionFinalPrompt(body),
+              schema: groupDiscussionFinalizeOutputSchema,
+              name: "group_discussion_final",
+              timeoutMs: 55_000,
+              signal: request.signal,
+            })
+          : await createOpenAIClient({ timeoutMs: 55_000 }).responses.parse(
+              {
+                model: env.GROUP_DISCUSSION_MODEL,
+                input: buildGroupDiscussionFinalPrompt(body),
+                text: {
+                  format: zodTextFormat(
+                    groupDiscussionFinalizeOutputSchema,
+                    "group_discussion_final",
+                  ),
+                },
+                store: false,
+              },
+              { signal: request.signal },
+            );
       if (!response.output_parsed) {
         await releaseAiTokenReservation(reservation, "parse_failed");
         return jsonError("GD最終評価に失敗しました。", 502);

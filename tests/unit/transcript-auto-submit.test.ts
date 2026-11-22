@@ -6,6 +6,7 @@ import {
   createTranscriptSubmitKey,
   extractLikelyInterviewQuestion,
   findRecentTranscriptSubmitFingerprint,
+  isLikelyContinuationFragment,
   isSubmittableTranscript,
   looksCompleteInterviewQuestion,
   looksLikeInterviewQuestion,
@@ -21,6 +22,22 @@ import {
 } from "@/components/audio/transcript-items";
 
 describe("transcript auto submit helpers", () => {
+  it("treats short trailing fragments of a split question as continuations", () => {
+    // 本番の合成音声テストで、「あなたの強みと、それを当社でどう活かせるかを教えてください。」が
+    // 「…どう生かせる?」「また教えてください。」に割れて2問目として送られていた。
+    expect(isLikelyContinuationFragment("また教えてください。")).toBe(true);
+    expect(isLikelyContinuationFragment("具体的に教えてください。")).toBe(true);
+    expect(isLikelyContinuationFragment("なぜですか？")).toBe(false);
+    expect(isLikelyContinuationFragment("志望動機を教えてください。")).toBe(
+      false,
+    );
+    expect(
+      isLikelyContinuationFragment(
+        "学生時代に最も力を入れたことを教えてください。",
+      ),
+    ).toBe(false);
+  });
+
   it("normalizes and filters tiny partial transcripts", () => {
     expect(normalizeTranscriptForSubmit("  自己紹介から\nお願いします  ")).toBe(
       "自己紹介からお願いします",
@@ -57,9 +74,8 @@ describe("transcript auto submit helpers", () => {
     const fullQuestion = createTranscriptSubmitFingerprint(
       "学校ってさんの天才の志望動機を教えてください。",
     );
-    const coreQuestion = createTranscriptSubmitFingerprint(
-      "志望動機を教えてください。",
-    );
+    const coreQuestion =
+      createTranscriptSubmitFingerprint("志望動機を教えてください。");
     expect(
       areSimilarTranscriptSubmitFingerprints(fullQuestion, coreQuestion),
     ).toBe(true);
@@ -122,16 +138,12 @@ describe("transcript auto submit helpers", () => {
         "当社であなたの強みがどう生きるか教えてください",
       ),
     ).toBe(true);
-    expect(looksLikeInterviewQuestion("志望動機を教えてください。")).toBe(
-      true,
-    );
+    expect(looksLikeInterviewQuestion("志望動機を教えてください。")).toBe(true);
     expect(looksCompleteInterviewQuestion("脂肪動機を教えてください。")).toBe(
       true,
     );
     expect(
-      looksLikeInterviewQuestion(
-        "日本にある次の数を推定してみてください",
-      ),
+      looksLikeInterviewQuestion("日本にある次の数を推定してみてください"),
     ).toBe(true);
     expect(looksLikeInterviewQuestion("本日はよろしくお願いいたします。")).toBe(
       false,

@@ -71,11 +71,38 @@ const modelSpecificFallbackRates: Array<{
   },
 ];
 
-export function fallbackRateCardForModel(model: string): TokenRateCard {
+// Mercury（拡散型LLM）は、置き換える前の OpenAI モデルと同じ料金表で精算する。
+// Mercury の行が無いと汎用の "*"（Sol 相当）になり、利用者の負担が増えるため。
+// 対応する行が無い機能は従来どおり "*" に落ちる。
+const mercuryRateFamilyByFeature: Partial<Record<AiFeature, string>> = {
+  "generate-answer": "gpt-5.6-luna",
+  "group-discussion": "gpt-5.6-terra",
+  "summarize-interview-experience": "gpt-5.6-terra",
+  "learn-interview-context": "gpt-5.6-sol",
+};
+
+function isMercuryModel(normalized: string): boolean {
+  return /(?:^|\/)mercury(?:-|$)/.test(normalized);
+}
+
+function rateFamilyFor(model: string, feature?: AiFeature): string | undefined {
   const normalized = model.trim().toLowerCase();
-  const rate = modelSpecificFallbackRates.find(
+  if (isMercuryModel(normalized)) {
+    return feature ? mercuryRateFamilyByFeature[feature] : undefined;
+  }
+  return modelSpecificFallbackRates.find(
     ({ model: candidate }) =>
       normalized === candidate || normalized.startsWith(`${candidate}-`),
+  )?.model;
+}
+
+export function fallbackRateCardForModel(
+  model: string,
+  feature?: AiFeature,
+): TokenRateCard {
+  const family = rateFamilyFor(model, feature);
+  const rate = modelSpecificFallbackRates.find(
+    ({ model: candidate }) => candidate === family,
   );
   if (!rate) {
     return fallbackRateCard;
@@ -90,12 +117,11 @@ export function fallbackRateCardForModel(model: string): TokenRateCard {
   };
 }
 
-export function rateCardModelCandidates(model: string): string[] {
-  const normalized = model.trim().toLowerCase();
-  const family = modelSpecificFallbackRates.find(
-    ({ model: candidate }) =>
-      normalized === candidate || normalized.startsWith(`${candidate}-`),
-  )?.model;
+export function rateCardModelCandidates(
+  model: string,
+  feature?: AiFeature,
+): string[] {
+  const family = rateFamilyFor(model, feature);
 
   return Array.from(new Set([model, family, "*"]).values()).filter(
     (candidate): candidate is string => Boolean(candidate),
@@ -142,23 +168,27 @@ export function extractOpenAIUsage(value: unknown): UsageParts {
   }
 
   const record = usage as Record<string, unknown>;
-  const inputDetails =
-    typeof record.input_tokens_details === "object" &&
-    record.input_tokens_details !== null
-      ? (record.input_tokens_details as Record<string, unknown>)
-      : {};
-  const outputDetails =
-    typeof record.output_tokens_details === "object" &&
-    record.output_tokens_details !== null
-      ? (record.output_tokens_details as Record<string, unknown>)
-      : {};
+  // Responses API は input_tokens / output_tokens、Chat Completions
+  // （Mercury など OpenAI 互換 API）は prompt_tokens / completion_tokens を返す。
+  const inputDetails = toRecord(
+    record.input_tokens_details ?? record.prompt_tokens_details,
+  );
+  const outputDetails = toRecord(
+    record.output_tokens_details ?? record.completion_tokens_details,
+  );
 
   return {
-    inputTokens: toNumber(record.input_tokens),
+    inputTokens: toNumber(record.input_tokens ?? record.prompt_tokens),
     cachedInputTokens: toNumber(inputDetails.cached_tokens),
-    outputTokens: toNumber(record.output_tokens),
+    outputTokens: toNumber(record.output_tokens ?? record.completion_tokens),
     reasoningTokens: toNumber(outputDetails.reasoning_tokens),
   };
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function toNumber(value: unknown): number {

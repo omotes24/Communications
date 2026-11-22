@@ -1,6 +1,7 @@
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { requireApiUser } from "@/lib/auth/server";
+import { streamMercuryStructured } from "@/lib/ai/mercury";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
 import { extractPartialAnswer } from "@/lib/openai/partial-json";
@@ -38,7 +39,7 @@ function resolveAnswerModel(
   if (mode !== "fermi") {
     return env.FAST_ANSWER_MODEL;
   }
-  if (env.AI_PROVIDER === "groq") {
+  if (env.TEXT_PROVIDER === "groq" || env.TEXT_PROVIDER === "mercury") {
     return env.ANSWER_MODEL;
   }
   return env.RESEARCH_MODEL;
@@ -78,7 +79,7 @@ export async function POST(request: Request): Promise<Response> {
       requestId,
       operationId,
       feature: "generate-answer",
-      provider: env.AI_PROVIDER,
+      provider: env.TEXT_PROVIDER,
       model,
       estimatedAmount: estimateReservedAnswerTokens(model, body),
     });
@@ -110,6 +111,39 @@ export async function POST(request: Request): Promise<Response> {
             inputTokens: Math.ceil(JSON.stringify(body).length / 3),
             outputTokens: Math.ceil(draft.answer.length / 3),
           });
+          send("done", {
+            draft,
+            length: validateAnswerLength(draft.answer, body.answerLengthTarget),
+          });
+          controller.close();
+          return;
+        }
+
+        if (env.TEXT_PROVIDER === "mercury") {
+          const result = await streamMercuryStructured(
+            {
+              env,
+              model,
+              instructions: buildAnswerInstructions(body.answerLanguage),
+              input: buildAnswerInput(body),
+              schema: answerDraftSchema,
+              name: "answer_draft",
+              // 通常回答は速度優先（推論なし）。フェルミ推定は推論を入れるが、
+              // 面接中に間に合うよう MERCURY_FERMI_REASONING_EFFORT（既定 low）を使う。
+              speed: body.answerModelMode === "fermi" ? "standard" : "fast",
+              reasoningEffort:
+                body.answerModelMode === "fermi"
+                  ? env.MERCURY_FERMI_REASONING_EFFORT
+                  : undefined,
+              signal: request.signal,
+            },
+            (buffer) => send("partial", extractPartialAnswer(buffer)),
+          );
+          if (!result.output_parsed) {
+            throw new Error("回答案の解析に失敗しました");
+          }
+          const draft = result.output_parsed;
+          await settleAiTokens(reservation, extractOpenAIUsage(result));
           send("done", {
             draft,
             length: validateAnswerLength(draft.answer, body.answerLengthTarget),

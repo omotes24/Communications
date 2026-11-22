@@ -42,6 +42,8 @@ test("manual question flow with mock AI", async ({ page }) => {
   const companySave = waitForStorageSave(page);
   await page.getByRole("button", { name: "学習用スロット作成" }).click();
   await companySave;
+  // 会社スロット作成に続けて、自分スロットと合わせた面接前メモまで自動で学習する。
+  await expect(page.getByText(/面接前メモも学習しました/)).toBeVisible();
   await expect(page.getByText("SLOT 1")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "サンプル株式会社" }),
@@ -59,9 +61,10 @@ test("manual question flow with mock AI", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "リアルタイム文字起こし" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "学習開始" }).click();
   await expect(page.getByText("学習済み", { exact: true })).toBeVisible();
   await expect(page.getByText("LLM学習済み")).toBeVisible();
+  await page.getByRole("button", { name: "再学習" }).click();
+  await expect(page.getByText("学習済み", { exact: true })).toBeVisible();
   await page
     .getByLabel("手動質問入力")
     .fill("これまでの経験について教えてください。");

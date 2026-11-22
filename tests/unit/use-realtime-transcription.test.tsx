@@ -10,15 +10,28 @@ function jsonResponse(body: unknown, init?: ResponseInit) {
   });
 }
 
-function createLiveStream(): MediaStream {
+function createLiveStream(): MediaStream & {
+  endShare: () => void;
+} {
+  const listeners: Array<() => void> = [];
   const track = {
     readyState: "live",
     stop: vi.fn(),
+    addEventListener: vi.fn((type: string, listener: () => void) => {
+      if (type === "ended") {
+        listeners.push(listener);
+      }
+    }),
   } as unknown as MediaStreamTrack;
   return {
     getAudioTracks: () => [track],
     getTracks: () => [track],
-  } as unknown as MediaStream;
+    // ブラウザの「共有を停止」を押したときと同じく、トラックを終わらせて ended を送る
+    endShare: () => {
+      (track as unknown as { readyState: string }).readyState = "ended";
+      listeners.forEach((listener) => listener());
+    },
+  } as unknown as MediaStream & { endShare: () => void };
 }
 
 describe("useRealtimeTranscription", () => {
@@ -73,6 +86,32 @@ describe("useRealtimeTranscription", () => {
     act(() => {
       result.current.stop({ stopTracks: false });
     });
+    unmount();
+  });
+
+  it("stops and explains when the shared tab stops sharing", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({
+        value: "mock-ephemeral-token",
+        model: "mock",
+        provider: "openai",
+        reservationSeconds: 180,
+      }),
+    );
+    const stream = createLiveStream();
+    const { result, unmount } = renderHook(() => useRealtimeTranscription());
+
+    await act(async () => {
+      await result.current.start(stream, "remote");
+    });
+    expect(result.current.status).toBe("live");
+
+    act(() => {
+      stream.endShare();
+    });
+
+    expect(result.current.status).toBe("idle");
+    expect(result.current.error).toContain("共有が終了したため");
     unmount();
   });
 });

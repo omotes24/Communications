@@ -4,6 +4,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 
 import { requireAdminApiUser } from "@/lib/auth/admin";
 import { isInterviewExperienceEnabled } from "@/lib/features/server";
+import { generateMercuryStructured } from "@/lib/ai/mercury";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv, structuredOutputModel } from "@/lib/openai/env";
 import { jsonError, toPublicError } from "@/lib/privacy/logging";
@@ -121,7 +122,7 @@ export async function POST(request: Request): Promise<Response> {
       requestId,
       operationId,
       feature: "summarize-interview-experience",
-      provider: env.AI_PROVIDER,
+      provider: env.TEXT_PROVIDER,
       model,
       estimatedAmount: adjustTextReservationForModel(
         model,
@@ -165,30 +166,41 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     try {
-      const client = createOpenAIClient();
-      const response = await client.responses.parse(
-        {
-          model,
-          instructions,
-          input: [
-            `会社: ${company?.company_name || "未設定"}`,
-            `JobTrack非公開カタログ参照: ${body.jobtrackCatalogRef ?? company?.jobtrack_catalog_ref ?? "未設定"}`,
-            `選考段階: ${body.selectionStage}`,
-            `対象職種カテゴリ: ${body.roleCategory || "未設定"}`,
-            `面接月: ${body.interviewMonth || "未設定"}`,
-            "以下は非公開の文字起こしです。個人情報を除き、回答本文を再利用せずに正規化してください。",
-            transcript,
-          ].join("\n\n"),
-          text: {
-            format: zodTextFormat(
-              interviewExperienceDraftSchema,
-              "interview_experience",
-            ),
-          },
-          store: false,
-        },
-        { signal: request.signal },
-      );
+      const input = [
+        `会社: ${company?.company_name || "未設定"}`,
+        `JobTrack非公開カタログ参照: ${body.jobtrackCatalogRef ?? company?.jobtrack_catalog_ref ?? "未設定"}`,
+        `選考段階: ${body.selectionStage}`,
+        `対象職種カテゴリ: ${body.roleCategory || "未設定"}`,
+        `面接月: ${body.interviewMonth || "未設定"}`,
+        "以下は非公開の文字起こしです。個人情報を除き、回答本文を再利用せずに正規化してください。",
+        transcript,
+      ].join("\n\n");
+      const response =
+        env.TEXT_PROVIDER === "mercury"
+          ? await generateMercuryStructured({
+              env,
+              model,
+              instructions,
+              input,
+              schema: interviewExperienceDraftSchema,
+              name: "interview_experience",
+              signal: request.signal,
+            })
+          : await createOpenAIClient().responses.parse(
+              {
+                model,
+                instructions,
+                input,
+                text: {
+                  format: zodTextFormat(
+                    interviewExperienceDraftSchema,
+                    "interview_experience",
+                  ),
+                },
+                store: false,
+              },
+              { signal: request.signal },
+            );
       if (!response.output_parsed) {
         await releaseAiTokenReservation(reservation, "parse_failed");
         return jsonError("面接体験レポートを解析できませんでした。", 502);

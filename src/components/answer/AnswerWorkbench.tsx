@@ -13,9 +13,15 @@ import {
 
 import { FormField, textareaClassName } from "@/components/forms/FormField";
 import {
+  answerModelLabels,
+  resolvePublicTextProvider,
+} from "@/lib/ai/text-provider";
+import { guessQuestionCategory } from "@/lib/answer/category-guess";
+import {
   buildQuickAnswerDraft,
   quickDraftDelayMs,
 } from "@/lib/answer/quick-draft";
+import { isLearningCurrent } from "@/lib/learning/freshness";
 import {
   answerDraftSchema,
   questionClassificationSchema,
@@ -54,23 +60,24 @@ type AnswerWorkbenchProps = {
 
 type AnswerSource = NonNullable<AnswerWorkbenchProps["autoSource"]>;
 
-const publicAiProvider =
-  process.env.NEXT_PUBLIC_AI_PROVIDER === "groq" ? "groq" : "openai";
+const publicTextProvider = resolvePublicTextProvider({
+  textProvider: process.env.NEXT_PUBLIC_AI_TEXT_PROVIDER,
+  baseProvider: process.env.NEXT_PUBLIC_AI_PROVIDER,
+  mercuryDisableAfter: process.env.NEXT_PUBLIC_MERCURY_DISABLE_AFTER,
+});
+const modelLabels = answerModelLabels[publicTextProvider];
 
 const answerModelOptions: Array<{
   mode: AnswerModelMode;
   label: string;
   description: string;
-}> =
-  publicAiProvider === "groq"
-    ? [
-        { mode: "standard", label: "Groq 20B", description: "高速" },
-        { mode: "fermi", label: "Groq 120B", description: "高精度" },
-      ]
-    : [
-        { mode: "standard", label: "5.6 Luna", description: "高速" },
-        { mode: "fermi", label: "5.6 Terra", description: "高精度" },
-      ];
+}> = [
+  { mode: "standard", ...modelLabels.standard },
+  { mode: "fermi", ...modelLabels.fermi },
+];
+
+// generate-answer の profiles / companies は最大8件まで。
+const maxAnswerSlots = 8;
 
 const remoteAnswerDuplicateWindowMs = 60_000;
 
@@ -222,10 +229,15 @@ export function AnswerWorkbench({
     [activeCompany, activeCompanies],
   );
 
+  // 会社スロットの上書きや自分スロットの切り替えで古くなったメモは使わない。
   const activeLearningBrief =
-    storage.learning?.companyId &&
-    storage.learning?.language === answerLanguage &&
-    storage.learning.companyId === activeCompany?.id
+    storage.learning &&
+    isLearningCurrent({
+      learning: storage.learning,
+      company: activeCompany,
+      profiles: activeProfiles,
+      language: answerLanguage,
+    })
       ? storage.learning.brief
       : "";
 
@@ -344,7 +356,11 @@ export function AnswerWorkbench({
       const controller = new AbortController();
       controllersRef.current.set(turnId, controller);
       let hasGeneratedContent = false;
-      let turnCategory: QuestionCategory = "other";
+      // 日本語は質問判定を待たずに回答生成を始めるので、まず手元の推定カテゴリを使う。
+      const answerInParallel = answerLanguage === "ja";
+      let turnCategory: QuestionCategory = answerInParallel
+        ? guessQuestionCategory(normalizedQuestion)
+        : "other";
       const conversationContext = buildConversationContext(turns);
       const selfSlotSnapshot = selfSlot.trim();
       const profileSlotLabels = activeProfiles.map((profile) => profile.label);
@@ -406,8 +422,29 @@ export function AnswerWorkbench({
       }, quickDraftDelayMs);
       quickDraftTimersRef.current.set(turnId, quickDraftTimer);
 
+      const removeDuplicateRemoteTurn = (answerQuestion: string): boolean => {
+        if (source !== "remote-audio") {
+          return false;
+        }
+        const fingerprint = createTranscriptSubmitFingerprint(answerQuestion);
+        if (!hasSimilarRemoteQuestionTurn(answerQuestion, turnId)) {
+          remoteQuestionKeysRef.current.set(fingerprint, Date.now());
+          return false;
+        }
+        clearQuickDraftTimer(turnId);
+        controller.abort();
+        controllersRef.current.delete(turnId);
+        remoteQuestionKeysRef.current.set(fingerprint, Date.now());
+        setTurns((current) => {
+          const nextTurns = current.filter((turn) => turn.id !== turnId);
+          turnsRef.current = nextTurns;
+          return nextTurns;
+        });
+        return true;
+      };
+
       try {
-        const classifyResponse = await fetch("/api/classify-question", {
+        const classificationPromise = fetch("/api/classify-question", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -420,45 +457,51 @@ export function AnswerWorkbench({
             source,
           }),
           signal: controller.signal,
-        });
-        if (!classifyResponse.ok) {
-          throw new Error("質問判定に失敗しました");
-        }
-        const classificationResult = questionClassificationSchema.parse(
-          await classifyResponse.json(),
-        );
-        turnCategory = classificationResult.category;
-        const answerQuestion =
-          classificationResult.question || normalizedQuestion;
-        if (
-          source === "remote-audio" &&
-          hasSimilarRemoteQuestionTurn(answerQuestion, turnId)
-        ) {
-          clearQuickDraftTimer(turnId);
-          controllersRef.current.delete(turnId);
-          remoteQuestionKeysRef.current.set(
-            createTranscriptSubmitFingerprint(answerQuestion),
-            Date.now(),
+        }).then(async (classifyResponse) => {
+          if (!classifyResponse.ok) {
+            throw new Error("質問判定に失敗しました");
+          }
+          return questionClassificationSchema.parse(
+            await classifyResponse.json(),
           );
-          setTurns((current) => {
-            const nextTurns = current.filter((turn) => turn.id !== turnId);
-            turnsRef.current = nextTurns;
-            return nextTurns;
+        });
+
+        let answerQuestion = normalizedQuestion;
+        if (answerInParallel) {
+          // 面接中は速さを優先し、質問判定（表示・重複検知用）と回答生成を同時に走らせる。
+          void classificationPromise.then(
+            (classificationResult) => {
+              if (controller.signal.aborted) {
+                return;
+              }
+              if (
+                removeDuplicateRemoteTurn(
+                  classificationResult.question || normalizedQuestion,
+                )
+              ) {
+                return;
+              }
+              turnCategory = classificationResult.category;
+              updateTurn(turnId, {
+                classification: classificationResult,
+                category: classificationResult.category,
+              });
+            },
+            () => undefined,
+          );
+        } else {
+          const classificationResult = await classificationPromise;
+          turnCategory = classificationResult.category;
+          answerQuestion = classificationResult.question || normalizedQuestion;
+          if (removeDuplicateRemoteTurn(answerQuestion)) {
+            return;
+          }
+          updateTurn(turnId, {
+            classification: classificationResult,
+            category: classificationResult.category,
+            question: answerQuestion,
           });
-          return;
         }
-        if (source === "remote-audio") {
-          remoteQuestionKeysRef.current.set(
-            createTranscriptSubmitFingerprint(answerQuestion),
-            Date.now(),
-          );
-        }
-        updateTurn(turnId, {
-          classification: classificationResult,
-          category: classificationResult.category,
-          question:
-            answerLanguage === "en" ? answerQuestion : normalizedQuestion,
-        });
 
         const answerResponse = await fetch("/api/generate-answer", {
           method: "POST",
@@ -469,11 +512,11 @@ export function AnswerWorkbench({
           },
           body: JSON.stringify({
             question: answerQuestion,
-            category: classificationResult.category,
+            category: turnCategory,
             profile: activeProfile,
             company: activeCompany,
-            profiles: activeProfiles,
-            companies: answerCompanies,
+            profiles: activeProfiles.slice(0, maxAnswerSlots),
+            companies: answerCompanies.slice(0, maxAnswerSlots),
             learningBrief: activeLearningBrief,
             conversationContext,
             answerModelMode,
@@ -663,7 +706,7 @@ export function AnswerWorkbench({
                     : "bg-[#f5f5f7] text-[#6e6e73]",
                 )}
               >
-                {turns.length}件
+                回答 {turns.length}件
               </span>
               <div
                 className={cn(
