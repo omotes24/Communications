@@ -1,5 +1,6 @@
 import { zodTextFormat } from "openai/helpers/zod";
 
+import { generateMercuryStructured } from "@/lib/ai/mercury";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
 import { buildGroupDiscussionTopicPrompt } from "@/lib/prompts/group-discussion";
@@ -38,7 +39,7 @@ export async function POST(request: Request): Promise<Response> {
       requestId,
       operationId,
       feature: "group-discussion",
-      provider: env.AI_PROVIDER,
+      provider: env.TEXT_PROVIDER,
       model: env.GROUP_DISCUSSION_MODEL,
       estimatedAmount: adjustTextReservationForModel(
         env.GROUP_DISCUSSION_MODEL,
@@ -57,21 +58,30 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     try {
-      const client = createOpenAIClient();
-      const response = await client.responses.parse(
-        {
-          model: env.GROUP_DISCUSSION_MODEL,
-          input: buildGroupDiscussionTopicPrompt(body),
-          text: {
-            format: zodTextFormat(
-              groupDiscussionTopicOutputSchema,
-              "group_discussion_topic",
-            ),
-          },
-          store: false,
-        },
-        { signal: request.signal },
-      );
+      const response =
+        env.TEXT_PROVIDER === "mercury"
+          ? await generateMercuryStructured({
+              env,
+              model: env.GROUP_DISCUSSION_MODEL,
+              input: buildGroupDiscussionTopicPrompt(body),
+              schema: groupDiscussionTopicOutputSchema,
+              name: "group_discussion_topic",
+              signal: request.signal,
+            })
+          : await createOpenAIClient().responses.parse(
+              {
+                model: env.GROUP_DISCUSSION_MODEL,
+                input: buildGroupDiscussionTopicPrompt(body),
+                text: {
+                  format: zodTextFormat(
+                    groupDiscussionTopicOutputSchema,
+                    "group_discussion_topic",
+                  ),
+                },
+                store: false,
+              },
+              { signal: request.signal },
+            );
       if (!response.output_parsed) {
         await releaseAiTokenReservation(reservation, "parse_failed");
         return jsonError("GDテーマ生成に失敗しました。", 502);

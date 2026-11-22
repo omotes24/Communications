@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { requireApiUser } from "@/lib/auth/server";
+import { generateMercuryStructured } from "@/lib/ai/mercury";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
 import {
@@ -289,7 +290,7 @@ export async function POST(request: Request): Promise<Response> {
       requestId,
       operationId,
       feature: "import-profile-file",
-      provider: env.AI_PROVIDER,
+      provider: env.TEXT_PROVIDER,
       model: env.CLASSIFIER_MODEL,
       estimatedAmount: adjustTextReservationForModel(
         env.CLASSIFIER_MODEL,
@@ -306,22 +307,32 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     try {
-      const client = createOpenAIClient();
-      const response = await client.responses.parse(
-        {
-          model: env.CLASSIFIER_MODEL,
-          instructions: PROFILE_IMPORT_INSTRUCTIONS,
-          input: buildProfileImportInput(body),
-          text: {
-            format: zodTextFormat(
-              profileFileImportOutputSchema,
-              "profile_file_import",
-            ),
-          },
-          store: false,
-        },
-        { signal: request.signal },
-      );
+      const response =
+        env.TEXT_PROVIDER === "mercury"
+          ? await generateMercuryStructured({
+              env,
+              model: env.CLASSIFIER_MODEL,
+              instructions: PROFILE_IMPORT_INSTRUCTIONS,
+              input: buildProfileImportInput(body),
+              schema: profileFileImportOutputSchema,
+              name: "profile_file_import",
+              signal: request.signal,
+            })
+          : await createOpenAIClient().responses.parse(
+              {
+                model: env.CLASSIFIER_MODEL,
+                instructions: PROFILE_IMPORT_INSTRUCTIONS,
+                input: buildProfileImportInput(body),
+                text: {
+                  format: zodTextFormat(
+                    profileFileImportOutputSchema,
+                    "profile_file_import",
+                  ),
+                },
+                store: false,
+              },
+              { signal: request.signal },
+            );
 
       if (!response.output_parsed) {
         await releaseAiTokenReservation(reservation, "parse_failed");

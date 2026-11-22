@@ -3,6 +3,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { requireApiUser } from "@/lib/auth/server";
 import { analyzeGroupDiscussionUtterance } from "@/lib/group-discussion/analysis";
 import { createMockAiTurn } from "@/lib/group-discussion/mock";
+import { generateMercuryStructured } from "@/lib/ai/mercury";
 import { createOpenAIClient } from "@/lib/openai/client";
 import { getServerEnv } from "@/lib/openai/env";
 import { buildGroupDiscussionAiTurnPrompt } from "@/lib/prompts/group-discussion";
@@ -60,7 +61,7 @@ export async function POST(request: Request): Promise<Response> {
       requestId,
       operationId,
       feature: "group-discussion",
-      provider: env.AI_PROVIDER,
+      provider: env.TEXT_PROVIDER,
       model: env.GROUP_DISCUSSION_MODEL,
       estimatedAmount: adjustTextReservationForModel(
         env.GROUP_DISCUSSION_MODEL,
@@ -79,21 +80,31 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     try {
-      const client = createOpenAIClient();
-      const response = await client.responses.parse(
-        {
-          model: env.GROUP_DISCUSSION_MODEL,
-          input: buildGroupDiscussionAiTurnPrompt(body),
-          text: {
-            format: zodTextFormat(
-              groupDiscussionAiTurnDraftSchema,
-              "group_discussion_ai_turn",
-            ),
-          },
-          store: false,
-        },
-        { signal: request.signal },
-      );
+      const response =
+        env.TEXT_PROVIDER === "mercury"
+          ? await generateMercuryStructured({
+              env,
+              model: env.GROUP_DISCUSSION_MODEL,
+              input: buildGroupDiscussionAiTurnPrompt(body),
+              schema: groupDiscussionAiTurnDraftSchema,
+              name: "group_discussion_ai_turn",
+              speed: "fast",
+              signal: request.signal,
+            })
+          : await createOpenAIClient().responses.parse(
+              {
+                model: env.GROUP_DISCUSSION_MODEL,
+                input: buildGroupDiscussionAiTurnPrompt(body),
+                text: {
+                  format: zodTextFormat(
+                    groupDiscussionAiTurnDraftSchema,
+                    "group_discussion_ai_turn",
+                  ),
+                },
+                store: false,
+              },
+              { signal: request.signal },
+            );
       if (!response.output_parsed) {
         await releaseAiTokenReservation(reservation, "parse_failed");
         return jsonError("AI参加者の発言生成に失敗しました。", 502);
