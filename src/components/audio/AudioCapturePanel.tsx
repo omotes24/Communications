@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Mic, MonitorUp, Square } from "lucide-react";
 
+import { useAudioLevel } from "@/components/audio/use-audio-level";
 import {
   useRealtimeTranscription,
   type TranscriptItem,
@@ -67,9 +68,11 @@ export function AudioCapturePanel({
   const transcription = useRealtimeTranscription();
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const [activeSource, setActiveSource] = useState<"remote" | "local" | null>(
-    null,
-  );
+  // micAsInterviewer: マイクの声を面接官の声として扱う（動作テスト・タブ音声が取れないときの代替）
+  const [activeSource, setActiveSource] = useState<
+    "remote" | "local" | "micAsInterviewer" | null
+  >(null);
+  const [sharedSurface, setSharedSurface] = useState<string | null>(null);
   const [transcriptionDelay, setTranscriptionDelay] =
     useState<RealtimeTranscriptionDelay>("high");
   const [error, setError] = useState<string | null>(null);
@@ -98,10 +101,22 @@ export function AudioCapturePanel({
         : "待機中";
   const sourceLabel =
     activeSource === "remote"
-      ? "タブ・画面音声"
+      ? sharedSurface === "browser"
+        ? "タブ音声"
+        : sharedSurface === "window"
+          ? "ウィンドウ音声"
+          : sharedSurface === "monitor"
+            ? "画面全体の音声"
+            : "タブ・画面音声"
       : activeSource === "local"
         ? "マイク"
-        : "未選択";
+        : activeSource === "micAsInterviewer"
+          ? "マイク（面接官の声として）"
+          : "未選択";
+  const monitoredStream =
+    activeSource === "remote" ? remoteStream : localStream;
+  const audioLevel = useAudioLevel(isRecording ? monitoredStream : null);
+  const showSilenceHint = isRecording && audioLevel.silentMs > 8000;
   const transcriptItemsForReading = useMemo(
     () => mergeTranscriptItemsForReading(transcription.items),
     [transcription.items],
@@ -317,10 +332,29 @@ export function AudioCapturePanel({
       clearPendingRemoteSubmitTimers();
       const stream = await requestDisplayAudio();
       setRemoteStream(stream);
+      setSharedSurface(
+        stream.getVideoTracks()[0]?.getSettings().displaySurface ?? null,
+      );
       setActiveSource("remote");
       await transcription.start(stream, "remote", { transcriptionDelay });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "画面音声取得エラー");
+    }
+  }
+
+  // マイクの声を面接官の声として扱う。相手がいない状態で「文字起こし→質問検知→回答」を
+  // 確かめるときや、タブ音声を共有できない環境（スピーカーで聞く場合など）の代替に使う。
+  async function startMicAsInterviewer() {
+    try {
+      setError(null);
+      clearPendingRemoteSubmitTimers();
+      const stream = await requestMicrophone();
+      setLocalStream(stream);
+      setSharedSurface(null);
+      setActiveSource("micAsInterviewer");
+      await transcription.start(stream, "remote", { transcriptionDelay });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "マイク取得エラー");
     }
   }
 
@@ -332,6 +366,7 @@ export function AudioCapturePanel({
     setLocalStream(null);
     setRemoteStream(null);
     setActiveSource(null);
+    setSharedSurface(null);
   }
 
   return (
@@ -367,7 +402,7 @@ export function AudioCapturePanel({
               )}
             >
               <span className="underline underline-offset-2">Chrome/Edge</span>
-              でZoomやMeetのブラウザタブを選び、タブ音声を共有すると相手の質問を文字起こしできます。
+              でharutaka・Zoom・Meetなどの面接タブを選び、タブ音声を共有すると相手（面接官）の質問を文字起こしできます。
             </p>
           ) : null}
         </div>
@@ -427,7 +462,14 @@ export function AudioCapturePanel({
               相手の声を拾うには
             </p>
             <p className="mt-2">
-              Zoom/Meetをブラウザで開き、録音開始後の共有ダイアログで「タブ」を選びます。Macでは画面全体やウィンドウ共有では音声が付かないことがあります。
+              harutaka・Zoom・MeetをChromeのタブで開き、録音開始後の共有ダイアログで「Chromeタブ」からそのタブを選び、「タブの音声も共有する」をONにします。
+            </p>
+            <p className="mt-2">
+              文字起こしされるのは相手（面接官）の声だけです。自分の声はタブ音声に入らないため、相手がいない状態では文字が出ません。動作を確かめるときは「マイクで動作テスト」を使ってください。
+            </p>
+            <p className="mt-2">
+              ウィンドウや画面全体を共有する場合は、Chrome 141以降・macOS
+              14.2以降で「システム音声を共有」をONにしてください。
             </p>
           </div>
         ) : null}
@@ -540,7 +582,7 @@ export function AudioCapturePanel({
             <MonitorUp className="h-5 w-5" aria-hidden />
             {isRecording && activeSource === "remote"
               ? "録音中"
-              : "Zoom/Meetタブ音声を録音"}
+              : "面接タブの音声を録音"}
           </button>
           <button
             type="button"
@@ -561,20 +603,84 @@ export function AudioCapturePanel({
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={startMic}
-          disabled={isAudioBusy}
-          className={cn(
-            "mt-3 inline-flex h-11 items-center gap-2 rounded-full border px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:text-neutral-400",
-            isDark
-              ? "border-white/10 bg-neutral-950 text-white hover:border-white/30"
-              : "border-neutral-950/15 bg-white text-neutral-900 hover:border-neutral-950",
-          )}
-        >
-          <Mic className="h-4 w-4" aria-hidden />
-          マイクのみ開始
-        </button>
+        {isRecording ? (
+          <div className="mt-4 grid gap-1.5" data-testid="audio-input-level">
+            <div className="flex items-center justify-between text-xs font-semibold">
+              <span className={isDark ? "text-white/60" : "text-neutral-600"}>
+                入力音量（{sourceLabel}）
+              </span>
+              <span
+                className={
+                  audioLevel.silentMs > 8000
+                    ? "text-amber-600"
+                    : "text-emerald-600"
+                }
+              >
+                {audioLevel.silentMs > 8000 ? "音が届いていません" : "受信中"}
+              </span>
+            </div>
+            <div
+              className={cn(
+                "h-2 overflow-hidden rounded-full",
+                isDark ? "bg-white/10" : "bg-white",
+              )}
+            >
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-[width] duration-100"
+                style={{ width: `${Math.round(audioLevel.level * 100)}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {showSilenceHint ? (
+          <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium leading-6 text-amber-900">
+            {activeSource === "remote"
+              ? "共有したタブ・画面から音が届いていません。文字起こしされるのは相手（面接官）の声だけで、自分の声は入りません。面接官が話しているのにこの表示が続く場合は、停止してから、harutaka・Zoom・Meetのタブを選び「タブの音声も共有する」をONにして共有し直してください。"
+              : "マイクに音が入っていません。ブラウザのマイク許可と、Macの入力デバイスを確認してください。"}
+          </p>
+        ) : null}
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={startMicAsInterviewer}
+            disabled={isAudioBusy}
+            className={cn(
+              "inline-flex h-11 items-center gap-2 rounded-full border px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:text-neutral-400",
+              isDark
+                ? "border-white/10 bg-neutral-950 text-white hover:border-white/30"
+                : "border-neutral-950/15 bg-white text-neutral-900 hover:border-neutral-950",
+            )}
+          >
+            <Mic className="h-4 w-4" aria-hidden />
+            マイクで動作テスト
+          </button>
+          <button
+            type="button"
+            onClick={startMic}
+            disabled={isAudioBusy}
+            className={cn(
+              "inline-flex h-11 items-center gap-2 rounded-full border px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:text-neutral-400",
+              isDark
+                ? "border-white/10 bg-neutral-950 text-white hover:border-white/30"
+                : "border-neutral-950/15 bg-white text-neutral-900 hover:border-neutral-950",
+            )}
+          >
+            <Mic className="h-4 w-4" aria-hidden />
+            マイクのみ開始
+          </button>
+        </div>
+        {!compact ? (
+          <p
+            className={cn(
+              "mt-2 text-xs font-medium leading-5",
+              isDark ? "text-white/50" : "text-neutral-500",
+            )}
+          >
+            「マイクで動作テスト」は、マイクに向かって「自己紹介をお願いします」などと話すと、面接官の質問として文字起こし・質問検知・回答作成まで動きます。
+          </p>
+        ) : null}
       </div>
 
       {error || transcription.error ? (

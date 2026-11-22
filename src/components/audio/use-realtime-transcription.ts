@@ -21,7 +21,18 @@ type RealtimeEvent = {
   item_id?: string;
   delta?: string;
   transcript?: string;
+  error?: { code?: string; message?: string };
 };
+
+// 無音のまま commit したときなどに返る、無視してよいエラー
+const ignorableRealtimeErrorCodes = new Set([
+  "input_audio_buffer_commit_empty",
+]);
+// Realtime の1セッションには時間の上限があり、回線の瞬断でも切れる。
+// 面接の途中で文字起こしが止まらないよう、切れたら自動でつなぎ直す。
+const realtimeReconnectWindowMs = 5 * 60_000;
+const maxRealtimeReconnectsPerWindow = 4;
+const realtimeReconnectDelayMs = 800;
 
 type RealtimeSessionResponse = {
   value?: string;
@@ -108,9 +119,17 @@ export function useRealtimeTranscription() {
     stopped: boolean;
     stream: MediaStream;
   } | null>(null);
+  // start / stop のたびに増える。古い接続のイベントで状態を変えないために使う。
+  const sessionCounterRef = useRef(0);
+  const reconnectAttemptsRef = useRef<number[]>([]);
+  const activeStreamRef = useRef<MediaStream | null>(null);
 
   const stop = useCallback((options: { stopTracks?: boolean } = {}) => {
+    sessionCounterRef.current += 1;
     const stopTracks = options.stopTracks ?? true;
+    if (stopTracks) {
+      activeStreamRef.current = null;
+    }
     if (realtimeRenewalTimerRef.current) {
       window.clearTimeout(realtimeRenewalTimerRef.current);
       realtimeRenewalTimerRef.current = null;
@@ -281,10 +300,73 @@ export function useRealtimeTranscription() {
     stream: MediaStream,
     source: "local" | "remote",
     options: RealtimeTranscriptionOptions = {},
+    mode: { reconnect?: boolean } = {},
   ) {
-    stop();
+    // つなぎ直しのときは共有中の音声トラックを止めない
+    stop({ stopTracks: !mode.reconnect });
+    const sessionId = sessionCounterRef.current;
+    const isCurrentSession = () => sessionCounterRef.current === sessionId;
     setStatus("connecting");
-    setError(null);
+    if (!mode.reconnect) {
+      setError(null);
+      reconnectAttemptsRef.current = [];
+    }
+
+    const reconnect = (reason: string) => {
+      if (!isCurrentSession()) {
+        return;
+      }
+      if (
+        stream.getAudioTracks().every((track) => track.readyState === "ended")
+      ) {
+        stop();
+        setError(
+          "画面・タブの共有が終了したため、文字起こしを止めました。もう一度録音を開始してください。",
+        );
+        return;
+      }
+      const now = Date.now();
+      reconnectAttemptsRef.current = reconnectAttemptsRef.current.filter(
+        (attemptAt) => now - attemptAt < realtimeReconnectWindowMs,
+      );
+      if (
+        reconnectAttemptsRef.current.length >= maxRealtimeReconnectsPerWindow
+      ) {
+        stop({ stopTracks: false });
+        setStatus("error");
+        setError(
+          `文字起こしの接続が何度も切れました（${reason}）。停止してから、もう一度録音を開始してください。`,
+        );
+        return;
+      }
+      reconnectAttemptsRef.current.push(now);
+      setError(
+        `文字起こしの接続が切れたため、つなぎ直しています（${reason}）。`,
+      );
+      sessionCounterRef.current += 1;
+      window.setTimeout(() => {
+        void start(stream, source, options, { reconnect: true });
+      }, realtimeReconnectDelayMs);
+    };
+
+    activeStreamRef.current = stream;
+    if (!mode.reconnect) {
+      // ブラウザの「共有を停止」で音声トラックが終わったら、録音中のままにしない
+      // （track.stop() では ended は発火しないので、こちらから止めた場合は来ない）
+      stream.getAudioTracks().forEach((track) => {
+        track.addEventListener("ended", () => {
+          if (
+            activeStreamRef.current === stream &&
+            stream.getAudioTracks().every((item) => item.readyState === "ended")
+          ) {
+            stop();
+            setError(
+              "画面・タブの共有が終了したため、文字起こしを止めました。もう一度録音を開始してください。",
+            );
+          }
+        });
+      });
+    }
 
     try {
       const tokenData = await requestRealtimeSession(options);
@@ -343,10 +425,45 @@ export function useRealtimeTranscription() {
           window.clearInterval(realtimeCommitIntervalRef.current);
           realtimeCommitIntervalRef.current = null;
         }
+        // こちらから止めたのでなければ、セッションの上限や回線断で切れた
+        reconnect("セッション終了");
+      });
+
+      let disconnectedTimer: number | null = null;
+      peer.addEventListener("connectionstatechange", () => {
+        if (!isCurrentSession()) {
+          return;
+        }
+        if (peer.connectionState === "failed") {
+          reconnect("接続失敗");
+          return;
+        }
+        if (peer.connectionState === "disconnected") {
+          // 一時的な瞬断は自然に戻ることがあるので、少し待ってから判断する
+          disconnectedTimer = window.setTimeout(() => {
+            if (isCurrentSession() && peer.connectionState === "disconnected") {
+              reconnect("回線断");
+            }
+          }, 4000);
+          return;
+        }
+        if (disconnectedTimer) {
+          window.clearTimeout(disconnectedTimer);
+          disconnectedTimer = null;
+        }
       });
 
       channel.addEventListener("message", (event) => {
         const data = JSON.parse(event.data as string) as RealtimeEvent;
+        if (data.type === "error") {
+          const code = data.error?.code ?? "";
+          if (!ignorableRealtimeErrorCodes.has(code) && isCurrentSession()) {
+            setError(
+              `文字起こしでエラーが発生しました${code ? `（${code}）` : ""}。続く場合は停止して録音し直してください。`,
+            );
+          }
+          return;
+        }
         if (data.type === "conversation.item.input_audio_transcription.delta") {
           setItems((current) => {
             const id = data.item_id ?? "pending";
@@ -430,8 +547,21 @@ export function useRealtimeTranscription() {
         type: "answer",
         sdp: await sdpResponse.text(),
       });
+      if (!isCurrentSession()) {
+        return;
+      }
       setStatus("live");
+      if (mode.reconnect) {
+        setError(null);
+      }
     } catch (caught) {
+      if (!isCurrentSession()) {
+        return;
+      }
+      if (mode.reconnect) {
+        reconnect("再接続に失敗");
+        return;
+      }
       setError(caught instanceof Error ? caught.message : "音声接続エラー");
       setStatus("error");
     }
